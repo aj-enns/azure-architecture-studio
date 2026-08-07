@@ -1,0 +1,105 @@
+import { Command } from 'cmdk';
+import { useEffect } from 'react';
+import {
+  azureServiceCatalog,
+  type GroupKind,
+} from '@aar/shared';
+import { downloadJson, exportPng, exportSvg } from '@/lib/export.js';
+import { useTheme } from '@/lib/theme.js';
+import { useDiagramStore } from '@/store/diagramStore.js';
+
+const groupKinds: { kind: GroupKind; label: string }[] = [
+  { kind: 'subscription', label: 'Subscription' },
+  { kind: 'resourceGroup', label: 'Resource Group' },
+  { kind: 'vnet', label: 'Virtual Network' },
+  { kind: 'subnet', label: 'Subnet' },
+  { kind: 'custom', label: 'Custom group' },
+];
+
+/** Command palette (Ctrl/Cmd+K): quick-add services & groups, export, theme. */
+export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }): JSX.Element {
+  const addNode = useDiagramStore((s) => s.addNode);
+  const addGroup = useDiagramStore((s) => s.addGroup);
+  const exportJson = useDiagramStore((s) => s.exportJson);
+  const name = useDiagramStore((s) => s.diagram.metadata.name);
+  const { toggleTheme } = useTheme();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        onOpenChange(!open);
+      }
+      if (e.key === 'Escape') onOpenChange(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onOpenChange]);
+
+  if (!open) return <></>;
+
+  const run = (fn: () => void) => {
+    fn();
+    onOpenChange(false);
+  };
+
+  // Add near the center of the current viewport.
+  const center = () => ({ x: 200 + Math.random() * 200, y: 120 + Math.random() * 160 });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-[15vh]"
+      onClick={() => onOpenChange(false)}
+    >
+      <Command
+        label="Command palette"
+        className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Command.Input
+          autoFocus
+          placeholder="Type a command or search services…"
+          className="w-full border-b border-border bg-transparent px-4 py-3 text-sm outline-none"
+        />
+        <Command.List className="max-h-80 overflow-y-auto p-2">
+          <Command.Empty className="px-3 py-6 text-center text-sm text-muted-foreground">No results.</Command.Empty>
+
+          <Command.Group heading="Actions" className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
+            <Item onSelect={() => run(() => void exportPng(name))}>Export as PNG</Item>
+            <Item onSelect={() => run(() => void exportSvg(name))}>Export as SVG</Item>
+            <Item onSelect={() => run(() => downloadJson(name, exportJson()))}>Export as JSON</Item>
+            <Item onSelect={() => run(toggleTheme)}>Toggle theme</Item>
+          </Command.Group>
+
+          <Command.Group heading="Add group" className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
+            {groupKinds.map((g) => (
+              <Item key={g.kind} onSelect={() => run(() => addGroup(g.kind, center()))}>
+                {g.label}
+              </Item>
+            ))}
+          </Command.Group>
+
+          <Command.Group heading="Add service" className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
+            {azureServiceCatalog.map((s) => (
+              <Item key={s.id} value={`${s.name} ${s.description}`} onSelect={() => run(() => addNode(s.id, center()))}>
+                {s.name}
+              </Item>
+            ))}
+          </Command.Group>
+        </Command.List>
+      </Command>
+    </div>
+  );
+}
+
+function Item({ children, value, onSelect }: { children: React.ReactNode; value?: string; onSelect: () => void }): JSX.Element {
+  return (
+    <Command.Item
+      value={value}
+      onSelect={onSelect}
+      className="flex cursor-pointer items-center rounded-md px-3 py-2 text-sm text-foreground aria-selected:bg-accent aria-selected:text-accent-foreground"
+    >
+      {children}
+    </Command.Item>
+  );
+}

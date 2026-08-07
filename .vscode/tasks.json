@@ -1,0 +1,86 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "dev: web + api",
+      "dependsOn": ["dev: shared", "dev: api", "dev: web"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: shared",
+      "type": "shell",
+      "command": "pnpm --filter @aar/shared build; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; pnpm --filter @aar/shared dev",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "aar-shared-watch",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Found 0 errors. Watching for file changes."
+        }
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "dev: api",
+      "type": "shell",
+      "command": "$ErrorActionPreference = 'Stop'; if (Test-Path .env) { Get-Content .env | ForEach-Object { if ($_ -match '^\\s*([^#][^=]+)=(.*)$') { $name = $matches[1].Trim(); $value = $matches[2].Trim(); [Environment]::SetEnvironmentVariable($name, $value, 'Process') } } }; pnpm --filter @aar/api dev",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "aar-api-server",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "API listening on http://"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "dev: web",
+      "type": "shell",
+      "command": "$ErrorActionPreference = 'Stop'; if (Test-Path .env) { Get-Content .env | ForEach-Object { if ($_ -match '^\\s*([^#][^=]+)=(.*)$') { $name = $matches[1].Trim(); $value = $matches[2].Trim(); [Environment]::SetEnvironmentVariable($name, $value, 'Process') } } }; pnpm --filter @aar/web dev",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "aar-web-server",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Local:.*http://localhost:5173"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    }
+  ]
+}
