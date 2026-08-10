@@ -27,6 +27,14 @@ const envSchema = z.object({
   AZURE_OPENAI_API_KEY: z.string().optional().or(z.literal('')),
   AZURE_OPENAI_DEPLOYMENT: z.string().optional().or(z.literal('')),
   AZURE_OPENAI_API_VERSION: z.string().default('2024-10-21'),
+
+  // Microsoft Learn MCP grounding (retrieval-augmented reference docs).
+  LEARN_MCP_ENDPOINT: z.string().url().default('https://learn.microsoft.com/api/mcp'),
+  // Any value other than "false"/"0" enables grounding (default on).
+  LEARN_GROUNDING_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v !== 'false' && v !== '0'),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -52,6 +60,8 @@ export interface AppConfig {
    * key when AZURE_OPENAI_API_KEY is set, otherwise keyless via Entra ID.
    */
   azureOpenAI: AzureOpenAIConfig | null;
+  /** Microsoft Learn MCP grounding settings (retrieval augmentation). */
+  learn: { enabled: boolean; endpoint: string };
 }
 
 export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -79,5 +89,9 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
             : { kind: 'entra' },
         }
       : null,
+    learn: {
+      enabled: env.LEARN_GROUNDING_ENABLED,
+      endpoint: env.LEARN_MCP_ENDPOINT,
+    },
   };
 }

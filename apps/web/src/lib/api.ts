@@ -17,6 +17,8 @@ interface ApiError {
   message?: string;
 }
 
+export type DesignMode = 'faithful' | 'bestPractice';
+
 /**
  * Requests an AI-generated diagram from the API. Throws with a human-readable
  * message on failure (including 503 when AI is unconfigured).
@@ -24,8 +26,9 @@ interface ApiError {
 export async function generateDiagram(
   prompt: string,
   current?: Diagram,
-  signal?: AbortSignal,
+  options?: { mode?: DesignMode; signal?: AbortSignal },
 ): Promise<Diagram> {
+  const { mode, signal } = options ?? {};
   const timeoutController = new AbortController();
   const timeout = setTimeout(() => timeoutController.abort(), 150_000);
   const requestSignal = signal
@@ -37,7 +40,7 @@ export async function generateDiagram(
     res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(current ? { prompt, current } : { prompt }),
+      body: JSON.stringify({ prompt, ...(current ? { current } : {}), ...(mode ? { mode } : {}) }),
       signal: requestSignal,
     });
   } catch (error) {

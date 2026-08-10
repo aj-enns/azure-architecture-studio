@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import {
   emptyDiagram,
   getServiceDefinition,
+  layoutDiagram,
   safeParseDiagram,
   type Diagram,
   type DiagramEdge,
@@ -49,6 +50,7 @@ interface DiagramState {
   // document
   reset: () => void;
   load: (diagram: Diagram) => void;
+  relayout: () => void;
   mergeDiagram: (diagram: Diagram) => void;
   importJson: (json: string) => { ok: true } | { ok: false; error: string };
   exportJson: () => string;
@@ -212,6 +214,14 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   load: (diagram) => {
     persist(diagram);
     set({ diagram, selection: null });
+  },
+
+  relayout: () => {
+    set((s) => {
+      const next = layoutDiagram(s.diagram);
+      persist(next);
+      return { diagram: next, selection: null };
+    });
   },
 
   mergeDiagram: (incoming) => {

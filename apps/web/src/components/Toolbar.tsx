@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Download, FileJson, FilePlus2, Image, Moon, Sparkles, Sun, Upload } from 'lucide-react';
+import { Download, FileJson, FilePlus2, Image, LayoutGrid, Moon, ShieldCheck, Sparkles, Sun, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/Button.js';
 import { useTheme } from '@/lib/theme.js';
 import { downloadJson, exportPng, exportSvg } from '@/lib/export.js';
@@ -9,14 +9,17 @@ import { useDiagramStore } from '@/store/diagramStore.js';
 export function Toolbar({
   onOpenCommand,
   onToggleAi,
+  onToggleValidation,
 }: {
   onOpenCommand: () => void;
   onToggleAi: () => void;
+  onToggleValidation: () => void;
 }): JSX.Element {
   const { theme, toggleTheme } = useTheme();
   const name = useDiagramStore((s) => s.diagram.metadata.name);
   const setName = useDiagramStore((s) => s.setName);
   const reset = useDiagramStore((s) => s.reset);
+  const relayout = useDiagramStore((s) => s.relayout);
   const importJson = useDiagramStore((s) => s.importJson);
   const exportJson = useDiagramStore((s) => s.exportJson);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -40,6 +43,12 @@ export function Toolbar({
       <div className="ml-auto flex items-center gap-1">
         <Button variant="secondary" size="sm" onClick={onToggleAi} title="Generate with AI">
           <Sparkles size={16} /> Generate
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onToggleValidation} title="Well-Architected review">
+          <ShieldCheck size={16} /> Validate
+        </Button>
+        <Button variant="ghost" size="sm" onClick={relayout} title="Auto-arrange the diagram">
+          <LayoutGrid size={16} /> Auto-layout
         </Button>
         <Button variant="ghost" size="sm" onClick={onOpenCommand} title="Command palette (Ctrl/Cmd+K)">
           ⌘K

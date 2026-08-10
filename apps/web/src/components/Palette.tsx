@@ -6,7 +6,8 @@ import {
   type ServiceCategory,
   type ServiceDefinition,
 } from '@aar/shared';
-import { categoryColor, iconForCategory } from '@/lib/icons.js';
+import { categoryColor } from '@/lib/icons.js';
+import { ServiceIcon } from '@/components/ServiceIcon.js';
 import { cn } from '@/lib/utils.js';
 
 const categoryLabels: Record<ServiceCategory, string> = {
@@ -65,7 +66,6 @@ export function Palette(): JSX.Element {
             </div>
             <ul className="space-y-1">
               {services.map((s) => {
-                const Icon = iconForCategory(s.category);
                 return (
                   <li key={s.id}>
                     <div
@@ -80,7 +80,7 @@ export function Palette(): JSX.Element {
                       className="flex cursor-grab items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-sm hover:border-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
                     >
                       <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded bg-muted', categoryColor[s.category])}>
-                        <Icon size={14} aria-hidden />
+                        <ServiceIcon category={s.category} slug={s.icon} size={14} />
                       </span>
                       <span className="truncate">{s.name}</span>
                     </div>

@@ -4,6 +4,7 @@ import {
   azureServiceCatalogById,
   emptyDiagram,
   groupKindSchema,
+  layoutDiagram,
   type Diagram,
   type DiagramEdge,
   type DiagramGroup,
@@ -26,6 +27,7 @@ export const aiGroupSpecSchema = z.object({
   key: z.string().min(1),
   kind: groupKindSchema.default('custom'),
   label: z.string().default(''),
+  parent: z.string().optional(),
 });
 
 export const aiEdgeSpecSchema = z.object({
@@ -68,8 +70,12 @@ export const aiDiagramJsonSchema = {
             enum: ['subscription', 'resourceGroup', 'vnet', 'subnet', 'custom'],
           },
           label: { type: 'string' },
+          parent: {
+            type: 'string',
+            description: 'Key of the group this group nests inside, or "" for top-level.',
+          },
         },
-        required: ['key', 'kind', 'label'],
+        required: ['key', 'kind', 'label', 'parent'],
       },
     },
     nodes: {
@@ -105,60 +111,29 @@ export const aiDiagramJsonSchema = {
   required: ['name', 'region', 'groups', 'nodes', 'edges'],
 } as const;
 
-// ---- Layout ---------------------------------------------------------------
-
-const NODE_W = 180;
-const NODE_H = 64;
-const COL_GAP = 90;
-const ROW_GAP = 40;
-const GROUP_PAD = 32;
-const GROUP_HEADER = 28;
-
-/**
- * Deterministic layered grid layout. Nodes are laid out left-to-right in columns
- * derived from edge depth (a light topological ranking), so sources sit left of
- * their targets. Grouped nodes are packed into their group's box.
- */
-function layoutColumns(keys: string[], edges: { from: string; to: string }[]): Map<string, number> {
-  const depth = new Map<string, number>();
-  for (const k of keys) depth.set(k, 0);
-
-  // Relax depths a bounded number of passes (avoids cycles hanging).
-  for (let pass = 0; pass < keys.length; pass++) {
-    let changed = false;
-    for (const e of edges) {
-      if (!depth.has(e.from) || !depth.has(e.to)) continue;
-      const next = (depth.get(e.from) ?? 0) + 1;
-      if (next > (depth.get(e.to) ?? 0)) {
-        depth.set(e.to, next);
-        changed = true;
-      }
-    }
-    if (!changed) break;
-  }
-  return depth;
-}
+// ---- Spec → Diagram -------------------------------------------------------
 
 /**
  * Convert a validated AI spec into a `Diagram`. Unknown service ids are dropped;
- * edges referencing dropped nodes are dropped too. Ids and positions are assigned
- * here so the model never deals with them.
+ * edges referencing dropped nodes are dropped too. Ids are assigned here; the
+ * shared Dagre layout computes positions and group boxes.
  */
 export function specToDiagram(spec: AiDiagramSpec): Diagram {
   const diagram = emptyDiagram(spec.name);
   diagram.metadata.region = spec.region;
 
-  // Map group keys → real group ids; positions filled after node placement.
+  // Assign group ids first so a group's `parent` key can resolve regardless of order.
   const groupIdByKey = new Map<string, string>();
+  for (const g of spec.groups) groupIdByKey.set(g.key, `g_${nanoid(8)}`);
   const groups: DiagramGroup[] = spec.groups.map((g) => {
-    const id = `g_${nanoid(8)}`;
-    groupIdByKey.set(g.key, id);
+    const parentId = g.parent ? groupIdByKey.get(g.parent) : undefined;
     return {
-      id,
+      id: groupIdByKey.get(g.key) as string,
       kind: g.kind,
       label: g.label || g.kind,
       position: { x: 0, y: 0 },
       size: { width: 320, height: 220 },
+      ...(parentId ? { parentId } : {}),
       collapsed: false,
       properties: {},
     };
@@ -167,67 +142,46 @@ export function specToDiagram(spec: AiDiagramSpec): Diagram {
   // Keep only nodes whose serviceId is a real catalog entry.
   const kept = spec.nodes.filter((n) => azureServiceCatalogById[n.serviceId]);
   const nodeIdByKey = new Map<string, string>();
-  const keys = kept.map((n) => n.key);
 
-  const edgesByKey = spec.edges.filter(
-    (e) => keys.includes(e.from) && keys.includes(e.to),
-  );
-  const depth = layoutColumns(keys, edgesByKey);
-
-  // Group nodes by column, then by group, to place them.
-  const columnCursor = new Map<number, number>(); // column → next row index
   const nodes: DiagramNode[] = kept.map((n) => {
     const id = `n_${nanoid(8)}`;
     nodeIdByKey.set(n.key, id);
-    const col = depth.get(n.key) ?? 0;
-    const row = columnCursor.get(col) ?? 0;
-    columnCursor.set(col, row + 1);
     const def = azureServiceCatalogById[n.serviceId];
     const parentId = n.group ? groupIdByKey.get(n.group) : undefined;
     return {
       id,
       serviceId: n.serviceId,
       label: n.label || def?.name || n.serviceId,
-      position: {
-        x: GROUP_PAD + col * (NODE_W + COL_GAP),
-        y: GROUP_HEADER + GROUP_PAD + row * (NODE_H + ROW_GAP),
-      },
+      position: { x: 0, y: 0 },
       ...(parentId ? { parentId } : {}),
       properties: { ...(def?.defaults ?? {}) },
     };
   });
 
-  // Size/position groups to encompass their child nodes.
-  for (const group of groups) {
-    const children = nodes.filter((n) => n.parentId === group.id);
-    if (children.length === 0) continue;
-    const minX = Math.min(...children.map((c) => c.position.x));
-    const minY = Math.min(...children.map((c) => c.position.y));
-    const maxX = Math.max(...children.map((c) => c.position.x + NODE_W));
-    const maxY = Math.max(...children.map((c) => c.position.y + NODE_H));
-    group.position = { x: minX - GROUP_PAD, y: minY - GROUP_PAD - GROUP_HEADER };
-    group.size = {
-      width: maxX - minX + GROUP_PAD * 2,
-      height: maxY - minY + GROUP_PAD * 2 + GROUP_HEADER,
-    };
-    // Re-anchor children relative to the group so React Flow parent extent works.
-    for (const c of children) {
-      c.position = {
-        x: c.position.x - group.position.x,
-        y: c.position.y - group.position.y,
-      };
+  const keptKeys = new Set(kept.map((n) => n.key));
+  const edges: DiagramEdge[] = spec.edges
+    .filter((e) => keptKeys.has(e.from) && keptKeys.has(e.to))
+    .map((e) => ({
+      id: `e_${nanoid(8)}`,
+      source: nodeIdByKey.get(e.from) as string,
+      target: nodeIdByKey.get(e.to) as string,
+      ...(e.label ? { label: e.label } : {}),
+    }));
+
+  // Keep groups that contain a node, plus their ancestors (so nesting survives).
+  const keepGroups = new Set<string>();
+  for (const n of nodes) {
+    let gid = n.parentId;
+    while (gid) {
+      keepGroups.add(gid);
+      gid = groups.find((x) => x.id === gid)?.parentId;
     }
   }
 
-  const edges: DiagramEdge[] = edgesByKey.map((e) => ({
-    id: `e_${nanoid(8)}`,
-    source: nodeIdByKey.get(e.from) as string,
-    target: nodeIdByKey.get(e.to) as string,
-    ...(e.label ? { label: e.label } : {}),
-  }));
-
   diagram.nodes = nodes;
-  diagram.groups = groups.filter((g) => nodes.some((n) => n.parentId === g.id));
+  diagram.groups = groups.filter((g) => keepGroups.has(g.id));
   diagram.edges = edges;
-  return diagram;
+
+  // Positions and group boxes are computed by the shared Dagre layout.
+  return layoutDiagram(diagram);
 }

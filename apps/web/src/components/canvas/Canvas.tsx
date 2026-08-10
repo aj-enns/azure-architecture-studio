@@ -6,6 +6,8 @@ import {
   ReactFlow,
   ReactFlowProvider,
   addEdge as rfAddEdge,
+  applyNodeChanges,
+  MarkerType,
   useReactFlow,
   type Connection,
   type Edge,
@@ -15,7 +17,7 @@ import {
   type OnSelectionChangeParams,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getServiceDefinition } from '@aar/shared';
 import { AzureNode } from './AzureNode.js';
 import { GroupNode } from './GroupNode.js';
@@ -27,16 +29,34 @@ function toFlowNodes(
   groups: ReturnType<typeof useDiagramStore.getState>['diagram']['groups'],
   nodes: ReturnType<typeof useDiagramStore.getState>['diagram']['nodes'],
 ): Node[] {
-  // Groups first so they render behind service nodes.
-  const groupNodes: Node[] = groups.map((g) => ({
+  // Groups first so they render behind service nodes. Explicit width/height are
+  // set on the node object (not only via style) so React Flow knows the parent
+  // size synchronously — child nodes with `extent: 'parent'` otherwise fail to
+  // mount when a diagram is swapped in asynchronously (e.g. AI generation).
+  // Nested groups must appear parent-before-child, so sort by nesting depth.
+  const groupById = new Map(groups.map((g) => [g.id, g]));
+  const depthOf = (g: (typeof groups)[number]): number => {
+    let depth = 0;
+    let cur: (typeof groups)[number] | undefined = g;
+    while (cur?.parentId && groupById.has(cur.parentId)) {
+      depth++;
+      cur = groupById.get(cur.parentId);
+    }
+    return depth;
+  };
+  const sortedGroups = [...groups].sort((a, b) => depthOf(a) - depthOf(b));
+  const groupNodes: Node[] = sortedGroups.map((g) => ({
     id: g.id,
     type: 'azureGroup',
     position: g.position,
     data: { kind: g.kind, label: g.label },
+    width: g.size.width,
+    height: g.size.height,
     style: { width: g.size.width, height: g.size.height },
+    ...(g.parentId ? { parentId: g.parentId } : {}),
     draggable: true,
     selectable: true,
-    zIndex: 0,
+    zIndex: depthOf(g),
   }));
 
   const serviceNodes: Node[] = nodes.map((n) => ({
@@ -45,7 +65,7 @@ function toFlowNodes(
     position: n.position,
     data: { serviceId: n.serviceId, label: n.label },
     ...(n.parentId ? { parentId: n.parentId, extent: 'parent' as const } : {}),
-    zIndex: 1,
+    zIndex: 1000,
   }));
 
   return [...groupNodes, ...serviceNodes];
@@ -63,12 +83,44 @@ function CanvasInner(): JSX.Element {
   const removeEdge = useDiagramStore((s) => s.removeEdge);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
 
-  const flowNodes = useMemo(
-    () => toFlowNodes(diagram.groups, diagram.nodes),
+  // React Flow owns the live node objects locally so that measured dimensions
+  // (set by its ResizeObserver) survive re-renders. If we handed React Flow a
+  // freshly derived array from the store on every render, it would lose each
+  // node's `measured` flag — and because the DOM size never changes, the
+  // observer would not re-fire, leaving child nodes stuck at `visibility:
+  // hidden`. Groups avoid this only because they carry explicit width/height.
+  const [rfNodes, setRfNodes] = useState<Node[]>(() =>
+    toFlowNodes(diagram.groups, diagram.nodes),
+  );
+
+  // Re-derive nodes when the domain model changes, carrying over the transient
+  // `measured` size from the previous render so nodes remain visible.
+  useEffect(() => {
+    setRfNodes((prev) => {
+      const prevById = new Map(prev.map((n) => [n.id, n]));
+      return toFlowNodes(diagram.groups, diagram.nodes).map((n) => {
+        const old = prevById.get(n.id);
+        return old?.measured ? { ...n, measured: old.measured } : n;
+      });
+    });
+  }, [diagram.groups, diagram.nodes]);
+
+  // Re-frame the viewport whenever the set of nodes/groups changes structurally
+  // (new document, AI generation, import). Without this the viewport can be left
+  // pointing away from freshly loaded content, so nothing appears on screen.
+  const structureKey = useMemo(
+    () => [...diagram.groups.map((g) => g.id), ...diagram.nodes.map((n) => n.id)].join('|'),
     [diagram.groups, diagram.nodes],
   );
+  useEffect(() => {
+    if (diagram.nodes.length === 0 && diagram.groups.length === 0) return;
+    const raf = requestAnimationFrame(() => {
+      void fitView({ padding: 0.2, duration: 300 });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [structureKey, fitView, diagram.nodes.length, diagram.groups.length]);
   const flowEdges = useMemo<Edge[]>(
     () =>
       diagram.edges.map((e) => ({
@@ -76,7 +128,12 @@ function CanvasInner(): JSX.Element {
         source: e.source,
         target: e.target,
         label: e.label,
+        type: 'smoothstep',
         animated: e.kind === 'data',
+        markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
+        labelBgPadding: [6, 3] as [number, number],
+        labelBgBorderRadius: 4,
+        labelShowBg: true,
       })),
     [diagram.edges],
   );
@@ -90,6 +147,10 @@ function CanvasInner(): JSX.Element {
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      // Apply every change locally so React Flow's own bookkeeping (measured
+      // dimensions, selection) stays consistent, then propagate the structural
+      // changes we care about back into the store.
+      setRfNodes((prev) => applyNodeChanges(changes, prev));
       for (const change of changes) {
         if (change.type === 'position' && change.position && !change.dragging) {
           const isGroup = diagram.groups.some((g) => g.id === change.id);
@@ -151,7 +212,7 @@ function CanvasInner(): JSX.Element {
   return (
     <div ref={wrapperRef} className="h-full w-full" data-testid="canvas">
       <ReactFlow
-        nodes={flowNodes}
+        nodes={rfNodes}
         edges={flowEdges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}

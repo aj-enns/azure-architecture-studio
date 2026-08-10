@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button.js';
-import { fetchHealth, generateDiagram } from '@/lib/api.js';
+import { fetchHealth, generateDiagram, type DesignMode } from '@/lib/api.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
 
 const EXAMPLES = [
@@ -17,6 +17,7 @@ type HealthState = 'checking' | 'configured' | 'unconfigured' | 'api-unavailable
 export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element | null {
   const [prompt, setPrompt] = useState('');
   const [mode, setMode] = useState<Mode>('replace');
+  const [design, setDesign] = useState<DesignMode>('bestPractice');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [healthState, setHealthState] = useState<HealthState>('checking');
@@ -50,7 +51,7 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
     setError(null);
     try {
       const useContext = mode === 'append' && diagram.nodes.length > 0;
-      const result = await generateDiagram(trimmed, useContext ? diagram : undefined);
+      const result = await generateDiagram(trimmed, useContext ? diagram : undefined, { mode: design });
       if (mode === 'append') mergeDiagram(result);
       else load(result);
     } catch (e) {
@@ -129,6 +130,34 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
             />
             Add to canvas
           </label>
+        </fieldset>
+
+        <fieldset className="space-y-1 text-xs" disabled={loading}>
+          <span className="font-medium text-muted-foreground">Design</span>
+          <div className="flex gap-3">
+            <label className="flex items-center gap-1.5">
+              <input
+                type="radio"
+                name="ai-design"
+                checked={design === 'bestPractice'}
+                onChange={() => setDesign('bestPractice')}
+              />
+              Best practice
+            </label>
+            <label className="flex items-center gap-1.5">
+              <input
+                type="radio"
+                name="ai-design"
+                checked={design === 'faithful'}
+                onChange={() => setDesign('faithful')}
+              />
+              Faithful
+            </label>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Best practice adds a Well-Architected baseline (identity, Key Vault, monitoring, WAF).
+            Faithful draws only what you describe.
+          </p>
         </fieldset>
 
         <Button
