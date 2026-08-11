@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { ImagePlus, Loader2, Sparkles, X } from 'lucide-react';
+import { ImagePlus, Loader2, MessageCircle, PencilLine, Sparkles, X } from 'lucide-react';
+import { AdvisorChat } from '@/components/AdvisorChat.js';
 import { Button } from '@/components/ui/Button.js';
 import {
   fetchHealth,
@@ -16,13 +17,15 @@ const EXAMPLES = [
   'A secure AI chat app using Azure OpenAI, AI Search, Key Vault, and managed identity.',
 ];
 
-type Mode = 'replace' | 'append';
+type DiagramMode = 'new' | 'revise';
+type AssistantMode = 'ask' | 'modify';
 type HealthState = 'checking' | 'configured' | 'unconfigured' | 'api-unavailable';
 
-/** Guided chat panel: prompt-to-diagram generation (ADR-0010). */
+/** Unified architecture advisor and explicit prompt-to-diagram editor. */
 export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element | null {
+  const [assistantMode, setAssistantMode] = useState<AssistantMode>('ask');
   const [prompt, setPrompt] = useState('');
-  const [mode, setMode] = useState<Mode>('replace');
+  const [mode, setMode] = useState<DiagramMode>('new');
   const [design, setDesign] = useState<DesignMode>('bestPractice');
   const [image, setImage] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
@@ -33,7 +36,6 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
 
   const diagram = useDiagramStore((s) => s.diagram);
   const load = useDiagramStore((s) => s.load);
-  const mergeDiagram = useDiagramStore((s) => s.mergeDiagram);
 
   useEffect(() => {
     if (!open) return;
@@ -46,11 +48,12 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
         setHealthState('api-unavailable');
         setError('The API is not reachable. Generation is unavailable until the API server is running.');
       });
-    textareaRef.current?.focus();
     return () => controller.abort();
   }, [open]);
 
-  if (!open) return null;
+  useEffect(() => {
+    if (open && assistantMode === 'modify') textareaRef.current?.focus();
+  }, [open, assistantMode]);
 
   const handleFile = async (file: File | undefined): Promise<void> => {
     if (!file) return;
@@ -75,11 +78,10 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
         ? await generateDiagramFromImage(image, trimmed || undefined, { mode: design })
         : await generateDiagram(
             trimmed,
-            mode === 'append' && diagram.nodes.length > 0 ? diagram : undefined,
+            mode === 'revise' && diagram.nodes.length > 0 ? diagram : undefined,
             { mode: design },
           );
-      if (mode === 'append') mergeDiagram(result);
-      else load(result);
+      load(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed.');
     } finally {
@@ -87,11 +89,20 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
     }
   };
 
+  const handOffToModify = (diagramPrompt: string): void => {
+    setPrompt(diagramPrompt);
+    setMode(diagram.nodes.length > 0 ? 'revise' : 'new');
+    setImage(null);
+    setImageName(null);
+    setError(null);
+    setAssistantMode('modify');
+  };
+
   return (
-    <aside className="flex w-80 shrink-0 flex-col border-l border-border bg-card">
+    <aside className={open ? 'flex w-96 shrink-0 flex-col border-l border-border bg-card' : 'hidden'}>
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <Sparkles size={16} className="text-primary" />
-        <span className="text-sm font-semibold">Generate with AI</span>
+        <span className="text-sm font-semibold">AI assistant</span>
         <Button
           variant="ghost"
           size="icon"
@@ -103,23 +114,57 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
         </Button>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+      <div className="grid grid-cols-2 gap-1 border-b border-border bg-muted/50 p-1.5">
+        <Button
+          variant={assistantMode === 'ask' ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => setAssistantMode('ask')}
+        >
+          <MessageCircle size={15} /> Ask
+        </Button>
+        <Button
+          variant={assistantMode === 'modify' ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => setAssistantMode('modify')}
+        >
+          <PencilLine size={15} /> Modify
+        </Button>
+      </div>
+
+      {(healthState === 'api-unavailable' || healthState === 'unconfigured') && (
+        <div className="px-3 pt-3">
         {healthState === 'api-unavailable' && (
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
-            The API is not reachable at <code>/healthz</code>. Start or restart the API server,
-            then reopen this panel. If you use F5, make sure the <code>dev: web + api</code>{' '}
-            task is still running.
+              The API is not reachable at <code>/healthz</code>. Start or restart the API server,
+              then reopen this panel.
           </div>
         )}
 
         {healthState === 'unconfigured' && (
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
-            AI generation is not configured. Set <code>AZURE_FOUNDRY_ENDPOINT</code> and{' '}
+              AI is not configured. Set <code>AZURE_FOUNDRY_ENDPOINT</code> and{' '}
             <code>AZURE_FOUNDRY_MODEL</code> on the API, then either provide{' '}
             <code>AZURE_FOUNDRY_API_KEY</code> or leave it blank to use Entra ID (for example,{' '}
             <code>az login</code> locally). Restart the API after changing its environment.
           </div>
         )}
+        </div>
+      )}
+
+      <AdvisorChat
+        active={open && assistantMode === 'ask'}
+        healthState={healthState}
+        diagram={diagram}
+        onModify={handOffToModify}
+      />
+
+      <div
+        className={
+          assistantMode === 'modify'
+            ? 'flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3'
+            : 'hidden'
+        }
+      >
 
         <div className="space-y-1.5">
           <span className="text-xs font-medium text-muted-foreground">Import from an image</span>
@@ -193,19 +238,20 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
             <input
               type="radio"
               name="ai-mode"
-              checked={mode === 'replace'}
-              onChange={() => setMode('replace')}
+              checked={mode === 'new'}
+              onChange={() => setMode('new')}
             />
-            Replace canvas
+            New diagram
           </label>
           <label className="flex items-center gap-1.5">
             <input
               type="radio"
               name="ai-mode"
-              checked={mode === 'append'}
-              onChange={() => setMode('append')}
+              checked={mode === 'revise'}
+              onChange={() => setMode('revise')}
+              disabled={diagram.nodes.length === 0}
             />
-            Add to canvas
+            Modify current
           </label>
         </fieldset>
 
@@ -242,7 +288,17 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
           disabled={loading || (!prompt.trim() && !image) || healthState !== 'configured'}
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-          {loading ? (image ? 'Importing…' : 'Generating…') : image ? 'Import diagram' : 'Generate'}
+          {loading
+            ? image
+              ? 'Importing…'
+              : mode === 'revise'
+                ? 'Modifying…'
+                : 'Generating…'
+            : image
+              ? 'Import diagram'
+              : mode === 'revise'
+                ? 'Modify diagram'
+                : 'Generate diagram'}
         </Button>
 
         {error && (

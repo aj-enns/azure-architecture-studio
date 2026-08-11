@@ -37,6 +37,7 @@ Each ADR follows [Michael Nygard's format](https://cognitect.com/blog/2011/11/15
 | [0013](0013-single-active-panel.md) | One analysis panel open at a time | Accepted | 2026-08-11 |
 | [0014](0014-in-app-ai-architecture-review.md) | In-app AI architecture review (skill methodology server-side) | Accepted | 2026-08-11 |
 | [0015](0015-foundry-review-model-discovery.md) | Discover and allowlist Foundry review deployments through ARM | Accepted | 2026-08-11 |
+| [0016](0016-unified-ai-advisor.md) | Unified AI advisor with explicit diagram modification | Accepted | 2026-08-11 |
 
 ## When to write an ADR
 

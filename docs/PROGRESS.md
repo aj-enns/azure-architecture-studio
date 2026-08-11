@@ -57,6 +57,7 @@ Live status for the Azure Architecture Review build. Mirrors the working plan.
 | 2.1 | `/api/generate` with Azure OpenAI structured outputs      | ✅     |
 | 2.2 | Guided Chat UI → diagram, Zod-validated at boundary       | ✅     |
 | 2.3 | Merge/replace generated diagram into canvas               | ✅     |
+| 2.4 | Contextual Ask mode with explicit Modify handoff           | ✅     |
 
 ---
 
@@ -128,6 +129,17 @@ associated workspace resources) are modeled.
 ---
 
 ## Change log
+
+- **2026-08-11** — The AI rail is now a unified assistant with explicit `Ask` and
+  `Modify` modes (ADR-0016). `POST /api/advise` answers focused architecture
+  questions using the latest diagram, a bounded client-owned transcript,
+  deterministic WAF/resiliency/cost analysis, and best-effort Microsoft Learn
+  grounding. Advice returns Markdown, citations, and an optional self-contained
+  modification prompt; it never mutates the canvas. The UI supports follow-ups,
+  starter questions, retry, clear, source links, and a `Modify diagram` handoff that
+  only pre-fills the existing generator. `Modify current` now replaces the canvas
+  with the model's complete revised diagram, removing the duplicate-prone append
+  merge path. Advisor API tests and web/API typechecks pass.
 
 - **2026-08-11** — AI architecture review (Phase 6.2) landed: `POST /api/review`
   runs the model with the `waf-architecture-review` skill methodology as the system

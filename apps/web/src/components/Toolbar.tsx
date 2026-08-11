@@ -42,8 +42,8 @@ export function Toolbar({ onOpenCommand }: { onOpenCommand: () => void }): JSX.E
       />
 
       <div className="ml-auto flex items-center gap-1">
-        <Button variant="secondary" size="sm" onClick={() => togglePanel('ai')} title="Generate with AI">
-          <Sparkles size={16} /> Generate
+        <Button variant="secondary" size="sm" onClick={() => togglePanel('ai')} title="Ask or modify with AI">
+          <Sparkles size={16} /> AI assistant
         </Button>
         <Button variant="ghost" size="sm" onClick={() => togglePanel('validation')} title="Well-Architected review">
           <ShieldCheck size={16} /> Validate

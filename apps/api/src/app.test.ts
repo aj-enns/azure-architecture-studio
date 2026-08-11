@@ -266,6 +266,43 @@ describe('api', () => {
     await app.close();
   });
 
+  it('returns 503 from /api/advise when AI is unconfigured', async () => {
+    const config = loadConfig({} as NodeJS.ProcessEnv);
+    const app = await buildApp(config);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/advise',
+      payload: {
+        message: 'Do I need a load balancer?',
+        diagram: { version: 1, metadata: {}, nodes: [], groups: [], edges: [] },
+      },
+    });
+    expect(res.statusCode).toBe(503);
+    expect(res.json()).toMatchObject({ error: 'ai_not_configured' });
+    await app.close();
+  });
+
+  it('validates bounded advisor history when AI is configured', async () => {
+    const config = loadConfig({
+      AZURE_OPENAI_ENDPOINT: 'https://example.openai.azure.com',
+      AZURE_OPENAI_API_KEY: 'test-key',
+      AZURE_OPENAI_DEPLOYMENT: 'gpt-4o',
+    } as NodeJS.ProcessEnv);
+    const app = await buildApp(config);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/advise',
+      payload: {
+        message: 'Do I need a load balancer?',
+        diagram: { version: 1, metadata: {}, nodes: [], groups: [], edges: [] },
+        history: Array.from({ length: 11 }, () => ({ role: 'user', content: 'Earlier question' })),
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: 'invalid_request' });
+    await app.close();
+  });
+
   it('returns 503 from /api/review/models when AI is unconfigured', async () => {
     const config = loadConfig({} as NodeJS.ProcessEnv);
     const app = await buildApp(config);

@@ -168,6 +168,68 @@ export interface ArchitectureReviewResult {
   groundingError?: string;
 }
 
+export interface AdvisorMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ArchitectureAdviceResult {
+  markdown: string;
+  diagramPrompt: string | null;
+  citations: { title: string; url: string; excerpt: string }[];
+  /** Set when Microsoft Learn grounding was unavailable. */
+  groundingError?: string;
+}
+
+/** Ask a non-mutating architecture question about the latest diagram. */
+export async function askArchitecture(
+  message: string,
+  diagram: Diagram,
+  history: AdvisorMessage[],
+  options?: { signal?: AbortSignal },
+): Promise<ArchitectureAdviceResult> {
+  const timeoutController = new AbortController();
+  const timeout = setTimeout(() => timeoutController.abort(), 150_000);
+  const requestSignal = options?.signal
+    ? AbortSignal.any([options.signal, timeoutController.signal])
+    : timeoutController.signal;
+
+  let res: Response;
+  try {
+    res = await fetch('/api/advise', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, diagram, history: history.slice(-10) }),
+      signal: requestSignal,
+    });
+  } catch (error) {
+    if (timeoutController.signal.aborted && !options?.signal?.aborted) {
+      throw new Error('Architecture advice timed out. Check the API logs and try again.');
+    }
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('Architecture advice was cancelled.');
+    }
+    throw new Error(error instanceof Error ? error.message : 'Could not reach the API.');
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as ApiError | null;
+    throw new Error(body?.message ?? `Architecture advice failed (${res.status})`);
+  }
+
+  const body = (await res.json()) as Partial<ArchitectureAdviceResult>;
+  if (
+    typeof body.markdown !== 'string' ||
+    (body.diagramPrompt !== null && typeof body.diagramPrompt !== 'string') ||
+    !Array.isArray(body.citations)
+  ) {
+    throw new Error('The API returned an invalid architecture answer.');
+  }
+  return body as ArchitectureAdviceResult;
+}
+
 export interface ReviewModel {
   deploymentName: string;
   modelName?: string;

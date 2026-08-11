@@ -22,6 +22,7 @@ import { formatArchitecturesForPrompt, retrieveArchitectures } from './ai/knowle
 import { getLearnGrounding, searchLearnDocs } from './ai/learnGrounding.js';
 import { groundResiliency } from './ai/resiliency.js';
 import { reviewArchitecture } from './ai/review.js';
+import { adviseArchitecture } from './ai/advisor.js';
 import {
   createFoundryModelDiscovery,
   type ReviewModelList,
@@ -42,6 +43,20 @@ const reviewRequestSchema = z.object({
   grounded: z.boolean().default(false),
   /** Foundry deployment selected from GET /api/review/models. */
   model: z.string().min(1).max(128).regex(/^[A-Za-z0-9._-]+$/).optional(),
+});
+
+const adviseRequestSchema = z.object({
+  message: z.string().trim().min(1).max(2000),
+  diagram: diagramSchema,
+  history: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string().trim().min(1).max(4000),
+      }),
+    )
+    .max(10)
+    .default([]),
 });
 
 const generateRequestSchema = z.object({
@@ -240,6 +255,42 @@ export async function buildApp(
       }
       request.log.error(err);
       return reply.code(500).send({ error: 'internal_error', message: 'Review failed.' });
+    }
+  });
+
+  // Contextual architecture Q&A. The browser owns the bounded conversation
+  // history; every turn is grounded in the latest diagram and never mutates it.
+  app.post('/api/advise', async (request, reply) => {
+    if (!config.azureOpenAI) {
+      return reply.code(503).send({
+        error: 'ai_not_configured',
+        message:
+          'AI advice is not configured. Set AZURE_FOUNDRY_ENDPOINT and AZURE_FOUNDRY_MODEL on the API, then provide AZURE_FOUNDRY_API_KEY or use Entra ID by leaving the key blank.',
+      });
+    }
+    const parsed = adviseRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'invalid_request',
+        message: parsed.error.issues[0]?.message ?? 'Invalid request body.',
+      });
+    }
+
+    try {
+      const result = await adviseArchitecture(
+        config.azureOpenAI,
+        config.learn,
+        parsed.data.diagram,
+        parsed.data.message,
+        parsed.data.history,
+      );
+      return reply.send(result);
+    } catch (err) {
+      if (err instanceof AiGenerationError) {
+        return reply.code(err.status).send({ error: 'ai_error', message: err.message });
+      }
+      request.log.error(err);
+      return reply.code(500).send({ error: 'internal_error', message: 'Architecture advice failed.' });
     }
   });
 

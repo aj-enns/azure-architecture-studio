@@ -58,7 +58,6 @@ interface DiagramState {
   reset: () => void;
   load: (diagram: Diagram) => void;
   relayout: () => void;
-  mergeDiagram: (diagram: Diagram) => void;
   importJson: (json: string) => { ok: true } | { ok: false; error: string };
   exportJson: () => string;
 }
@@ -249,36 +248,6 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       const next = layoutDiagram(s.diagram);
       persist(next);
       return { diagram: next, selection: null, revision: s.revision + 1 };
-    });
-  },
-
-  mergeDiagram: (incoming) => {
-    set((s) => {
-      const current = s.diagram;
-      if (current.nodes.length === 0 && current.groups.length === 0) {
-        // Nothing to merge into — just adopt the generated diagram.
-        persist(incoming);
-        return { diagram: incoming, selection: null, revision: s.revision + 1 };
-      }
-      // Offset incoming content to the right of existing content to avoid overlap.
-      const maxX = Math.max(
-        0,
-        ...current.nodes.map((n) => n.position.x + (n.size?.width ?? 180)),
-        ...current.groups.map((g) => g.position.x + g.size.width),
-      );
-      const dx = maxX + 80;
-      const shift = <T extends { position: { x: number; y: number }; parentId?: string }>(
-        item: T,
-      ): T => (item.parentId ? item : { ...item, position: { x: item.position.x + dx, y: item.position.y } });
-
-      const merged: Diagram = {
-        ...current,
-        groups: [...current.groups, ...incoming.groups.map(shift)],
-        nodes: [...current.nodes, ...incoming.nodes.map(shift)],
-        edges: [...current.edges, ...incoming.edges],
-      };
-      persist(merged);
-      return { diagram: merged, selection: null, revision: s.revision + 1 };
     });
   },
 
