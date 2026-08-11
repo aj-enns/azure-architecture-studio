@@ -99,6 +99,19 @@
   stroke-width: 3 !important;
 }
 
+/* Selected resource: a broad pulse that remains visible in dense diagrams. */
+.react-flow__node.selected {
+  z-index: 2000 !important;
+}
+
+.react-flow__node.selected .aar-azure-node {
+  box-shadow:
+    0 0 0 2px hsl(var(--primary) / 0.75),
+    0 0 10px 3px hsl(var(--primary) / 0.7),
+    0 0 24px 8px hsl(var(--primary) / 0.38);
+  animation: aar-node-glow 0.9s ease-in-out infinite alternate;
+}
+
 .aar-modifier-pan .react-flow__pane,
 .aar-modifier-pan .react-flow__node {
   cursor: grab !important;
@@ -112,5 +125,20 @@
 @keyframes aar-edge-flow {
   to {
     stroke-dashoffset: -16;
+  }
+}
+
+@keyframes aar-node-glow {
+  to {
+    box-shadow:
+      0 0 0 3px hsl(var(--primary) / 0.9),
+      0 0 16px 5px hsl(var(--primary) / 0.85),
+      0 0 34px 12px hsl(var(--primary) / 0.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .react-flow__node.selected .aar-azure-node {
+    animation: none;
   }
 }

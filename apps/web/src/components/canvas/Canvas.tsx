@@ -36,6 +36,7 @@ function toFlowNodes(
   groups: ReturnType<typeof useDiagramStore.getState>['diagram']['groups'],
   nodes: ReturnType<typeof useDiagramStore.getState>['diagram']['nodes'],
   resiliencyByNodeId: Map<string, { slaPercent: number; tier: string; isWeakest: boolean }>,
+  selection: ReturnType<typeof useDiagramStore.getState>['selection'],
 ): Node[] {
   // Groups first so they render behind service nodes. Explicit width/height are
   // set on the node object (not only via style) so React Flow knows the parent
@@ -63,6 +64,7 @@ function toFlowNodes(
     style: { width: g.size.width, height: g.size.height },
     ...(g.parentId ? { parentId: g.parentId } : {}),
     selectable: true,
+    selected: selection?.type === 'group' && selection.id === g.id,
     zIndex: depthOf(g),
   }));
 
@@ -72,6 +74,7 @@ function toFlowNodes(
     position: n.position,
     data: { serviceId: n.serviceId, label: n.label, resiliency: resiliencyByNodeId.get(n.id) },
     ...(n.parentId ? { parentId: n.parentId, extent: 'parent' as const } : {}),
+    selected: selection?.type === 'node' && selection.id === n.id,
     zIndex: 1000,
   }));
 
@@ -129,7 +132,7 @@ function CanvasInner(): JSX.Element {
   // observer would not re-fire, leaving child nodes stuck at `visibility:
   // hidden`. Groups avoid this only because they carry explicit width/height.
   const [rfNodes, setRfNodes] = useState<Node[]>(() =>
-    toFlowNodes(diagram.groups, diagram.nodes, resiliencyByNodeId),
+    toFlowNodes(diagram.groups, diagram.nodes, resiliencyByNodeId, selection),
   );
 
   // Re-derive nodes when the domain model changes, carrying over the transient
@@ -137,12 +140,12 @@ function CanvasInner(): JSX.Element {
   useEffect(() => {
     setRfNodes((prev) => {
       const prevById = new Map(prev.map((n) => [n.id, n]));
-      return toFlowNodes(diagram.groups, diagram.nodes, resiliencyByNodeId).map((n) => {
+      return toFlowNodes(diagram.groups, diagram.nodes, resiliencyByNodeId, selection).map((n) => {
         const old = prevById.get(n.id);
         return old?.measured ? { ...n, measured: old.measured } : n;
       });
     });
-  }, [diagram.groups, diagram.nodes, resiliencyByNodeId]);
+  }, [diagram.groups, diagram.nodes, resiliencyByNodeId, selection]);
 
   // Re-frame the viewport whenever the set of nodes/groups changes structurally
   // (new document, AI generation, import). Without this the viewport can be left
