@@ -69,12 +69,17 @@ describe('api', () => {
     const config = loadConfig({
       AZURE_FOUNDRY_ENDPOINT: 'https://example.services.ai.azure.com',
       AZURE_FOUNDRY_MODEL: 'gpt-5-mini',
+      AZURE_FOUNDRY_RESOURCE_ID:
+        '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.CognitiveServices/accounts/foundry',
       AZURE_FOUNDRY_API_VERSION: '2024-05-01-preview',
     } as NodeJS.ProcessEnv);
 
     expect(config.azureOpenAI).toMatchObject({
+      provider: 'foundry',
       endpoint: 'https://example.services.ai.azure.com',
       deployment: 'gpt-5-mini',
+      resourceId:
+        '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.CognitiveServices/accounts/foundry',
       apiVersion: '2024-05-01-preview',
       auth: { kind: 'entra' },
     });
@@ -204,6 +209,62 @@ describe('api', () => {
     });
     expect(res.statusCode).toBe(503);
     expect(res.json()).toMatchObject({ error: 'ai_not_configured' });
+    await app.close();
+  });
+
+  it('returns 503 from /api/review/models when AI is unconfigured', async () => {
+    const config = loadConfig({} as NodeJS.ProcessEnv);
+    const app = await buildApp(config);
+    const res = await app.inject({ method: 'GET', url: '/api/review/models' });
+    expect(res.statusCode).toBe(503);
+    expect(res.json()).toMatchObject({ error: 'ai_not_configured' });
+    await app.close();
+  });
+
+  it('serves the configured review model when live discovery is unavailable', async () => {
+    const config = loadConfig({
+      AZURE_OPENAI_ENDPOINT: 'https://example.openai.azure.com',
+      AZURE_OPENAI_DEPLOYMENT: 'gpt-4o',
+    } as NodeJS.ProcessEnv);
+    const app = await buildApp(config);
+    const res = await app.inject({ method: 'GET', url: '/api/review/models' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      models: [{ deploymentName: 'gpt-4o', isDefault: true }],
+      defaultDeployment: 'gpt-4o',
+    });
+    await app.close();
+  });
+
+  it('rejects a review model outside the discovered compatible set', async () => {
+    const config = loadConfig({
+      AZURE_FOUNDRY_ENDPOINT: 'https://example.services.ai.azure.com',
+      AZURE_FOUNDRY_MODEL: 'gpt-default',
+    } as NodeJS.ProcessEnv);
+    const app = await buildApp(config, {
+      reviewModels: {
+        getModels: async () => ({
+          models: [{ deploymentName: 'gpt-default', isDefault: true }],
+          defaultDeployment: 'gpt-default',
+        }),
+      },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/review',
+      payload: {
+        model: 'not-allowed',
+        diagram: {
+          version: 1,
+          metadata: {},
+          nodes: [{ id: 'n1', serviceId: 'app-service', position: { x: 0, y: 0 } }],
+          groups: [],
+          edges: [],
+        },
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: 'invalid_model' });
     await app.close();
   });
 

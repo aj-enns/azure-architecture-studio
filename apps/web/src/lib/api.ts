@@ -115,6 +115,33 @@ export interface ArchitectureReviewResult {
   groundingError?: string;
 }
 
+export interface ReviewModel {
+  deploymentName: string;
+  modelName?: string;
+  modelVersion?: string;
+  isDefault: boolean;
+}
+
+export interface ReviewModelList {
+  models: ReviewModel[];
+  defaultDeployment: string;
+  warning?: string;
+}
+
+/** Returns the review-compatible deployments configured on the Foundry resource. */
+export async function fetchReviewModels(signal?: AbortSignal): Promise<ReviewModelList> {
+  const res = await fetch('/api/review/models', { signal });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as ApiError | null;
+    throw new Error(body?.message ?? `Could not load review models (${res.status})`);
+  }
+  const body = (await res.json()) as Partial<ReviewModelList>;
+  if (!Array.isArray(body.models) || typeof body.defaultDeployment !== 'string') {
+    throw new Error('The API returned an invalid review model list.');
+  }
+  return body as ReviewModelList;
+}
+
 /**
  * Requests an AI architecture review (the waf-architecture-review methodology).
  * Throws with a human-readable message on failure (including 503 when AI is
@@ -122,7 +149,7 @@ export interface ArchitectureReviewResult {
  */
 export async function reviewDiagram(
   diagram: Diagram,
-  options?: { grounded?: boolean; signal?: AbortSignal },
+  options?: { grounded?: boolean; model?: string; signal?: AbortSignal },
 ): Promise<ArchitectureReviewResult> {
   const timeoutController = new AbortController();
   const timeout = setTimeout(() => timeoutController.abort(), 150_000);
@@ -135,7 +162,11 @@ export async function reviewDiagram(
     res = await fetch('/api/review', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ diagram, grounded: options?.grounded ?? false }),
+      body: JSON.stringify({
+        diagram,
+        grounded: options?.grounded ?? false,
+        ...(options?.model ? { model: options.model } : {}),
+      }),
       signal: requestSignal,
     });
   } catch (error) {

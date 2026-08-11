@@ -4,7 +4,13 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
 import { Button } from '@/components/ui/Button.js';
-import { fetchHealth, reviewDiagram, type ArchitectureReviewResult } from '@/lib/api.js';
+import {
+  fetchHealth,
+  fetchReviewModels,
+  reviewDiagram,
+  type ArchitectureReviewResult,
+  type ReviewModel,
+} from '@/lib/api.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
 
 type HealthState = 'checking' | 'configured' | 'unconfigured' | 'api-unavailable';
@@ -41,6 +47,10 @@ export function ReviewPanel({ open, onClose }: { open: boolean; onClose: () => v
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ArchitectureReviewResult | null>(null);
   const [healthState, setHealthState] = useState<HealthState>('checking');
+  const [models, setModels] = useState<ReviewModel[]>([]);
+  const [selectedModel, setSelectedModel] = useState('');
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelWarning, setModelWarning] = useState<string | null>(null);
   const runId = useRef(0);
 
   useEffect(() => {
@@ -56,6 +66,35 @@ export function ReviewPanel({ open, onClose }: { open: boolean; onClose: () => v
     return () => controller.abort();
   }, [open]);
 
+  useEffect(() => {
+    if (!open || healthState !== 'configured') return;
+    const controller = new AbortController();
+    setModelsLoading(true);
+    setModelWarning(null);
+    fetchReviewModels(controller.signal)
+      .then((response) => {
+        setModels(response.models);
+        setSelectedModel((current) =>
+          response.models.some((model) => model.deploymentName === current)
+            ? current
+            : response.defaultDeployment,
+        );
+        setModelWarning(response.warning ?? null);
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        setModels([]);
+        setSelectedModel('');
+        setModelWarning(
+          `${err instanceof Error ? err.message : 'Could not load review models.'} The configured default will be used.`,
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setModelsLoading(false);
+      });
+    return () => controller.abort();
+  }, [open, healthState]);
+
   if (!open) return null;
 
   const runReview = async (): Promise<void> => {
@@ -64,7 +103,10 @@ export function ReviewPanel({ open, onClose }: { open: boolean; onClose: () => v
     setLoading(true);
     setError(null);
     try {
-      const review = await reviewDiagram(diagram, { grounded });
+      const review = await reviewDiagram(diagram, {
+        grounded,
+        ...(selectedModel ? { model: selectedModel } : {}),
+      });
       if (id === runId.current) setResult(review);
     } catch (e) {
       if (id === runId.current) setError(e instanceof Error ? e.message : 'Review failed.');
@@ -110,6 +152,36 @@ export function ReviewPanel({ open, onClose }: { open: boolean; onClose: () => v
           <input type="checkbox" checked={grounded} onChange={(e) => setGrounded(e.target.checked)} disabled={loading} />
           Ground with Microsoft Learn
         </label>
+
+        {healthState === 'configured' && (
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="font-medium text-foreground">Review model</span>
+            <select
+              value={selectedModel}
+              onChange={(event) => setSelectedModel(event.target.value)}
+              disabled={loading || modelsLoading || models.length === 0}
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {modelsLoading && <option value="">Loading models...</option>}
+              {!modelsLoading && models.length === 0 && <option value="">Configured default</option>}
+              {models.map((model) => (
+                <option key={model.deploymentName} value={model.deploymentName}>
+                  {model.deploymentName}
+                  {model.modelName
+                    ? ` - ${model.modelName}${model.modelVersion ? ` (${model.modelVersion})` : ''}`
+                    : ''}
+                  {model.isDefault ? ' - default' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {modelWarning && healthState === 'configured' && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
+            {modelWarning}
+          </div>
+        )}
 
         <Button
           onClick={() => void runReview()}

@@ -16,6 +16,10 @@ import { formatArchitecturesForPrompt, retrieveArchitectures } from './ai/knowle
 import { getLearnGrounding, searchLearnDocs } from './ai/learnGrounding.js';
 import { groundResiliency } from './ai/resiliency.js';
 import { reviewArchitecture } from './ai/review.js';
+import {
+  createFoundryModelDiscovery,
+  type ReviewModelList,
+} from './ai/foundryModels.js';
 import { specToDiagram } from './ai/spec.js';
 import type { AppConfig } from './config.js';
 
@@ -30,6 +34,8 @@ const reviewRequestSchema = z.object({
   diagram: diagramSchema,
   /** Pull Microsoft Learn references into the review. */
   grounded: z.boolean().default(false),
+  /** Foundry deployment selected from GET /api/review/models. */
+  model: z.string().min(1).max(128).regex(/^[A-Za-z0-9._-]+$/).optional(),
 });
 
 const generateRequestSchema = z.object({
@@ -42,7 +48,14 @@ const generateRequestSchema = z.object({
  * Builds the Fastify application. Kept separate from the listen() call so tests
  * can exercise routes via `app.inject()` without binding a port.
  */
-export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
+export interface AppDependencies {
+  reviewModels?: { getModels: () => Promise<ReviewModelList> };
+}
+
+export async function buildApp(
+  config: AppConfig,
+  dependencies: AppDependencies = {},
+): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
       level: process.env.LOG_LEVEL ?? 'info',
@@ -53,6 +66,10 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
     origin: config.corsOrigin === '*' ? true : config.corsOrigin.split(','),
   });
 
+  const reviewModels = config.azureOpenAI
+    ? dependencies.reviewModels ?? createFoundryModelDiscovery(config.azureOpenAI)
+    : null;
+
   // Liveness/readiness probe used by Container Apps and docker-compose.
   app.get('/healthz', async () => ({
     status: 'ok',
@@ -61,6 +78,18 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
 
   // The Azure service catalog, served to the web app as a single source of truth.
   app.get('/api/catalog', async () => ({ services: azureServiceCatalog }));
+
+  // Review-compatible model deployments. Foundry discovery is best-effort and
+  // always retains the configured default deployment as a fallback.
+  app.get('/api/review/models', async (_request, reply) => {
+    if (!reviewModels) {
+      return reply.code(503).send({
+        error: 'ai_not_configured',
+        message: 'AI review is not configured.',
+      });
+    }
+    return reply.send(await reviewModels.getModels());
+  });
 
   // Microsoft Learn documentation search (grounding source). Best-effort.
   app.post('/api/docs-search', async (request, reply) => {
@@ -171,8 +200,16 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
     }
 
     try {
+      const availableModels = await reviewModels!.getModels();
+      const selectedModel = parsed.data.model ?? availableModels.defaultDeployment;
+      if (!availableModels.models.some((model) => model.deploymentName === selectedModel)) {
+        return reply.code(400).send({
+          error: 'invalid_model',
+          message: 'The selected model is not available for architecture review.',
+        });
+      }
       const result = await reviewArchitecture(
-        config.azureOpenAI,
+        { ...config.azureOpenAI, deployment: selectedModel },
         config.learn,
         parsed.data.diagram,
         parsed.data.grounded,
