@@ -1,4 +1,4 @@
-import { safeParseDiagram, type Diagram } from '@aar/shared';
+import { safeParseDiagram, type Diagram, type IacBundle, type IacTarget } from '@aar/shared';
 
 export interface HealthStatus {
   status: string;
@@ -66,4 +66,22 @@ export async function generateDiagram(
     throw new Error('The API returned an invalid diagram.');
   }
   return parsed.data;
+}
+
+/** Generate a deterministic IaC bundle for the current diagram. */
+export async function generateIac(diagram: Diagram, target: IacTarget): Promise<IacBundle> {
+  const res = await fetch('/api/iac', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ diagram, target }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as ApiError | null;
+    throw new Error(body?.message ?? `IaC generation failed (${res.status})`);
+  }
+  const body = (await res.json()) as { bundle?: IacBundle };
+  if (!body.bundle || body.bundle.target !== target || !Array.isArray(body.bundle.files)) {
+    throw new Error('The API returned an invalid IaC bundle.');
+  }
+  return body.bundle;
 }

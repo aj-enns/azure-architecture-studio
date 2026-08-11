@@ -50,3 +50,10 @@ export function downloadCsv(name: string, csv: string): void {
   triggerDownload(url, `${slugify(name)}.csv`);
   URL.revokeObjectURL(url);
 }
+
+export function downloadText(filename: string, content: string): void {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, filename);
+  URL.revokeObjectURL(url);
+}

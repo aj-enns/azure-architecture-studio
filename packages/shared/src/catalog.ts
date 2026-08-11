@@ -265,8 +265,8 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     defaults: { sku: 'Balanced_B1' },
     pricing: { serviceName: 'Azure Cache for Redis', consumptionBased: false },
     iac: {
-      resourceType: 'Microsoft.Cache/redis',
-      avmModule: 'br/public:avm/res/cache/redis',
+      resourceType: 'Microsoft.Cache/redisEnterprise',
+      avmModule: 'br/public:avm/res/cache/redis-enterprise',
     },
   },
 

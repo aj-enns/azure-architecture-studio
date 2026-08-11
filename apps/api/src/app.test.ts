@@ -79,4 +79,47 @@ describe('api', () => {
       auth: { kind: 'entra' },
     });
   });
+
+  it('generates a deterministic IaC bundle', async () => {
+    const config = loadConfig({} as NodeJS.ProcessEnv);
+    const app = await buildApp(config);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/iac',
+      payload: {
+        target: 'bicep',
+        diagram: {
+          version: 1,
+          metadata: { name: 'API test', region: 'eastus2' },
+          nodes: [{ id: 'storage-1', serviceId: 'storage-account', position: { x: 0, y: 0 } }],
+          groups: [],
+          edges: [],
+        },
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().bundle).toMatchObject({
+      target: 'bicep',
+      generatedResourceCount: 1,
+    });
+    await app.close();
+  });
+
+  it('rejects an invalid IaC target', async () => {
+    const config = loadConfig({} as NodeJS.ProcessEnv);
+    const app = await buildApp(config);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/iac',
+      payload: {
+        target: 'arm',
+        diagram: { version: 1, metadata: {}, nodes: [], groups: [], edges: [] },
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: 'invalid_request' });
+    await app.close();
+  });
 });

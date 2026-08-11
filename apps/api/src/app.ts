@@ -1,7 +1,13 @@
 import cors from '@fastify/cors';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { azureServiceCatalog, diagramSchema, estimateDiagramCost, validateArchitecture } from '@aar/shared';
+import {
+  azureServiceCatalog,
+  diagramSchema,
+  estimateDiagramCost,
+  generateIacBundle,
+  validateArchitecture,
+} from '@aar/shared';
 import { AiGenerationError, generateSpec } from './ai/openai.js';
 import { buildSystemPrompt, buildUserPrompt, summarizeDiagram } from './ai/prompt.js';
 import { formatArchitecturesForPrompt, retrieveArchitectures } from './ai/knowledge.js';
@@ -75,6 +81,21 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
       });
     }
     return reply.send({ cost: estimateDiagramCost(parsed.data) });
+  });
+
+  // Deterministic IaC generation from catalog metadata (no model call).
+  app.post('/api/iac', async (request, reply) => {
+    const parsed = z.object({
+      diagram: diagramSchema,
+      target: z.enum(['bicep', 'terraform']),
+    }).safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'invalid_request',
+        message: parsed.error.issues[0]?.message ?? 'Invalid request body.',
+      });
+    }
+    return reply.send({ bundle: generateIacBundle(parsed.data.diagram, parsed.data.target) });
   });
 
   // Prompt-to-diagram (ADR-0010). Returns a fully validated Diagram, or 503 when

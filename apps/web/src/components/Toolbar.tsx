@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { DollarSign, Download, FileJson, FilePlus2, Image, LayoutGrid, Moon, ShieldCheck, Sparkles, Sun, Upload } from 'lucide-react';
+import { DollarSign, Download, FileCode2, FileJson, FilePlus2, Image, LayoutGrid, Moon, ShieldCheck, Sparkles, Sun, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/Button.js';
 import { useTheme } from '@/lib/theme.js';
 import { downloadJson, exportPng, exportSvg } from '@/lib/export.js';
@@ -11,11 +11,13 @@ export function Toolbar({
   onToggleAi,
   onToggleValidation,
   onToggleCost,
+  onToggleIac,
 }: {
   onOpenCommand: () => void;
   onToggleAi: () => void;
   onToggleValidation: () => void;
   onToggleCost: () => void;
+  onToggleIac: () => void;
 }): JSX.Element {
   const { theme, toggleTheme } = useTheme();
   const name = useDiagramStore((s) => s.diagram.metadata.name);
@@ -51,6 +53,9 @@ export function Toolbar({
         </Button>
         <Button variant="ghost" size="sm" onClick={onToggleCost} title="Monthly cost estimate">
           <DollarSign size={16} /> Costs
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onToggleIac} title="Generate Bicep or Terraform">
+          <FileCode2 size={16} /> IaC
         </Button>
         <Button variant="ghost" size="sm" onClick={relayout} title="Auto-arrange the diagram">
           <LayoutGrid size={16} /> Auto-layout

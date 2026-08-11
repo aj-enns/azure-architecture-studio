@@ -3,6 +3,7 @@ import { AiPanel } from '@/components/AiPanel.js';
 import { Canvas } from '@/components/canvas/Canvas.js';
 import { CommandPalette } from '@/components/CommandPalette.js';
 import { CostPanel } from '@/components/CostPanel.js';
+import { IacPanel } from '@/components/IacPanel.js';
 import { Palette } from '@/components/Palette.js';
 import { PropertiesPanel } from '@/components/PropertiesPanel.js';
 import { ValidationPanel } from '@/components/ValidationPanel.js';
@@ -13,6 +14,7 @@ export function App(): JSX.Element {
   const [aiOpen, setAiOpen] = useState(false);
   const [validationOpen, setValidationOpen] = useState(false);
   const [costOpen, setCostOpen] = useState(false);
+  const [iacOpen, setIacOpen] = useState(false);
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
@@ -21,6 +23,7 @@ export function App(): JSX.Element {
         onToggleAi={() => setAiOpen((v) => !v)}
         onToggleValidation={() => setValidationOpen((v) => !v)}
         onToggleCost={() => setCostOpen((v) => !v)}
+        onToggleIac={() => setIacOpen((v) => !v)}
       />
       <div className="flex min-h-0 flex-1">
         <Palette />
@@ -30,6 +33,7 @@ export function App(): JSX.Element {
         <AiPanel open={aiOpen} onClose={() => setAiOpen(false)} />
         <ValidationPanel open={validationOpen} onClose={() => setValidationOpen(false)} />
         <CostPanel open={costOpen} onClose={() => setCostOpen(false)} />
+        <IacPanel open={iacOpen} onClose={() => setIacOpen(false)} />
         <PropertiesPanel />
       </div>
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />

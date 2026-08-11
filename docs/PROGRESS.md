@@ -41,7 +41,7 @@ Live status for the Azure Architecture Review build. Mirrors the working plan.
 | 1.1 | React Flow canvas + custom Azure service node             | ✅     |
 | 1.2 | Palette (drag/drop from shared catalog, categorized)      | ✅     |
 | 1.3 | Groups/containers (subscription, RG, VNet, subnet)        | ✅     |
-| 1.4 | Mini-map, controls, background, auto-layout               | 🟡     |
+| 1.4 | Mini-map, controls, background, compound Dagre auto-layout| ✅     |
 | 1.5 | Properties panel (edit node/group defaults)               | ✅     |
 | 1.6 | Persistence: localStorage autosave + JSON import/export   | ✅     |
 | 1.7 | Export to PNG / SVG                                        | ✅     |
@@ -60,13 +60,23 @@ Live status for the Azure Architecture Review build. Mirrors the working plan.
 
 ---
 
-## Phase 3 — IaC export
+## Phase 3 — IaC export (original roadmap; delivered as parity Phase 5)
 
 | #   | Task                                                      | Status |
 | --- | --------------------------------------------------------- | ------ |
-| 3.1 | Map catalog `iac` hints → Bicep (Azure Verified Modules)  | ⬜     |
-| 3.2 | Terraform target                                          | ⬜     |
-| 3.3 | Download bundle from the API                              | ⬜     |
+| 3.1 | Map catalog `iac` hints → Bicep/AVM-aware scaffolding     | 🟡     |
+| 3.2 | Terraform AzAPI target                                    | 🟡     |
+| 3.3 | Preview/download generated files from the API             | ✅     |
+
+Initial deterministic generation supports Storage, Key Vault, Managed Identity,
+VNet, Log Analytics, Application Insights, Container Registry, and Cosmos DB.
+The reference three-tier architecture is also composed end to end: VNet/subnet
+groups, Application Gateway with a public IP and App Service backend, App
+Service Plan/App Service with VNet integration and managed identity, SQL
+server/database, Azure Managed Redis and its default database, and Private
+Endpoints resolved from diagram edges. Required SQL and gateway secrets are
+secure inputs. Other catalog services emit explicit diagnostics until their
+topology-specific inputs are modeled.
 
 ---
 
@@ -74,8 +84,8 @@ Live status for the Azure Architecture Review build. Mirrors the working plan.
 
 | #   | Task                                                      | Status |
 | --- | --------------------------------------------------------- | ------ |
-| 4.1 | Azure Retail Prices API integration via catalog `pricing` | ⬜     |
-| 4.2 | Per-node + total monthly estimate on canvas               | ⬜     |
+| 4.1 | Curated regional fallback + live Retail Prices refinement | 🟡     |
+| 4.2 | Per-node + total monthly estimate on canvas               | ✅     |
 
 ---
 
@@ -92,7 +102,7 @@ Live status for the Azure Architecture Review build. Mirrors the working plan.
 
 | #   | Task                                                      | Status |
 | --- | --------------------------------------------------------- | ------ |
-| 6.1 | Rule engine over the diagram model                        | ⬜     |
+| 6.1 | Rule engine over the diagram model                        | ✅     |
 | 6.2 | AI-assisted Well-Architected review                       | ⬜     |
 | 6.3 | ARB report export                                         | ⬜     |
 
@@ -121,3 +131,15 @@ Live status for the Azure Architecture Review build. Mirrors the working plan.
   `AiPanel` (replace/append modes, examples, Ctrl/Cmd+Enter, health-gated).
   `pnpm typecheck`/`test`/`build` green (13 tests: 7 shared + 6 api). Live Azure
   OpenAI call unverified (no credentials configured in this environment).
+- **2026-08-11** — Foundry-first parity phases 1–4 complete: Microsoft Learn
+  grounding, deterministic WAF review, compound Dagre layout with nested groups,
+  and regional cost estimates with node badges, summary panel, CSV, and API.
+  Live Retail Prices API remains an optional accuracy refinement.
+- **2026-08-11** — IaC generation started (parity Phase 5): shared deterministic
+  Bicep and Terraform/AzAPI bundle generator, `POST /api/iac`, diagnostics for
+  resources requiring additional inputs, and an editor preview/download panel.
+  Initial supported resource set is listed under Phase 3 above.
+- **2026-08-11** — IaC composition expanded to cover the saved three-tier
+  reference diagram (11 non-conceptual resources) in both targets. Bicep
+  compiles and Terraform validates with AzAPI v2.12.0; Entra ID remains an
+  informational tenant-scoped omission.

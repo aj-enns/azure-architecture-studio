@@ -7,3 +7,4 @@ export * from './catalog.js';
 export * from './waf.js';
 export * from './layout.js';
 export * from './pricing.js';
+export * from './iac.js';
