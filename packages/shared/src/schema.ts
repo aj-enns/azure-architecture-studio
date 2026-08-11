@@ -64,11 +64,20 @@ export const diagramEdgeSchema = z.object({
 });
 export type DiagramEdge = z.infer<typeof diagramEdgeSchema>;
 
+/** Availability and recovery objectives the design is measured against. */
+export const resiliencyTargetSchema = z.object({
+  slaPercent: z.number().min(0).max(100),
+  rtoMinutes: z.number().nonnegative(),
+  rpoMinutes: z.number().nonnegative(),
+});
+export type ResiliencyTarget = z.infer<typeof resiliencyTargetSchema>;
+
 export const diagramMetadataSchema = z.object({
   name: z.string().default('Untitled Architecture'),
   description: z.string().default(''),
   /** Default Azure region used for pricing + deployment (e.g. "eastus2"). */
   region: z.string().default('eastus2'),
+  resiliency: resiliencyTargetSchema.optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });

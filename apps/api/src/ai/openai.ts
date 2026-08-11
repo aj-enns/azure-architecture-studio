@@ -52,16 +52,17 @@ async function buildAuthHeaders(config: AzureOpenAIConfig): Promise<Record<strin
 }
 
 /**
- * Calls Azure OpenAI Chat Completions with structured outputs and returns a
- * validated AI spec. Uses global fetch (Node 22) — no SDK (ADR-0010). Supports
- * API-key and keyless Entra ID auth (ADR-0011).
+ * Calls Azure OpenAI Chat Completions with structured outputs and returns the
+ * parsed JSON. Uses global fetch (Node 22) — no SDK (ADR-0010). Supports
+ * API-key and keyless Entra ID auth (ADR-0011). Callers validate the shape.
  */
-export async function generateSpec(
+export async function generateJson(
   config: AzureOpenAIConfig,
   systemPrompt: string,
   userPrompt: string,
+  schema: { name: string; jsonSchema: unknown },
   signal?: AbortSignal,
-): Promise<AiDiagramSpec> {
+): Promise<unknown> {
   const endpoint = config.endpoint.replace(/\/$/, '');
   const isFoundryModelsEndpoint = new URL(endpoint).hostname.endsWith('.services.ai.azure.com');
   const url = isFoundryModelsEndpoint
@@ -92,9 +93,9 @@ export async function generateSpec(
         response_format: {
           type: 'json_schema',
           json_schema: {
-            name: 'azure_architecture_diagram',
+            name: schema.name,
             strict: true,
-            schema: aiDiagramJsonSchema,
+            schema: schema.jsonSchema,
           },
         },
       }),
@@ -146,6 +147,23 @@ export async function generateSpec(
   } catch {
     throw new AiGenerationError('Azure OpenAI returned invalid JSON.', 502);
   }
+  return json;
+}
+
+/** Prompt-to-diagram generation: structured output validated against the AI spec. */
+export async function generateSpec(
+  config: AzureOpenAIConfig,
+  systemPrompt: string,
+  userPrompt: string,
+  signal?: AbortSignal,
+): Promise<AiDiagramSpec> {
+  const json = await generateJson(
+    config,
+    systemPrompt,
+    userPrompt,
+    { name: 'azure_architecture_diagram', jsonSchema: aiDiagramJsonSchema },
+    signal,
+  );
 
   const parsed = aiDiagramSpecSchema.safeParse(json);
   if (!parsed.success) {

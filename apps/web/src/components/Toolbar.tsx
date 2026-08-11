@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Check, ChevronDown, DollarSign, Download, FileCode2, FileJson, FilePlus2, Grid3x3, Image, LayoutGrid, Moon, PanelRight, Settings, ShieldCheck, Sparkles, Sun, Upload } from 'lucide-react';
+import { Check, ChevronDown, ClipboardCheck, DollarSign, Download, FileCode2, FileJson, FilePlus2, Grid3x3, Image, LayoutGrid, Moon, PanelRight, Settings, ShieldAlert, ShieldCheck, Sparkles, Sun, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/Button.js';
 import { DropdownItem, DropdownMenu } from '@/components/ui/DropdownMenu.js';
 import { useTheme } from '@/lib/theme.js';
@@ -8,19 +8,7 @@ import { useDiagramStore } from '@/store/diagramStore.js';
 import { useUiStore } from '@/store/uiStore.js';
 
 /** Top toolbar: document name, file actions, exports, theme toggle. */
-export function Toolbar({
-  onOpenCommand,
-  onToggleAi,
-  onToggleValidation,
-  onToggleCost,
-  onToggleIac,
-}: {
-  onOpenCommand: () => void;
-  onToggleAi: () => void;
-  onToggleValidation: () => void;
-  onToggleCost: () => void;
-  onToggleIac: () => void;
-}): JSX.Element {
+export function Toolbar({ onOpenCommand }: { onOpenCommand: () => void }): JSX.Element {
   const { theme, toggleTheme } = useTheme();
   const name = useDiagramStore((s) => s.diagram.metadata.name);
   const setName = useDiagramStore((s) => s.setName);
@@ -32,6 +20,9 @@ export function Toolbar({
   const toggleProperties = useUiStore((s) => s.toggleProperties);
   const showGrid = useUiStore((s) => s.showGrid);
   const toggleGrid = useUiStore((s) => s.toggleGrid);
+  const slaOverlay = useUiStore((s) => s.slaOverlay);
+  const toggleSlaOverlay = useUiStore((s) => s.toggleSlaOverlay);
+  const togglePanel = useUiStore((s) => s.togglePanel);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleImport = async (file: File): Promise<void> => {
@@ -51,14 +42,25 @@ export function Toolbar({
       />
 
       <div className="ml-auto flex items-center gap-1">
-        <Button variant="secondary" size="sm" onClick={onToggleAi} title="Generate with AI">
+        <Button variant="secondary" size="sm" onClick={() => togglePanel('ai')} title="Generate with AI">
           <Sparkles size={16} /> Generate
         </Button>
-        <Button variant="ghost" size="sm" onClick={onToggleValidation} title="Well-Architected review">
+        <Button variant="ghost" size="sm" onClick={() => togglePanel('validation')} title="Well-Architected review">
           <ShieldCheck size={16} /> Validate
         </Button>
-        <Button variant="ghost" size="sm" onClick={onToggleCost} title="Monthly cost estimate">
+        <Button variant="ghost" size="sm" onClick={() => togglePanel('cost')} title="Monthly cost estimate">
           <DollarSign size={16} /> Costs
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => togglePanel('resiliency')}
+          title="Composite SLA, RPO and RTO"
+        >
+          <ShieldAlert size={16} /> Resiliency
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => togglePanel('review')} title="AI architecture review">
+          <ClipboardCheck size={16} /> Review
         </Button>
         <Button variant="ghost" size="sm" onClick={relayout} title="Auto-arrange the diagram">
           <LayoutGrid size={16} /> Auto-layout
@@ -96,7 +98,7 @@ export function Toolbar({
           <DropdownItem onSelect={() => void exportSvg(name)}>
             <Download size={16} /> SVG
           </DropdownItem>
-          <DropdownItem onSelect={onToggleIac}>
+          <DropdownItem onSelect={() => togglePanel('iac')}>
             <FileCode2 size={16} /> IaC (Bicep / Terraform)
           </DropdownItem>
         </DropdownMenu>
@@ -118,6 +120,11 @@ export function Toolbar({
             <Grid3x3 size={16} />
             <span className="flex-1">Grid points</span>
             {showGrid && <Check size={14} className="text-primary" />}
+          </DropdownItem>
+          <DropdownItem onSelect={toggleSlaOverlay}>
+            <ShieldAlert size={16} />
+            <span className="flex-1">SLA overlay</span>
+            {slaOverlay && <Check size={14} className="text-primary" />}
           </DropdownItem>
         </DropdownMenu>
 

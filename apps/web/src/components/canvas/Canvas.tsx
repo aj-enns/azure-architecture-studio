@@ -22,7 +22,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Hand } from 'lucide-react';
-import { getServiceDefinition } from '@aar/shared';
+import { analyzeResiliency, getServiceDefinition } from '@aar/shared';
 import { AzureNode } from './AzureNode.js';
 import { GroupNode } from './GroupNode.js';
 import { categoryHex } from '@/lib/icons.js';
@@ -35,6 +35,7 @@ const nodeTypes = { azureNode: AzureNode, azureGroup: GroupNode };
 function toFlowNodes(
   groups: ReturnType<typeof useDiagramStore.getState>['diagram']['groups'],
   nodes: ReturnType<typeof useDiagramStore.getState>['diagram']['nodes'],
+  resiliencyByNodeId: Map<string, { slaPercent: number; tier: string; isWeakest: boolean }>,
 ): Node[] {
   // Groups first so they render behind service nodes. Explicit width/height are
   // set on the node object (not only via style) so React Flow knows the parent
@@ -69,7 +70,7 @@ function toFlowNodes(
     id: n.id,
     type: 'azureNode',
     position: n.position,
-    data: { serviceId: n.serviceId, label: n.label },
+    data: { serviceId: n.serviceId, label: n.label, resiliency: resiliencyByNodeId.get(n.id) },
     ...(n.parentId ? { parentId: n.parentId, extent: 'parent' as const } : {}),
     zIndex: 1000,
   }));
@@ -90,6 +91,22 @@ function CanvasInner(): JSX.Element {
   const removeGroup = useDiagramStore((s) => s.removeGroup);
   const removeEdge = useDiagramStore((s) => s.removeEdge);
   const showGrid = useUiStore((s) => s.showGrid);
+
+  // Computed once here rather than per node: the composite and weakest link
+  // need the whole graph, so recomputing inside each node would be quadratic.
+  const resiliencyByNodeId = useMemo(() => {
+    const report = analyzeResiliency(diagram);
+    return new Map(
+      report.nodes.map((n) => [
+        n.nodeId,
+        {
+          slaPercent: n.profile.slaPercent,
+          tier: n.profile.tier,
+          isWeakest: n.nodeId === report.weakestLink?.nodeId,
+        },
+      ]),
+    );
+  }, [diagram]);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const modifierPanRef = useRef<{
@@ -112,7 +129,7 @@ function CanvasInner(): JSX.Element {
   // observer would not re-fire, leaving child nodes stuck at `visibility:
   // hidden`. Groups avoid this only because they carry explicit width/height.
   const [rfNodes, setRfNodes] = useState<Node[]>(() =>
-    toFlowNodes(diagram.groups, diagram.nodes),
+    toFlowNodes(diagram.groups, diagram.nodes, resiliencyByNodeId),
   );
 
   // Re-derive nodes when the domain model changes, carrying over the transient
@@ -120,12 +137,12 @@ function CanvasInner(): JSX.Element {
   useEffect(() => {
     setRfNodes((prev) => {
       const prevById = new Map(prev.map((n) => [n.id, n]));
-      return toFlowNodes(diagram.groups, diagram.nodes).map((n) => {
+      return toFlowNodes(diagram.groups, diagram.nodes, resiliencyByNodeId).map((n) => {
         const old = prevById.get(n.id);
         return old?.measured ? { ...n, measured: old.measured } : n;
       });
     });
-  }, [diagram.groups, diagram.nodes]);
+  }, [diagram.groups, diagram.nodes, resiliencyByNodeId]);
 
   // Re-frame the viewport whenever the set of nodes/groups changes structurally
   // (new document, AI generation, import). Without this the viewport can be left

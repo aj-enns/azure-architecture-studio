@@ -2,18 +2,35 @@ import cors from '@fastify/cors';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
+  analyzeResiliency,
   azureServiceCatalog,
   diagramSchema,
   estimateDiagramCost,
   generateIacBundle,
+  resiliencyTargetSchema,
   validateArchitecture,
 } from '@aar/shared';
 import { AiGenerationError, generateSpec } from './ai/openai.js';
 import { buildSystemPrompt, buildUserPrompt, summarizeDiagram } from './ai/prompt.js';
 import { formatArchitecturesForPrompt, retrieveArchitectures } from './ai/knowledge.js';
 import { getLearnGrounding, searchLearnDocs } from './ai/learnGrounding.js';
+import { groundResiliency } from './ai/resiliency.js';
+import { reviewArchitecture } from './ai/review.js';
 import { specToDiagram } from './ai/spec.js';
 import type { AppConfig } from './config.js';
+
+const resiliencyRequestSchema = z.object({
+  diagram: diagramSchema,
+  target: resiliencyTargetSchema.optional(),
+  /** Refresh SLA figures from Microsoft Learn instead of using the baseline table. */
+  grounded: z.boolean().default(false),
+});
+
+const reviewRequestSchema = z.object({
+  diagram: diagramSchema,
+  /** Pull Microsoft Learn references into the review. */
+  grounded: z.boolean().default(false),
+});
 
 const generateRequestSchema = z.object({
   prompt: z.string().min(1).max(4000),
@@ -81,6 +98,93 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
       });
     }
     return reply.send({ cost: estimateDiagramCost(parsed.data) });
+  });
+
+  // Composite SLA / RPO / RTO analysis. Always returns the deterministic
+  // baseline; `grounded` additionally refreshes figures from Microsoft Learn.
+  app.post('/api/resiliency', async (request, reply) => {
+    const parsed = resiliencyRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'invalid_request',
+        message: parsed.error.issues[0]?.message ?? 'Invalid diagram.',
+      });
+    }
+    const { diagram, target, grounded } = parsed.data;
+
+    if (!grounded) {
+      return reply.send({ report: analyzeResiliency(diagram, { target }) });
+    }
+    if (!config.azureOpenAI) {
+      return reply.send({
+        report: analyzeResiliency(diagram, { target }),
+        groundingError:
+          'Learn grounding needs a configured model. Set AZURE_FOUNDRY_ENDPOINT and AZURE_FOUNDRY_MODEL on the API.',
+      });
+    }
+
+    // Grounding is best-effort: a failure must never cost the caller the baseline.
+    try {
+      const { profiles, citations } = await groundResiliency(
+        config.azureOpenAI,
+        config.learn,
+        diagram,
+      );
+      return reply.send({
+        report: analyzeResiliency(diagram, { target, overrides: profiles }),
+        profiles,
+        citations,
+      });
+    } catch (err) {
+      request.log.warn(err, 'resiliency grounding failed');
+      return reply.send({
+        report: analyzeResiliency(diagram, { target }),
+        groundingError:
+          err instanceof AiGenerationError ? err.message : 'Could not refresh figures from Microsoft Learn.',
+      });
+    }
+  });
+
+  // AI architecture review: applies the waf-architecture-review methodology to
+  // the deterministic WAF + resiliency + cost analysis. Requires a model (503
+  // when unconfigured, like /api/generate); grounding failure is soft.
+  app.post('/api/review', async (request, reply) => {
+    if (!config.azureOpenAI) {
+      return reply.code(503).send({
+        error: 'ai_not_configured',
+        message:
+          'AI review is not configured. Set AZURE_FOUNDRY_ENDPOINT and AZURE_FOUNDRY_MODEL on the API, then provide AZURE_FOUNDRY_API_KEY or use Entra ID by leaving the key blank.',
+      });
+    }
+    const parsed = reviewRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'invalid_request',
+        message: parsed.error.issues[0]?.message ?? 'Invalid diagram.',
+      });
+    }
+    if (parsed.data.diagram.nodes.length === 0) {
+      return reply.code(400).send({
+        error: 'empty_diagram',
+        message: 'Add some services before requesting a review.',
+      });
+    }
+
+    try {
+      const result = await reviewArchitecture(
+        config.azureOpenAI,
+        config.learn,
+        parsed.data.diagram,
+        parsed.data.grounded,
+      );
+      return reply.send(result);
+    } catch (err) {
+      if (err instanceof AiGenerationError) {
+        return reply.code(err.status).send({ error: 'ai_error', message: err.message });
+      }
+      request.log.error(err);
+      return reply.code(500).send({ error: 'internal_error', message: 'Review failed.' });
+    }
   });
 
   // Deterministic IaC generation from catalog metadata (no model call).

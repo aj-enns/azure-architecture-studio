@@ -33,6 +33,9 @@ Each ADR follows [Michael Nygard's format](https://cognitect.com/blog/2011/11/15
 | [0009](0009-web-reverse-proxy-topology.md) | Web container reverse-proxies the API (same-origin) | Accepted | 2026-08-06 |
 | [0010](0010-ai-prompt-to-diagram.md) | AI prompt-to-diagram via server-side structured output + layout | Accepted | 2026-08-06 |
 | [0011](0011-entra-id-keyless-azure-openai-auth.md) | Support API keys and keyless Entra ID auth for Azure OpenAI | Accepted | 2026-08-07 |
+| [0012](0012-resiliency-sla-rpo-rto-modelling.md) | Resiliency modelling — composite SLA, RPO/RTO, and Learn grounding | Accepted | 2026-08-11 |
+| [0013](0013-single-active-panel.md) | One analysis panel open at a time | Accepted | 2026-08-11 |
+| [0014](0014-in-app-ai-architecture-review.md) | In-app AI architecture review (skill methodology server-side) | Accepted | 2026-08-11 |
 
 ## When to write an ADR
 

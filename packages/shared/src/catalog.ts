@@ -94,7 +94,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'compute',
     description: 'Autoscaling group of identical virtual machines.',
     icon: 'vm-scale-set',
-    defaults: { size: 'Standard_D2s_v5', instances: 2 },
+    defaults: { size: 'Standard_D2s_v5', instances: 2, zoneRedundant: false },
     pricing: { serviceName: 'Virtual Machines', consumptionBased: true },
     iac: {
       resourceType: 'Microsoft.Compute/virtualMachineScaleSets',
@@ -107,7 +107,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'compute',
     description: 'Event-driven serverless compute.',
     icon: 'function-app',
-    defaults: { plan: 'FlexConsumption', runtime: 'node' },
+    defaults: { plan: 'FlexConsumption', runtime: 'node', zoneRedundant: false, multiRegion: false },
     pricing: { serviceName: 'Functions', consumptionBased: true },
     iac: {
       resourceType: 'Microsoft.Web/sites',
@@ -123,7 +123,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'containers',
     description: 'Serverless containers with scale-to-zero.',
     icon: 'container-app',
-    defaults: { cpu: 0.5, memory: '1Gi', minReplicas: 0, maxReplicas: 10 },
+    defaults: { cpu: 0.5, memory: '1Gi', minReplicas: 0, maxReplicas: 10, zoneRedundant: false },
     pricing: { serviceName: 'Azure Container Apps', consumptionBased: true },
     iac: {
       resourceType: 'Microsoft.App/containerApps',
@@ -137,7 +137,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'containers',
     description: 'Managed Kubernetes cluster.',
     icon: 'kubernetes-service',
-    defaults: { tier: 'Standard', nodeCount: 3, nodeSize: 'Standard_D4s_v5' },
+    defaults: { tier: 'Standard', nodeCount: 3, nodeSize: 'Standard_D4s_v5', zoneRedundant: false },
     pricing: { serviceName: 'Azure Kubernetes Service', consumptionBased: true },
     iac: {
       resourceType: 'Microsoft.ContainerService/managedClusters',
@@ -151,7 +151,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'containers',
     description: 'Private Docker/OCI image registry.',
     icon: 'container-registry',
-    defaults: { sku: 'Standard' },
+    defaults: { sku: 'Standard', zoneRedundant: false, multiRegion: false },
     pricing: { serviceName: 'Container Registry', consumptionBased: false },
     iac: {
       resourceType: 'Microsoft.ContainerRegistry/registries',
@@ -180,7 +180,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'web',
     description: 'Compute resources for App Service apps.',
     icon: 'app-service-plan',
-    defaults: { sku: 'P1v3', os: 'Linux' },
+    defaults: { sku: 'P1v3', os: 'Linux', capacity: 2, zoneRedundant: false },
     pricing: { serviceName: 'Azure App Service', consumptionBased: false },
     iac: {
       resourceType: 'Microsoft.Web/serverfarms',
@@ -206,7 +206,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'web',
     description: 'Publish, secure, and manage APIs.',
     icon: 'api-management',
-    defaults: { sku: 'Developer' },
+    defaults: { sku: 'Developer', zoneRedundant: false, multiRegion: false },
     pricing: { serviceName: 'API Management', consumptionBased: false },
     iac: {
       resourceType: 'Microsoft.ApiManagement/service',
@@ -221,7 +221,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'databases',
     description: 'Managed relational SQL database.',
     icon: 'sql-database',
-    defaults: { tier: 'GeneralPurpose', compute: 'Serverless' },
+    defaults: { tier: 'GeneralPurpose', compute: 'Serverless', zoneRedundant: false, multiRegion: false },
     pricing: { serviceName: 'SQL Database', consumptionBased: false },
     iac: {
       resourceType: 'Microsoft.Sql/servers/databases',
@@ -235,7 +235,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'databases',
     description: 'Globally distributed multi-model NoSQL database.',
     icon: 'cosmos-db',
-    defaults: { api: 'NoSQL', mode: 'Serverless' },
+    defaults: { api: 'NoSQL', mode: 'Serverless', zoneRedundant: false, multiRegion: false },
     pricing: { serviceName: 'Azure Cosmos DB', consumptionBased: true },
     iac: {
       resourceType: 'Microsoft.DocumentDB/databaseAccounts',
@@ -249,7 +249,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'databases',
     description: 'Managed PostgreSQL flexible server.',
     icon: 'postgresql-server',
-    defaults: { tier: 'GeneralPurpose', size: 'Standard_D2ds_v5' },
+    defaults: { tier: 'GeneralPurpose', size: 'Standard_D2ds_v5', zoneRedundant: false },
     pricing: { serviceName: 'Azure Database for PostgreSQL', consumptionBased: false },
     iac: {
       resourceType: 'Microsoft.DBforPostgreSQL/flexibleServers',
@@ -262,7 +262,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'databases',
     description: 'In-memory data cache.',
     icon: 'cache-redis',
-    defaults: { sku: 'Balanced_B1' },
+    defaults: { sku: 'Balanced_B1', zoneRedundant: false },
     pricing: { serviceName: 'Azure Cache for Redis', consumptionBased: false },
     iac: {
       resourceType: 'Microsoft.Cache/redisEnterprise',
@@ -277,7 +277,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'storage',
     description: 'Blobs, files, queues, and tables.',
     icon: 'storage-account',
-    defaults: { sku: 'Standard_LRS', kind: 'StorageV2', accessTier: 'Hot' },
+    defaults: { sku: 'Standard_LRS', kind: 'StorageV2', accessTier: 'Hot', multiRegion: false },
     pricing: { serviceName: 'Storage', consumptionBased: true },
     iac: {
       resourceType: 'Microsoft.Storage/storageAccounts',
@@ -306,7 +306,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'networking',
     description: 'Layer-4 load balancing.',
     icon: 'load-balancer',
-    defaults: { sku: 'Standard' },
+    defaults: { sku: 'Standard', zoneRedundant: false },
     pricing: { serviceName: 'Load Balancer', consumptionBased: true },
     iac: {
       resourceType: 'Microsoft.Network/loadBalancers',
@@ -319,7 +319,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'networking',
     description: 'Layer-7 load balancer with WAF.',
     icon: 'application-gateway',
-    defaults: { sku: 'WAF_v2', capacity: 2 },
+    defaults: { sku: 'WAF_v2', capacity: 2, zoneRedundant: false },
     pricing: { serviceName: 'Application Gateway', consumptionBased: true },
     iac: {
       resourceType: 'Microsoft.Network/applicationGateways',
@@ -360,7 +360,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'ai',
     description: 'Managed OpenAI models (GPT, embeddings).',
     icon: 'azure-openai',
-    defaults: { deployment: 'gpt-4o', sku: 'Standard' },
+    defaults: { deployment: 'gpt-4o', sku: 'Standard', multiRegion: false },
     pricing: { serviceName: 'Azure OpenAI', consumptionBased: true },
     iac: {
       resourceType: 'Microsoft.CognitiveServices/accounts',
@@ -374,7 +374,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'ai',
     description: 'Vector and hybrid search index.',
     icon: 'cognitive-search',
-    defaults: { sku: 'standard', replicas: 1, partitions: 1 },
+    defaults: { sku: 'standard', replicas: 1, partitions: 1, zoneRedundant: false },
     pricing: { serviceName: 'Azure Cognitive Search', consumptionBased: false },
     iac: {
       resourceType: 'Microsoft.Search/searchServices',
@@ -402,7 +402,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'analytics',
     description: 'Big data streaming and event ingestion.',
     icon: 'event-hubs',
-    defaults: { sku: 'Standard', throughputUnits: 1 },
+    defaults: { sku: 'Standard', throughputUnits: 1, zoneRedundant: false, multiRegion: false },
     pricing: { serviceName: 'Event Hubs', consumptionBased: true },
     iac: {
       resourceType: 'Microsoft.EventHub/namespaces',
@@ -415,7 +415,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'analytics',
     description: 'Fast telemetry and log analytics (Kusto).',
     icon: 'data-explorer-clusters',
-    defaults: { sku: 'Standard_D11_v2', instances: 2 },
+    defaults: { sku: 'Standard_D11_v2', instances: 2, zoneRedundant: false },
     pricing: { serviceName: 'Azure Data Explorer', consumptionBased: false },
     iac: {
       resourceType: 'Microsoft.Kusto/clusters',
@@ -430,7 +430,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'integration',
     description: 'Enterprise messaging queues and topics.',
     icon: 'service-bus',
-    defaults: { sku: 'Standard' },
+    defaults: { sku: 'Standard', zoneRedundant: false, multiRegion: false },
     pricing: { serviceName: 'Service Bus', consumptionBased: true },
     iac: {
       resourceType: 'Microsoft.ServiceBus/namespaces',
@@ -443,7 +443,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'integration',
     description: 'Low-code workflow automation.',
     icon: 'logic-apps',
-    defaults: { plan: 'Standard' },
+    defaults: { plan: 'Standard', zoneRedundant: false },
     pricing: { serviceName: 'Logic Apps', consumptionBased: true },
     iac: {
       resourceType: 'Microsoft.Web/sites',
@@ -495,7 +495,7 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     category: 'management',
     description: 'Centralized logs and queries.',
     icon: 'log-analytics-workspaces',
-    defaults: { sku: 'PerGB2018', retentionInDays: 30 },
+    defaults: { sku: 'PerGB2018', retentionInDays: 30, zoneRedundant: false },
     pricing: { serviceName: 'Log Analytics', consumptionBased: true },
     iac: {
       resourceType: 'Microsoft.OperationalInsights/workspaces',

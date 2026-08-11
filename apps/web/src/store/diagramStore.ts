@@ -11,6 +11,7 @@ import {
   type DiagramNode,
   type GroupKind,
   type NodeProperties,
+  type ResiliencyTarget,
 } from '@aar/shared';
 
 const STORAGE_KEY = 'aar.diagram';
@@ -50,6 +51,8 @@ interface DiagramState {
 
   // metadata
   setName: (name: string) => void;
+  setRegion: (region: string) => void;
+  setResiliencyTarget: (target: ResiliencyTarget | undefined) => void;
 
   // document
   reset: () => void;
@@ -212,6 +215,22 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       diagram: mutate(s.diagram, (d) => {
         d.metadata.name = name;
       }),
+    })),
+
+  setResiliencyTarget: (target) =>
+    set((s) => ({
+      diagram: mutate(s.diagram, (d) => {
+        d.metadata.resiliency = target;
+      }),
+      revision: s.revision + 1,
+    })),
+
+  setRegion: (region) =>
+    set((s) => ({
+      diagram: mutate(s.diagram, (d) => {
+        d.metadata.region = region;
+      }),
+      revision: s.revision + 1,
     })),
 
   reset: () => {

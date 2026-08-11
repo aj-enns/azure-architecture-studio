@@ -122,4 +122,107 @@ describe('api', () => {
     expect(res.json()).toMatchObject({ error: 'invalid_request' });
     await app.close();
   });
+
+  it('returns a baseline resiliency report without a model', async () => {
+    const config = loadConfig({} as NodeJS.ProcessEnv);
+    const app = await buildApp(config);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/resiliency',
+      payload: {
+        diagram: {
+          version: 1,
+          metadata: { name: 'API test', region: 'eastus2' },
+          nodes: [
+            { id: 'plan-1', serviceId: 'app-service-plan', position: { x: 0, y: 0 } },
+            { id: 'sql-1', serviceId: 'sql-database', position: { x: 0, y: 0 } },
+          ],
+          groups: [],
+          edges: [],
+        },
+        target: { slaPercent: 99.99, rtoMinutes: 240, rpoMinutes: 15 },
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const report = res.json().report;
+    expect(report.compositeSlaPercent).toBeLessThan(100);
+    expect(report.weakestLink.serviceId).toBe('app-service-plan');
+    expect(report.meetsTarget).toBe(false);
+    await app.close();
+  });
+
+  it('falls back to the baseline when grounding is requested but AI is unconfigured', async () => {
+    const config = loadConfig({} as NodeJS.ProcessEnv);
+    const app = await buildApp(config);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/resiliency',
+      payload: {
+        grounded: true,
+        diagram: {
+          version: 1,
+          metadata: { name: 'API test', region: 'eastus2' },
+          nodes: [{ id: 'kv-1', serviceId: 'key-vault', position: { x: 0, y: 0 } }],
+          groups: [],
+          edges: [],
+        },
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().report.compositeSlaPercent).toBe(99.99);
+    expect(res.json().groundingError).toContain('AZURE_FOUNDRY_ENDPOINT');
+    await app.close();
+  });
+
+  it('rejects a resiliency request without a diagram', async () => {
+    const config = loadConfig({} as NodeJS.ProcessEnv);
+    const app = await buildApp(config);
+    const res = await app.inject({ method: 'POST', url: '/api/resiliency', payload: {} });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: 'invalid_request' });
+    await app.close();
+  });
+
+  it('returns 503 from /api/review when AI is unconfigured', async () => {
+    const config = loadConfig({} as NodeJS.ProcessEnv);
+    const app = await buildApp(config);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/review',
+      payload: {
+        diagram: {
+          version: 1,
+          metadata: { name: 'API test', region: 'eastus2' },
+          nodes: [{ id: 'n1', serviceId: 'app-service', position: { x: 0, y: 0 } }],
+          groups: [],
+          edges: [],
+        },
+      },
+    });
+    expect(res.statusCode).toBe(503);
+    expect(res.json()).toMatchObject({ error: 'ai_not_configured' });
+    await app.close();
+  });
+
+  it('rejects a review of an empty diagram when AI is configured', async () => {
+    const config = loadConfig({
+      AZURE_OPENAI_ENDPOINT: 'https://example.openai.azure.com',
+      AZURE_OPENAI_API_KEY: 'test-key',
+      AZURE_OPENAI_DEPLOYMENT: 'gpt-4o',
+    } as NodeJS.ProcessEnv);
+    const app = await buildApp(config);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/review',
+      payload: {
+        diagram: { version: 1, metadata: {}, nodes: [], groups: [], edges: [] },
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: 'empty_diagram' });
+    await app.close();
+  });
 });

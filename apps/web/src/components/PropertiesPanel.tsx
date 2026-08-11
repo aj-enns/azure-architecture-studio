@@ -1,5 +1,5 @@
 import { Trash2 } from 'lucide-react';
-import { getServiceDefinition } from '@aar/shared';
+import { getServiceDefinition, regionSupportsZones } from '@aar/shared';
 import { Button } from '@/components/ui/Button.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
 
@@ -14,6 +14,7 @@ export function PropertiesPanel(): JSX.Element {
   const removeGroup = useDiagramStore((s) => s.removeGroup);
   const removeEdge = useDiagramStore((s) => s.removeEdge);
   const setName = useDiagramStore((s) => s.setName);
+  const setRegion = useDiagramStore((s) => s.setRegion);
 
   const node = selection?.type === 'node' ? diagram.nodes.find((n) => n.id === selection.id) : undefined;
   const group = selection?.type === 'group' ? diagram.groups.find((g) => g.id === selection.id) : undefined;
@@ -58,6 +59,18 @@ export function PropertiesPanel(): JSX.Element {
             <Field label="Diagram name">
               <input className="input" value={diagram.metadata.name} onChange={(e) => setName(e.target.value)} />
             </Field>
+            <Field label="Region">
+              <input
+                className="input"
+                value={diagram.metadata.region}
+                onChange={(e) => setRegion(e.target.value)}
+              />
+            </Field>
+            {!regionSupportsZones(diagram.metadata.region) && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                This region has no availability zones, so zone-redundant resources fall back to a single zone.
+              </p>
+            )}
             <div className="text-xs text-muted-foreground">
               {diagram.nodes.length} services · {diagram.groups.length} groups · {diagram.edges.length} connections
             </div>
