@@ -28,6 +28,7 @@ import { GroupNode } from './GroupNode.js';
 import { categoryHex } from '@/lib/icons.js';
 import { useTheme } from '@/lib/theme.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
+import { useUiStore } from '@/store/uiStore.js';
 
 const nodeTypes = { azureNode: AzureNode, azureGroup: GroupNode };
 
@@ -88,6 +89,7 @@ function CanvasInner(): JSX.Element {
   const removeNode = useDiagramStore((s) => s.removeNode);
   const removeGroup = useDiagramStore((s) => s.removeGroup);
   const removeEdge = useDiagramStore((s) => s.removeEdge);
+  const showGrid = useUiStore((s) => s.showGrid);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const modifierPanRef = useRef<{
@@ -314,7 +316,7 @@ function CanvasInner(): JSX.Element {
         proOptions={{ hideAttribution: true }}
         className={`bg-background${controlPressed ? ' aar-modifier-pan' : ''}${modifierPanning ? ' aar-modifier-panning' : ''}`}
       >
-        <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+        {showGrid && <Background variant={BackgroundVariant.Dots} gap={16} size={1} />}
         <MiniMap pannable zoomable className="!bg-card" />
         <Controls className="!bg-card !text-foreground" />
         <Panel position="bottom-center" className="!m-3">

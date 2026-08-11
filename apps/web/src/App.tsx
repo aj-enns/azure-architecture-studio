@@ -8,6 +8,7 @@ import { Palette } from '@/components/Palette.js';
 import { PropertiesPanel } from '@/components/PropertiesPanel.js';
 import { ValidationPanel } from '@/components/ValidationPanel.js';
 import { Toolbar } from '@/components/Toolbar.js';
+import { useUiStore } from '@/store/uiStore.js';
 
 export function App(): JSX.Element {
   const [commandOpen, setCommandOpen] = useState(false);
@@ -15,6 +16,7 @@ export function App(): JSX.Element {
   const [validationOpen, setValidationOpen] = useState(false);
   const [costOpen, setCostOpen] = useState(false);
   const [iacOpen, setIacOpen] = useState(false);
+  const showProperties = useUiStore((s) => s.showProperties);
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
@@ -34,7 +36,7 @@ export function App(): JSX.Element {
         <ValidationPanel open={validationOpen} onClose={() => setValidationOpen(false)} />
         <CostPanel open={costOpen} onClose={() => setCostOpen(false)} />
         <IacPanel open={iacOpen} onClose={() => setIacOpen(false)} />
-        <PropertiesPanel />
+        {showProperties && <PropertiesPanel />}
       </div>
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
     </div>
