@@ -4,6 +4,7 @@ import {
   azureServiceCatalogById,
   emptyDiagram,
   groupKindSchema,
+  isExternalServiceId,
   layoutDiagram,
   type Diagram,
   type DiagramEdge,
@@ -139,8 +140,10 @@ export function specToDiagram(spec: AiDiagramSpec): Diagram {
     };
   });
 
-  // Keep only nodes whose serviceId is a real catalog entry.
-  const kept = spec.nodes.filter((n) => azureServiceCatalogById[n.serviceId]);
+  // Keep nodes with a real catalog serviceId, plus explicit "external" markers.
+  const kept = spec.nodes.filter(
+    (n) => azureServiceCatalogById[n.serviceId] || isExternalServiceId(n.serviceId),
+  );
   const nodeIdByKey = new Map<string, string>();
 
   const nodes: DiagramNode[] = kept.map((n) => {

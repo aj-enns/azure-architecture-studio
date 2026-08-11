@@ -10,6 +10,29 @@ export interface ReviewModel {
   modelName?: string;
   modelVersion?: string;
   isDefault: boolean;
+  /** True/false when the model is known; undefined when the model name is unknown. */
+  supportsVision?: boolean;
+}
+
+/** Model families that accept image input on Azure OpenAI / Foundry. */
+const VISION_MODEL_PREFIXES = [
+  'gpt-4o',
+  'gpt-4.1',
+  'gpt-4-turbo',
+  'gpt-4-vision',
+  'gpt-5',
+  'o1',
+  'o3',
+  'o4-mini',
+];
+/** Text-only variants that would otherwise match a vision prefix. */
+const NON_VISION_MODELS = new Set(['o1-mini', 'o3-mini']);
+
+/** Best-effort check of whether a model name accepts image input. */
+export function isVisionCapableModelName(name: string): boolean {
+  const normalized = name.trim().toLowerCase();
+  if (!normalized || NON_VISION_MODELS.has(normalized)) return false;
+  return VISION_MODEL_PREFIXES.some((prefix) => normalized.startsWith(prefix));
 }
 
 export interface ReviewModelList {
@@ -63,6 +86,9 @@ function toReviewModel(deployment: ArmDeployment, defaultDeployment: string): Re
     ...(typeof properties.model?.name === 'string' ? { modelName: properties.model.name } : {}),
     ...(typeof properties.model?.version === 'string' ? { modelVersion: properties.model.version } : {}),
     isDefault: deployment.name === defaultDeployment,
+    ...(typeof properties.model?.name === 'string'
+      ? { supportsVision: isVisionCapableModelName(properties.model.name) }
+      : {}),
   };
 }
 

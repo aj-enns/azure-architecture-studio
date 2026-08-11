@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, Sparkles, X } from 'lucide-react';
+import { ImagePlus, Loader2, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button.js';
-import { fetchHealth, generateDiagram, type DesignMode } from '@/lib/api.js';
+import {
+  fetchHealth,
+  generateDiagram,
+  generateDiagramFromImage,
+  type DesignMode,
+} from '@/lib/api.js';
+import { readImageAsDataUrl } from '@/lib/image.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
 
 const EXAMPLES = [
@@ -18,6 +24,8 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
   const [prompt, setPrompt] = useState('');
   const [mode, setMode] = useState<Mode>('replace');
   const [design, setDesign] = useState<DesignMode>('bestPractice');
+  const [image, setImage] = useState<string | null>(null);
+  const [imageName, setImageName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [healthState, setHealthState] = useState<HealthState>('checking');
@@ -44,14 +52,32 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
 
   if (!open) return null;
 
+  const handleFile = async (file: File | undefined): Promise<void> => {
+    if (!file) return;
+    setError(null);
+    try {
+      const dataUrl = await readImageAsDataUrl(file);
+      setImage(dataUrl);
+      setImageName(file.name);
+      setDesign('faithful');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not read the image.');
+    }
+  };
+
   const handleGenerate = async (): Promise<void> => {
     const trimmed = prompt.trim();
-    if (!trimmed || loading) return;
+    if ((!trimmed && !image) || loading) return;
     setLoading(true);
     setError(null);
     try {
-      const useContext = mode === 'append' && diagram.nodes.length > 0;
-      const result = await generateDiagram(trimmed, useContext ? diagram : undefined, { mode: design });
+      const result = image
+        ? await generateDiagramFromImage(image, trimmed || undefined, { mode: design })
+        : await generateDiagram(
+            trimmed,
+            mode === 'append' && diagram.nodes.length > 0 ? diagram : undefined,
+            { mode: design },
+          );
       if (mode === 'append') mergeDiagram(result);
       else load(result);
     } catch (e) {
@@ -95,14 +121,65 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
           </div>
         )}
 
+        <div className="space-y-1.5">
+          <span className="text-xs font-medium text-muted-foreground">Import from an image</span>
+          {image ? (
+            <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2">
+              <img
+                src={image}
+                alt="Diagram to import"
+                className="h-12 w-12 shrink-0 rounded object-cover"
+              />
+              <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                {imageName ?? 'Selected image'}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setImage(null);
+                  setImageName(null);
+                }}
+                aria-label="Remove image"
+                disabled={loading}
+              >
+                <X size={16} />
+              </Button>
+            </div>
+          ) : (
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-input bg-background px-2 py-3 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+              <ImagePlus size={16} />
+              <span>Upload a PNG or JPEG diagram</span>
+              <input
+                type="file"
+                accept="image/png,image/jpeg"
+                className="hidden"
+                onChange={(e) => {
+                  void handleFile(e.target.files?.[0]);
+                  e.target.value = '';
+                }}
+                disabled={loading}
+              />
+            </label>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            The diagram is transcribed into Azure services; non-Azure items are mapped to the
+            nearest equivalent or dropped.
+          </p>
+        </div>
+
         <label className="text-xs font-medium text-muted-foreground" htmlFor="ai-prompt">
-          Describe the architecture
+          {image ? 'Guidance (optional)' : 'Describe the architecture'}
         </label>
         <textarea
           id="ai-prompt"
           ref={textareaRef}
           className="min-h-28 w-full resize-y rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          placeholder="e.g. A web app with a SQL database and a Redis cache…"
+          placeholder={
+            image
+              ? 'e.g. treat the dashed box as a VNet…'
+              : 'e.g. A web app with a SQL database and a Redis cache…'
+          }
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={(e) => {
@@ -162,10 +239,10 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
 
         <Button
           onClick={() => void handleGenerate()}
-          disabled={loading || !prompt.trim() || healthState !== 'configured'}
+          disabled={loading || (!prompt.trim() && !image) || healthState !== 'configured'}
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-          {loading ? 'Generating…' : 'Generate'}
+          {loading ? (image ? 'Importing…' : 'Generating…') : image ? 'Import diagram' : 'Generate'}
         </Button>
 
         {error && (

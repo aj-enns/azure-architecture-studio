@@ -10,8 +10,14 @@ import {
   resiliencyTargetSchema,
   validateArchitecture,
 } from '@aar/shared';
-import { AiGenerationError, generateSpec } from './ai/openai.js';
-import { buildSystemPrompt, buildUserPrompt, summarizeDiagram } from './ai/prompt.js';
+import { AiGenerationError, generateSpec, generateSpecFromImage } from './ai/openai.js';
+import {
+  buildImageSystemPrompt,
+  buildImageUserPrompt,
+  buildSystemPrompt,
+  buildUserPrompt,
+  summarizeDiagram,
+} from './ai/prompt.js';
 import { formatArchitecturesForPrompt, retrieveArchitectures } from './ai/knowledge.js';
 import { getLearnGrounding, searchLearnDocs } from './ai/learnGrounding.js';
 import { groundResiliency } from './ai/resiliency.js';
@@ -42,6 +48,19 @@ const generateRequestSchema = z.object({
   prompt: z.string().min(1).max(4000),
   current: diagramSchema.optional(),
   mode: z.enum(['faithful', 'bestPractice']).default('bestPractice'),
+});
+
+const generateImageRequestSchema = z.object({
+  /** A PNG or JPEG data URL of the diagram to transcribe. */
+  image: z
+    .string()
+    .regex(
+      /^data:image\/(png|jpe?g);base64,[A-Za-z0-9+/=\s]+$/,
+      'Image must be a PNG or JPEG data URL.',
+    )
+    .max(14_000_000, 'Image is too large.'),
+  prompt: z.string().max(4000).optional(),
+  mode: z.enum(['faithful', 'bestPractice']).default('faithful'),
 });
 
 /**
@@ -274,6 +293,60 @@ export async function buildApp(
       const spec = await generateSpec(config.azureOpenAI, systemPrompt, userPrompt);
       const diagram = specToDiagram(spec);
       return reply.send({ diagram, citations: learn?.citations ?? [] });
+    } catch (err) {
+      if (err instanceof AiGenerationError) {
+        return reply.code(err.status).send({ error: 'ai_error', message: err.message });
+      }
+      request.log.error(err);
+      return reply.code(500).send({ error: 'internal_error', message: 'Generation failed.' });
+    }
+  });
+
+  // Image-to-diagram: transcribe an uploaded diagram image (larger body than JSON routes).
+  app.post('/api/generate/image', { bodyLimit: 16 * 1024 * 1024 }, async (request, reply) => {
+    if (!config.azureOpenAI) {
+      return reply.code(503).send({
+        error: 'ai_not_configured',
+        message:
+          'AI generation is not configured. Set AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT, then provide AZURE_OPENAI_API_KEY or use Entra ID by leaving the key blank.',
+      });
+    }
+
+    const parsed = generateImageRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'invalid_request',
+        message: parsed.error.issues[0]?.message ?? 'Invalid request body.',
+      });
+    }
+
+    const { image, prompt, mode } = parsed.data;
+
+    // Best-effort guard: block only when the active model is known to lack vision.
+    if (reviewModels) {
+      try {
+        const list = await reviewModels.getModels();
+        const active = list.models.find((m) => m.deploymentName === list.defaultDeployment);
+        if (active?.supportsVision === false) {
+          return reply.code(422).send({
+            error: 'model_not_vision_capable',
+            message:
+              `The configured model "${active.modelName ?? active.deploymentName}" does not accept ` +
+              'image input. Deploy a vision-capable model such as gpt-4o and set it as the default.',
+          });
+        }
+      } catch {
+        // Discovery is best-effort; fall through and let the model refuse if it must.
+      }
+    }
+
+    const systemPrompt = buildImageSystemPrompt(mode);
+    const userPrompt = buildImageUserPrompt(prompt);
+
+    try {
+      const spec = await generateSpecFromImage(config.azureOpenAI, systemPrompt, userPrompt, [image]);
+      const diagram = specToDiagram(spec);
+      return reply.send({ diagram, citations: [] });
     } catch (err) {
       if (err instanceof AiGenerationError) {
         return reply.code(err.status).send({ error: 'ai_error', message: err.message });

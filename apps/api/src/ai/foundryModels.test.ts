@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createFoundryModelDiscovery } from './foundryModels.js';
+import { createFoundryModelDiscovery, isVisionCapableModelName } from './foundryModels.js';
 import type { AzureOpenAIConfig } from '../config.js';
 
 const config: AzureOpenAIConfig = {
@@ -18,6 +18,20 @@ function jsonResponse(body: unknown): Response {
     headers: { 'Content-Type': 'application/json' },
   });
 }
+
+describe('vision capability detection', () => {
+  it('recognizes vision-capable model families', () => {
+    for (const name of ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4-turbo', 'gpt-5', 'o1', 'o4-mini']) {
+      expect(isVisionCapableModelName(name)).toBe(true);
+    }
+  });
+
+  it('rejects text-only models', () => {
+    for (const name of ['gpt-35-turbo', 'gpt-4', 'o1-mini', 'o3-mini', 'text-embedding-3-large', '']) {
+      expect(isVisionCapableModelName(name)).toBe(false);
+    }
+  });
+});
 
 describe('Foundry model discovery', () => {
   it('paginates and returns only succeeded chat deployments with JSON support', async () => {
@@ -69,6 +83,7 @@ describe('Foundry model discovery', () => {
         modelName: 'gpt-4.1',
         modelVersion: '2025-04-14',
         isDefault: false,
+        supportsVision: true,
       },
     ]);
     expect(fetchMock).toHaveBeenNthCalledWith(

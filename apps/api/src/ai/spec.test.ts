@@ -44,4 +44,25 @@ describe('specToDiagram', () => {
     expect(diagram.edges).toHaveLength(0);
     expect(safeParseDiagram(diagram).success).toBe(true);
   });
+
+  it('keeps explicit "external" nodes and their edges', () => {
+    const spec = aiDiagramSpecSchema.parse({
+      name: 'With external',
+      region: 'eastus2',
+      groups: [],
+      nodes: [
+        { key: 'web', serviceId: 'app-service', label: 'frontend' },
+        { key: 'ext', serviceId: 'external', label: 'Cloudflare' },
+      ],
+      edges: [{ from: 'ext', to: 'web' }],
+    });
+
+    const diagram = specToDiagram(spec);
+    expect(diagram.nodes).toHaveLength(2);
+    expect(diagram.nodes.some((n) => n.serviceId === 'external' && n.label === 'Cloudflare')).toBe(
+      true,
+    );
+    expect(diagram.edges).toHaveLength(1);
+    expect(safeParseDiagram(diagram).success).toBe(true);
+  });
 });

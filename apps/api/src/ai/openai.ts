@@ -62,6 +62,7 @@ export async function generateJson(
   userPrompt: string,
   schema: { name: string; jsonSchema: unknown },
   signal?: AbortSignal,
+  images?: string[],
 ): Promise<unknown> {
   const endpoint = config.endpoint.replace(/\/$/, '');
   const isFoundryModelsEndpoint = new URL(endpoint).hostname.endsWith('.services.ai.azure.com');
@@ -76,6 +77,15 @@ export async function generateJson(
     ? AbortSignal.any([signal, requestController.signal])
     : requestController.signal;
 
+  // Vision path: user content becomes an array of text + image parts (ADR-0010).
+  const userContent =
+    images && images.length > 0
+      ? [
+          { type: 'text', text: userPrompt },
+          ...images.map((url) => ({ type: 'image_url', image_url: { url } })),
+        ]
+      : userPrompt;
+
   let response: Response;
   try {
     response = await fetch(url, {
@@ -87,7 +97,7 @@ export async function generateJson(
       body: JSON.stringify({
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
+          { role: 'user', content: userContent },
         ],
         ...(isFoundryModelsEndpoint ? { model: config.deployment } : {}),
         response_format: {
@@ -163,6 +173,33 @@ export async function generateSpec(
     userPrompt,
     { name: 'azure_architecture_diagram', jsonSchema: aiDiagramJsonSchema },
     signal,
+  );
+
+  const parsed = aiDiagramSpecSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new AiGenerationError(
+      `Model output did not match the expected schema: ${parsed.error.issues[0]?.message ?? 'invalid'}`,
+      502,
+    );
+  }
+  return parsed.data;
+}
+
+/** Image-to-diagram: transcribes an architecture diagram image into the AI spec. */
+export async function generateSpecFromImage(
+  config: AzureOpenAIConfig,
+  systemPrompt: string,
+  userPrompt: string,
+  images: string[],
+  signal?: AbortSignal,
+): Promise<AiDiagramSpec> {
+  const json = await generateJson(
+    config,
+    systemPrompt,
+    userPrompt,
+    { name: 'azure_architecture_diagram', jsonSchema: aiDiagramJsonSchema },
+    signal,
+    images,
   );
 
   const parsed = aiDiagramSpecSchema.safeParse(json);

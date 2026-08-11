@@ -75,6 +75,59 @@ export async function generateDiagram(
   return parsed.data;
 }
 
+/**
+ * Transcribes an uploaded diagram image (PNG/JPEG data URL) into a diagram via
+ * the API. Throws with a human-readable message on failure.
+ */
+export async function generateDiagramFromImage(
+  image: string,
+  prompt?: string,
+  options?: { mode?: DesignMode; signal?: AbortSignal },
+): Promise<Diagram> {
+  const { mode, signal } = options ?? {};
+  const timeoutController = new AbortController();
+  const timeout = setTimeout(() => timeoutController.abort(), 150_000);
+  const requestSignal = signal
+    ? AbortSignal.any([signal, timeoutController.signal])
+    : timeoutController.signal;
+
+  let res: Response;
+  try {
+    res = await fetch('/api/generate/image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image,
+        ...(prompt ? { prompt } : {}),
+        ...(mode ? { mode } : {}),
+      }),
+      signal: requestSignal,
+    });
+  } catch (error) {
+    if (timeoutController.signal.aborted && !signal?.aborted) {
+      throw new Error('Image import timed out. Check the API logs and try again.');
+    }
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('Image import was cancelled.');
+    }
+    throw new Error(error instanceof Error ? error.message : 'Could not reach the API.');
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as ApiError | null;
+    throw new Error(body?.message ?? `Image import failed (${res.status})`);
+  }
+
+  const body = (await res.json()) as { diagram?: unknown };
+  const parsed = safeParseDiagram(body.diagram);
+  if (!parsed.success) {
+    throw new Error('The API returned an invalid diagram.');
+  }
+  return parsed.data;
+}
+
 export interface ResiliencyResult {
   report: ResiliencyReport;
   /** Present only when a grounded refresh succeeded. */

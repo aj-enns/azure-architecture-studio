@@ -51,6 +51,60 @@ describe('api', () => {
     await app.close();
   });
 
+  it('returns 503 from /api/generate/image when AI is unconfigured', async () => {
+    const config = loadConfig({} as NodeJS.ProcessEnv);
+    const app = await buildApp(config);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/generate/image',
+      payload: { image: 'data:image/png;base64,iVBORw0KGgo=' },
+    });
+    expect(res.statusCode).toBe(503);
+    expect(res.json()).toMatchObject({ error: 'ai_not_configured' });
+    await app.close();
+  });
+
+  it('rejects a non-image data URL on /api/generate/image', async () => {
+    const config = loadConfig({
+      AZURE_OPENAI_ENDPOINT: 'https://example.openai.azure.com',
+      AZURE_OPENAI_API_KEY: 'test-key',
+      AZURE_OPENAI_DEPLOYMENT: 'gpt-4o',
+    } as NodeJS.ProcessEnv);
+    const app = await buildApp(config);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/generate/image',
+      payload: { image: 'https://example.com/diagram.png' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: 'invalid_request' });
+    await app.close();
+  });
+
+  it('returns 422 when the configured model cannot accept image input', async () => {
+    const config = loadConfig({
+      AZURE_OPENAI_ENDPOINT: 'https://example.openai.azure.com',
+      AZURE_OPENAI_API_KEY: 'test-key',
+      AZURE_OPENAI_DEPLOYMENT: 'gpt-35-turbo',
+    } as NodeJS.ProcessEnv);
+    const app = await buildApp(config, {
+      reviewModels: {
+        getModels: async () => ({
+          models: [{ deploymentName: 'gpt-35-turbo', modelName: 'gpt-35-turbo', isDefault: true, supportsVision: false }],
+          defaultDeployment: 'gpt-35-turbo',
+        }),
+      },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/generate/image',
+      payload: { image: 'data:image/png;base64,iVBORw0KGgo=' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(res.json()).toMatchObject({ error: 'model_not_vision_capable' });
+    await app.close();
+  });
+
   it('treats AI as configured with keyless Entra ID auth (no API key)', async () => {
     const config = loadConfig({
       AZURE_OPENAI_ENDPOINT: 'https://example.openai.azure.com',

@@ -528,6 +528,18 @@ export function getServiceDefinition(id: string): ServiceDefinition | undefined 
   return azureServiceCatalogById[id];
 }
 
+/**
+ * Sentinel serviceId for a component that has no Azure equivalent (e.g. a
+ * third-party SaaS or external system). Kept on the canvas in faithful mode and
+ * flagged with a red glow instead of being dropped. Not part of the palette.
+ */
+export const EXTERNAL_SERVICE_ID = 'external';
+
+/** Whether a node represents a non-Azure / external component. */
+export function isExternalServiceId(id: string): boolean {
+  return id === EXTERNAL_SERVICE_ID;
+}
+
 /** All services in a given category. */
 export function getServicesByCategory(category: ServiceCategory): ServiceDefinition[] {
   return azureServiceCatalog.filter((s) => s.category === category);

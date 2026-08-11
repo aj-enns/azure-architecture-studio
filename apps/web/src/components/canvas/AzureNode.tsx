@@ -1,5 +1,10 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { estimateNodeCost, getServiceDefinition, type ResilienceTier } from '@aar/shared';
+import {
+  estimateNodeCost,
+  getServiceDefinition,
+  isExternalServiceId,
+  type ResilienceTier,
+} from '@aar/shared';
 import { ServiceIcon } from '@/components/ServiceIcon.js';
 import { categoryBorderColor, categoryColor } from '@/lib/icons.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
@@ -36,6 +41,7 @@ function slaBadgeStyle(slaPercent: number): string {
 export function AzureNode({ id, data }: NodeProps): JSX.Element {
   const nodeData = data as AzureNodeData;
   const def = getServiceDefinition(nodeData.serviceId);
+  const isExternal = isExternalServiceId(nodeData.serviceId);
   const category = def?.category ?? 'management';
   const color = categoryColor[category];
   const region = useDiagramStore((s) => s.diagram.metadata.region);
@@ -54,9 +60,12 @@ export function AzureNode({ id, data }: NodeProps): JSX.Element {
           : 'border-border hover:border-primary/50',
         resiliency && slaTint(resiliency.slaPercent),
         resiliency?.isWeakest && 'ring-2 ring-rose-500/60',
+        // Non-Azure component: keep it, but flag it with a red glow.
+        isExternal &&
+          'border-rose-500/70 shadow-[0_0_0_2px_rgba(244,63,94,0.7),0_0_16px_4px_rgba(244,63,94,0.45)]',
       )}
       role="group"
-      aria-label={`${def?.name ?? nodeData.serviceId}: ${nodeData.label}`}
+      aria-label={`${def?.name ?? (isExternal ? 'Non-Azure component' : nodeData.serviceId)}: ${nodeData.label}`}
     >
       {resiliency && (
         <span
@@ -87,7 +96,9 @@ export function AzureNode({ id, data }: NodeProps): JSX.Element {
       </span>
       <div className="min-w-0">
         <div className="truncate text-sm font-medium leading-tight">{nodeData.label}</div>
-        <div className="truncate text-xs text-muted-foreground">{def?.name ?? nodeData.serviceId}</div>
+        <div className="truncate text-xs text-muted-foreground">
+          {def?.name ?? (isExternal ? 'Non-Azure' : nodeData.serviceId)}
+        </div>
       </div>
       <Handle type="source" position={Position.Right} className="!h-2 !w-2 !bg-muted-foreground" />
     </div>
