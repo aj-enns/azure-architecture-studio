@@ -26,6 +26,7 @@ import { getServiceDefinition } from '@aar/shared';
 import { AzureNode } from './AzureNode.js';
 import { GroupNode } from './GroupNode.js';
 import { categoryHex } from '@/lib/icons.js';
+import { useTheme } from '@/lib/theme.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
 import { useUiStore } from '@/store/uiStore.js';
 
@@ -77,6 +78,7 @@ function toFlowNodes(
 }
 
 function CanvasInner(): JSX.Element {
+  const { theme } = useTheme();
   const diagram = useDiagramStore((s) => s.diagram);
   const selection = useDiagramStore((s) => s.selection);
   const select = useDiagramStore((s) => s.select);
@@ -309,6 +311,7 @@ function CanvasInner(): JSX.Element {
         onDragOver={onDragOver}
         nodesDraggable={!controlPressed}
         deleteKeyCode={['Backspace', 'Delete']}
+        colorMode={theme}
         fitView
         proOptions={{ hideAttribution: true }}
         className={`bg-background${controlPressed ? ' aar-modifier-pan' : ''}${modifierPanning ? ' aar-modifier-panning' : ''}`}
