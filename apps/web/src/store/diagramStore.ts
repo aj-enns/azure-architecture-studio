@@ -24,6 +24,10 @@ export type Selection =
 interface DiagramState {
   diagram: Diagram;
   selection: Selection;
+  /** Bumped on external/structural changes (load, add, remove, relayout) but NOT
+   *  on position/size echoes from the canvas, so the renderer can rebuild node
+   *  state without thrashing React Flow's measurement. */
+  revision: number;
 
   // selection
   select: (selection: Selection) => void;
@@ -90,6 +94,7 @@ function mutate(current: Diagram, fn: (draft: Diagram) => void): Diagram {
 export const useDiagramStore = create<DiagramState>((set, get) => ({
   diagram: loadPersisted(),
   selection: null,
+  revision: 0,
 
   select: (selection) => set({ selection }),
 
@@ -103,7 +108,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       position,
       properties: { ...(def?.defaults ?? {}) } as NodeProperties,
     };
-    set((s) => ({ diagram: mutate(s.diagram, (d) => void d.nodes.push(node)), selection: { type: 'node', id } }));
+    set((s) => ({ diagram: mutate(s.diagram, (d) => void d.nodes.push(node)), selection: { type: 'node', id }, revision: s.revision + 1 }));
     return id;
   },
 
@@ -121,6 +126,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         const n = d.nodes.find((x) => x.id === id);
         if (n) n.label = label;
       }),
+      revision: s.revision + 1,
     })),
 
   updateNodeProperty: (id, key, value) =>
@@ -129,6 +135,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         const n = d.nodes.find((x) => x.id === id);
         if (n) n.properties = { ...n.properties, [key]: value };
       }),
+      revision: s.revision + 1,
     })),
 
   removeNode: (id) =>
@@ -138,6 +145,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         d.edges = d.edges.filter((e) => e.source !== id && e.target !== id);
       }),
       selection: null,
+      revision: s.revision + 1,
     })),
 
   addGroup: (kind, position) => {
@@ -158,7 +166,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       collapsed: false,
       properties: {},
     };
-    set((s) => ({ diagram: mutate(s.diagram, (d) => void d.groups.push(group)), selection: { type: 'group', id } }));
+    set((s) => ({ diagram: mutate(s.diagram, (d) => void d.groups.push(group)), selection: { type: 'group', id }, revision: s.revision + 1 }));
     return id;
   },
 
@@ -177,6 +185,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         for (const n of d.nodes) if (n.parentId === id) n.parentId = undefined;
       }),
       selection: null,
+      revision: s.revision + 1,
     })),
 
   addEdge: (source, target) =>
@@ -208,19 +217,19 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   reset: () => {
     const fresh = emptyDiagram();
     persist(fresh);
-    set({ diagram: fresh, selection: null });
+    set((s) => ({ diagram: fresh, selection: null, revision: s.revision + 1 }));
   },
 
   load: (diagram) => {
     persist(diagram);
-    set({ diagram, selection: null });
+    set((s) => ({ diagram, selection: null, revision: s.revision + 1 }));
   },
 
   relayout: () => {
     set((s) => {
       const next = layoutDiagram(s.diagram);
       persist(next);
-      return { diagram: next, selection: null };
+      return { diagram: next, selection: null, revision: s.revision + 1 };
     });
   },
 
@@ -230,7 +239,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       if (current.nodes.length === 0 && current.groups.length === 0) {
         // Nothing to merge into — just adopt the generated diagram.
         persist(incoming);
-        return { diagram: incoming, selection: null };
+        return { diagram: incoming, selection: null, revision: s.revision + 1 };
       }
       // Offset incoming content to the right of existing content to avoid overlap.
       const maxX = Math.max(
@@ -250,7 +259,7 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         edges: [...current.edges, ...incoming.edges],
       };
       persist(merged);
-      return { diagram: merged, selection: null };
+      return { diagram: merged, selection: null, revision: s.revision + 1 };
     });
   },
 

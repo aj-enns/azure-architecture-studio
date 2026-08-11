@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getServiceDefinition } from '@aar/shared';
 import { AzureNode } from './AzureNode.js';
 import { GroupNode } from './GroupNode.js';
+import { categoryHex } from '@/lib/icons.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
 
 const nodeTypes = { azureNode: AzureNode, azureGroup: GroupNode };
@@ -73,6 +74,7 @@ function toFlowNodes(
 
 function CanvasInner(): JSX.Element {
   const diagram = useDiagramStore((s) => s.diagram);
+  const selection = useDiagramStore((s) => s.selection);
   const select = useDiagramStore((s) => s.select);
   const addNode = useDiagramStore((s) => s.addNode);
   const addEdge = useDiagramStore((s) => s.addEdge);
@@ -121,21 +123,40 @@ function CanvasInner(): JSX.Element {
     });
     return () => cancelAnimationFrame(raf);
   }, [structureKey, fitView, diagram.nodes.length, diagram.groups.length]);
+  const nodeById = useMemo(
+    () => new Map(diagram.nodes.map((node) => [node.id, node])),
+    [diagram.nodes],
+  );
   const flowEdges = useMemo<Edge[]>(
     () =>
-      diagram.edges.map((e) => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        label: e.label,
-        type: 'smoothstep',
-        animated: e.kind === 'data',
-        markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
-        labelBgPadding: [6, 3] as [number, number],
-        labelBgBorderRadius: 4,
-        labelShowBg: true,
-      })),
-    [diagram.edges],
+      diagram.edges.map((e) => {
+        const sourceNode = nodeById.get(e.source);
+        const category = sourceNode
+          ? (getServiceDefinition(sourceNode.serviceId)?.category ?? 'management')
+          : 'management';
+        const color = categoryHex[category];
+
+        return {
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          label: e.label,
+          selected: selection?.type === 'edge' && selection.id === e.id,
+          type: 'smoothstep',
+          animated: e.kind === 'data',
+          style: { stroke: color },
+          markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color },
+          labelBgPadding: [6, 3] as [number, number],
+          labelBgBorderRadius: 4,
+          labelShowBg: true,
+        };
+      }),
+    [diagram.edges, nodeById, selection],
+  );
+
+  const onEdgeClick = useCallback(
+    (_event: React.MouseEvent, edge: Edge) => select({ type: 'edge', id: edge.id }),
+    [select],
   );
 
   const onConnect = useCallback(
@@ -217,6 +238,7 @@ function CanvasInner(): JSX.Element {
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onEdgeClick={onEdgeClick}
         onConnect={onConnect}
         onSelectionChange={onSelectionChange}
         onDrop={onDrop}

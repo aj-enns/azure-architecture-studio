@@ -43,3 +43,10 @@ export function downloadJson(name: string, json: string): void {
   triggerDownload(url, `${slugify(name)}.json`);
   URL.revokeObjectURL(url);
 }
+
+export function downloadCsv(name: string, csv: string): void {
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, `${slugify(name)}.csv`);
+  URL.revokeObjectURL(url);
+}

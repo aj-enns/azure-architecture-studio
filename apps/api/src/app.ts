@@ -1,7 +1,7 @@
 import cors from '@fastify/cors';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { azureServiceCatalog, diagramSchema, validateArchitecture } from '@aar/shared';
+import { azureServiceCatalog, diagramSchema, estimateDiagramCost, validateArchitecture } from '@aar/shared';
 import { AiGenerationError, generateSpec } from './ai/openai.js';
 import { buildSystemPrompt, buildUserPrompt, summarizeDiagram } from './ai/prompt.js';
 import { formatArchitecturesForPrompt, retrieveArchitectures } from './ai/knowledge.js';
@@ -63,6 +63,18 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
       });
     }
     return reply.send({ report: validateArchitecture(parsed.data) });
+  });
+
+  // Deterministic monthly cost estimate (representative pricing, no model call).
+  app.post('/api/cost', async (request, reply) => {
+    const parsed = diagramSchema.safeParse((request.body as { diagram?: unknown })?.diagram ?? request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'invalid_request',
+        message: parsed.error.issues[0]?.message ?? 'Invalid diagram.',
+      });
+    }
+    return reply.send({ cost: estimateDiagramCost(parsed.data) });
   });
 
   // Prompt-to-diagram (ADR-0010). Returns a fully validated Diagram, or 503 when

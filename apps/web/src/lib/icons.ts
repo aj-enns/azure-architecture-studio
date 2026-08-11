@@ -101,4 +101,21 @@ export const categoryBorderColor: Record<ServiceCategory, string> = {
   management: '!border-l-lime-600',
 };
 
+/** Raw hex per category (Tailwind 500/600) for SVG strokes like edge connectors. */
+export const categoryHex: Record<ServiceCategory, string> = {
+  compute: '#0ea5e9',
+  containers: '#3b82f6',
+  web: '#6366f1',
+  databases: '#10b981',
+  storage: '#f59e0b',
+  networking: '#06b6d4',
+  ai: '#d946ef',
+  analytics: '#8b5cf6',
+  integration: '#14b8a6',
+  security: '#f43f5e',
+  identity: '#f97316',
+  devops: '#64748b',
+  management: '#65a30d',
+};
+
 export { KeyRound }; // re-export for convenience where a generic key icon is handy

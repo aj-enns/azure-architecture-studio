@@ -70,4 +70,37 @@
   .input {
     @apply h-8 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring;
   }
+
+  /* Selected connector: a prominent animated glow that traces source -> target. */
+  .react-flow__edge.selected {
+    z-index: 1000 !important;
+  }
+  .react-flow__edge.selected .react-flow__edge-path {
+    stroke: hsl(var(--primary)) !important;
+    stroke-width: 3.5 !important;
+    stroke-dasharray: 10 6;
+    filter: drop-shadow(0 0 5px hsl(var(--primary)))
+      drop-shadow(0 0 9px hsl(var(--primary) / 0.55));
+    animation: aar-edge-flow 0.55s linear infinite;
+  }
+  .react-flow__edge.selected .react-flow__edge-text {
+    fill: hsl(var(--primary));
+    font-weight: 600;
+  }
+}
+
+/* Kept outside Tailwind layers because React Flow classes are generated at runtime. */
+.react-flow__edge-path {
+  stroke-width: 2 !important;
+  transition: stroke-width 120ms ease;
+}
+
+.react-flow__edge:not(.selected):hover .react-flow__edge-path {
+  stroke-width: 3 !important;
+}
+
+@keyframes aar-edge-flow {
+  to {
+    stroke-dashoffset: -16;
+  }
 }
