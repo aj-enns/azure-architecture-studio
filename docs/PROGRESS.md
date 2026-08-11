@@ -70,13 +70,20 @@ Live status for the Azure Architecture Review build. Mirrors the working plan.
 
 Initial deterministic generation supports Storage, Key Vault, Managed Identity,
 VNet, Log Analytics, Application Insights, Container Registry, and Cosmos DB.
-The reference three-tier architecture is also composed end to end: VNet/subnet
+Catalog coverage now also includes AKS, Container Apps, Static Web Apps, API
+Management, PostgreSQL, Load Balancer, Front Door, Azure OpenAI, AI Search,
+Event Hubs, Data Explorer, and Service Bus. The reference three-tier
+architecture is also composed end to end: VNet/subnet
 groups, Application Gateway with a public IP and App Service backend, App
 Service Plan/App Service with VNet integration and managed identity, SQL
 server/database, Azure Managed Redis and its default database, and Private
 Endpoints resolved from diagram edges. Required SQL and gateway secrets are
 secure inputs. Other catalog services emit explicit diagnostics until their
 topology-specific inputs are modeled.
+
+VM, VM Scale Set, Functions, Logic Apps, and AI Foundry remain diagnostic-only
+until their multi-resource dependencies (NICs/credentials, storage/plan, or
+associated workspace resources) are modeled.
 
 ---
 
@@ -143,3 +150,9 @@ topology-specific inputs are modeled.
   reference diagram (11 non-conceptual resources) in both targets. Bicep
   compiles and Terraform validates with AzAPI v2.12.0; Entra ID remains an
   informational tenant-scoped omission.
+- **2026-08-11** — IaC catalog coverage broadened to 26 services: added AKS,
+  Container Apps, Static Web Apps, API Management, PostgreSQL, Load Balancer,
+  Front Door, Azure OpenAI, AI Search, Event Hubs, Data Explorer, and Service
+  Bus. All new services compile in Bicep and validate in Terraform (AzAPI
+  v2.12.0) with zero diagnostics. VM, VMSS, Functions, Logic Apps, and AI
+  Foundry stay diagnostic-only pending multi-resource dependency modeling.

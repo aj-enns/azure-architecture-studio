@@ -150,4 +150,50 @@ describe('IaC generation', () => {
     expect(terraform).toContain('resource "azapi_resource" "pe_sql"');
     expect(terraform).toContain('resource "azapi_resource" "app_gateway_waf"');
   });
+
+  it('generates standalone bodies for the extended catalog coverage', () => {
+    const services = [
+      'aks',
+      'container-apps',
+      'static-web-app',
+      'api-management',
+      'postgresql',
+      'load-balancer',
+      'front-door',
+      'azure-openai',
+      'ai-search',
+      'event-hubs',
+      'data-explorer',
+      'service-bus',
+    ] as const;
+    const diagram = emptyDiagram('extended-coverage');
+    diagram.nodes = services.map((serviceId, index) => ({
+      id: `n-${serviceId}`,
+      serviceId,
+      label: serviceId,
+      position: { x: index * 40, y: 0 },
+      properties: {},
+    }));
+
+    const bicep = generateIacBundle(diagram, 'bicep');
+    const terraform = generateIacBundle(diagram, 'terraform');
+
+    expect(bicep.generatedResourceCount).toBe(services.length);
+    expect(terraform.generatedResourceCount).toBe(services.length);
+    expect(bicep.diagnostics).toEqual([]);
+    expect(terraform.diagnostics).toEqual([]);
+
+    const bicepMain = bicep.files[0]?.content ?? '';
+    expect(bicepMain).toContain("'Microsoft.ContainerService/managedClusters@2024-09-01'");
+    expect(bicepMain).toContain("'Microsoft.App/managedEnvironments@2024-03-01'");
+    expect(bicepMain).toContain("'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01'");
+    expect(bicepMain).toContain("@secure()\nparam postgresqlAdministratorPassword string");
+    expect(bicepMain).toContain("'Microsoft.CognitiveServices/accounts@2024-10-01'");
+    expect(bicepMain).toContain("location: 'global'");
+
+    const terraformMain = terraform.files.find((file) => file.path === 'main.tf')?.content ?? '';
+    expect(terraformMain).toContain('resource "azapi_resource" "container_apps_env"');
+    expect(terraformMain).toContain('resource "azapi_resource" "load_balancer_public_ip"');
+    expect(terraformMain).toContain('location  = "global"');
+  });
 });

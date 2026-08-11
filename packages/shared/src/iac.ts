@@ -47,6 +47,18 @@ const SUPPORTED_SERVICE_IDS = new Set([
   'redis',
   'private-endpoint',
   'application-gateway',
+  'aks',
+  'container-apps',
+  'static-web-app',
+  'api-management',
+  'postgresql',
+  'load-balancer',
+  'front-door',
+  'azure-openai',
+  'ai-search',
+  'event-hubs',
+  'data-explorer',
+  'service-bus',
 ]);
 
 const API_VERSION: Record<string, string> = {
@@ -64,7 +76,22 @@ const API_VERSION: Record<string, string> = {
   redis: '2024-10-01',
   'private-endpoint': '2024-05-01',
   'application-gateway': '2024-05-01',
+  aks: '2024-09-01',
+  'container-apps': '2024-03-01',
+  'static-web-app': '2024-04-01',
+  'api-management': '2024-05-01',
+  postgresql: '2024-08-01',
+  'load-balancer': '2024-05-01',
+  'front-door': '2024-09-01',
+  'azure-openai': '2024-10-01',
+  'ai-search': '2023-11-01',
+  'event-hubs': '2024-01-01',
+  'data-explorer': '2024-04-13',
+  'service-bus': '2024-01-01',
 };
+
+/** Services whose AzAPI embedded schema is incomplete and needs relaxed body validation. */
+const AZAPI_SCHEMA_OVERRIDE = new Set<string>(['log-analytics']);
 
 /** Generate review-ready IaC scaffolding without model calls or network access. */
 export function generateIacBundle(diagram: Diagram, target: IacTarget): IacBundle {
@@ -259,6 +286,18 @@ function renderBicepParameters(resources: ResourceContext[]): string {
         `@secure()\nparam ${camelCase(resource.symbol)}SslCertificatePassword string`,
       );
     }
+    if (resource.node.serviceId === 'postgresql') {
+      lines.push(
+        `param ${camelCase(resource.symbol)}AdministratorLogin string = 'pgadminuser'`,
+        `@secure()\nparam ${camelCase(resource.symbol)}AdministratorPassword string`,
+      );
+    }
+    if (resource.node.serviceId === 'api-management') {
+      lines.push(
+        `param ${camelCase(resource.symbol)}PublisherEmail string = 'admin@example.com'`,
+        `param ${camelCase(resource.symbol)}PublisherName string = 'Contoso'`,
+      );
+    }
     return lines;
   }).join('\n');
 }
@@ -329,6 +368,31 @@ function renderTerraformNameVariables(resources: ResourceContext[]): string {
   type        = string
   sensitive   = true
   description = "Password for the HTTPS listener PFX certificate."
+}`,
+      );
+    }
+    if (resource.node.serviceId === 'postgresql') {
+      variables.push(
+        `variable "${resource.symbol}_administrator_login" {
+  type    = string
+  default = "pgadminuser"
+}`,
+        `variable "${resource.symbol}_administrator_password" {
+  type        = string
+  sensitive   = true
+  description = "Administrator password for the PostgreSQL flexible server."
+}`,
+      );
+    }
+    if (resource.node.serviceId === 'api-management') {
+      variables.push(
+        `variable "${resource.symbol}_publisher_email" {
+  type    = string
+  default = "admin@example.com"
+}`,
+        `variable "${resource.symbol}_publisher_name" {
+  type    = string
+  default = "Contoso"
 }`,
       );
     }
@@ -680,6 +744,168 @@ resource ${symbol} '${type}' = {
   }
 }`;
     }
+    case 'aks':
+      return `${avm}resource ${symbol} '${type}' = {
+  name: ${parameter}
+  location: location
+  tags: tags
+  identity: { type: 'SystemAssigned' }
+  properties: {
+    dnsPrefix: '${escapeBicep(slugify(context.defaultName).slice(0, 45) || 'aks')}'
+    agentPoolProfiles: [{
+      name: 'systempool'
+      mode: 'System'
+      count: ${propertyNumber(node, 'nodeCount', 3)}
+      vmSize: '${propertyString(node, 'nodeSize', 'Standard_D4s_v5')}'
+    }]
+  }
+}`;
+    case 'container-apps': {
+      const envSymbol = `${symbol}_env`;
+      return `${avm}resource ${envSymbol} 'Microsoft.App/managedEnvironments@2024-03-01' = {
+  name: '${escapeBicep(`${context.defaultName}-env`.slice(0, 60))}'
+  location: location
+  tags: tags
+  properties: {}
+}
+
+resource ${symbol} '${type}' = {
+  name: ${parameter}
+  location: location
+  tags: tags
+  properties: {
+    managedEnvironmentId: ${envSymbol}.id
+    configuration: { ingress: { external: true, targetPort: 80 } }
+    template: {
+      containers: [{
+        name: 'app'
+        image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+        resources: { cpu: json('${propertyNumber(node, 'cpu', 0.5)}'), memory: '${propertyString(node, 'memory', '1Gi')}' }
+      }]
+      scale: { minReplicas: ${propertyNumber(node, 'minReplicas', 0)}, maxReplicas: ${propertyNumber(node, 'maxReplicas', 10)} }
+    }
+  }
+}`;
+    }
+    case 'static-web-app':
+      return `${avm}resource ${symbol} '${type}' = {
+  name: ${parameter}
+  location: location
+  tags: tags
+  sku: { name: '${propertyString(node, 'sku', 'Standard')}', tier: '${propertyString(node, 'sku', 'Standard')}' }
+  properties: {}
+}`;
+    case 'api-management': {
+      const prefix = camelCase(symbol);
+      return `${avm}resource ${symbol} '${type}' = {
+  name: ${parameter}
+  location: location
+  tags: tags
+  sku: { name: '${propertyString(node, 'sku', 'Developer')}', capacity: 1 }
+  identity: { type: 'SystemAssigned' }
+  properties: {
+    publisherEmail: ${prefix}PublisherEmail
+    publisherName: ${prefix}PublisherName
+  }
+}`;
+    }
+    case 'postgresql': {
+      const prefix = camelCase(symbol);
+      return `${avm}resource ${symbol} '${type}' = {
+  name: ${parameter}
+  location: location
+  tags: tags
+  sku: { name: '${propertyString(node, 'size', 'Standard_D2ds_v5')}', tier: '${propertyString(node, 'tier', 'GeneralPurpose')}' }
+  properties: {
+    version: '16'
+    administratorLogin: ${prefix}AdministratorLogin
+    administratorLoginPassword: ${prefix}AdministratorPassword
+    storage: { storageSizeGB: 128 }
+  }
+}`;
+    }
+    case 'load-balancer': {
+      const pipSymbol = `${symbol}_public_ip`;
+      return `${avm}resource ${pipSymbol} 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
+  name: '${escapeBicep(`${context.defaultName}-pip`.slice(0, 80))}'
+  location: location
+  tags: tags
+  sku: { name: 'Standard' }
+  properties: { publicIPAllocationMethod: 'Static' }
+}
+
+resource ${symbol} '${type}' = {
+  name: ${parameter}
+  location: location
+  tags: tags
+  sku: { name: '${propertyString(node, 'sku', 'Standard')}' }
+  properties: {
+    frontendIPConfigurations: [{
+      name: 'public-frontend'
+      properties: { publicIPAddress: { id: ${pipSymbol}.id } }
+    }]
+    backendAddressPools: [{ name: 'backend-pool' }]
+  }
+}`;
+    }
+    case 'front-door':
+      return `${avm}resource ${symbol} '${type}' = {
+  name: ${parameter}
+  location: 'global'
+  tags: tags
+  sku: { name: '${propertyString(node, 'sku', 'Premium_AzureFrontDoor')}' }
+  properties: {}
+}`;
+    case 'azure-openai':
+      return `${avm}resource ${symbol} '${type}' = {
+  name: ${parameter}
+  location: location
+  tags: tags
+  kind: 'OpenAI'
+  sku: { name: 'S0' }
+  properties: {
+    customSubDomainName: ${parameter}
+    publicNetworkAccess: 'Disabled'
+    disableLocalAuth: true
+  }
+}`;
+    case 'ai-search':
+      return `${avm}resource ${symbol} '${type}' = {
+  name: ${parameter}
+  location: location
+  tags: tags
+  sku: { name: '${propertyString(node, 'sku', 'standard')}' }
+  properties: {
+    replicaCount: ${propertyNumber(node, 'replicas', 1)}
+    partitionCount: ${propertyNumber(node, 'partitions', 1)}
+    publicNetworkAccess: 'disabled'
+  }
+}`;
+    case 'event-hubs':
+      return `${avm}resource ${symbol} '${type}' = {
+  name: ${parameter}
+  location: location
+  tags: tags
+  sku: { name: '${propertyString(node, 'sku', 'Standard')}', tier: '${propertyString(node, 'sku', 'Standard')}', capacity: ${propertyNumber(node, 'throughputUnits', 1)} }
+  properties: { minimumTlsVersion: '1.2' }
+}`;
+    case 'data-explorer':
+      return `${avm}resource ${symbol} '${type}' = {
+  name: ${parameter}
+  location: location
+  tags: tags
+  sku: { name: '${propertyString(node, 'sku', 'Standard_D11_v2')}', tier: 'Standard', capacity: ${propertyNumber(node, 'instances', 2)} }
+  identity: { type: 'SystemAssigned' }
+  properties: {}
+}`;
+    case 'service-bus':
+      return `${avm}resource ${symbol} '${type}' = {
+  name: ${parameter}
+  location: location
+  tags: tags
+  sku: { name: '${propertyString(node, 'sku', 'Standard')}', tier: '${propertyString(node, 'sku', 'Standard')}' }
+  properties: { minimumTlsVersion: '1.2' }
+}`;
     default:
       return '';
   }
@@ -872,9 +1098,92 @@ resource "azapi_resource" "${symbol}" {
   }
 }`;
   }
+  if (node.serviceId === 'load-balancer') {
+    return `# ARM type: ${service.iac?.resourceType}
+# AVM reference: ${service.iac?.avmModule}
+resource "azapi_resource" "${symbol}_public_ip" {
+  type      = "Microsoft.Network/publicIPAddresses@2024-05-01"
+  name      = "${escapeHcl(`${context.defaultName}-pip`.slice(0, 80))}"
+  parent_id = local.resource_group_id
+  location  = var.location
+  tags      = var.tags
+  body = {
+    sku        = { name = "Standard" }
+    properties = { publicIPAllocationMethod = "Static" }
+  }
+}
+
+resource "azapi_resource" "${symbol}" {
+  type      = "Microsoft.Network/loadBalancers@2024-05-01"
+  name      = var.${symbol}_name
+  parent_id = local.resource_group_id
+  location  = var.location
+  tags      = var.tags
+  body = {
+    sku = { name = "${propertyString(node, 'sku', 'Standard')}" }
+    properties = {
+      frontendIPConfigurations = [{
+        name       = "public-frontend"
+        properties = { publicIPAddress = { id = azapi_resource.${symbol}_public_ip.id } }
+      }]
+      backendAddressPools = [{ name = "backend-pool" }]
+    }
+  }
+}`;
+  }
+  if (node.serviceId === 'container-apps') {
+    return `# ARM type: ${service.iac?.resourceType}
+# AVM reference: ${service.iac?.avmModule}
+resource "azapi_resource" "${symbol}_env" {
+  type      = "Microsoft.App/managedEnvironments@2024-03-01"
+  name      = "${escapeHcl(`${context.defaultName}-env`.slice(0, 60))}"
+  parent_id = local.resource_group_id
+  location  = var.location
+  tags      = var.tags
+  body = {
+    properties = {}
+  }
+}
+
+resource "azapi_resource" "${symbol}" {
+  type      = "Microsoft.App/containerApps@2024-03-01"
+  name      = var.${symbol}_name
+  parent_id = local.resource_group_id
+  location  = var.location
+  tags      = var.tags
+  body = {
+    properties = {
+      managedEnvironmentId = azapi_resource.${symbol}_env.id
+      configuration        = { ingress = { external = true, targetPort = 80 } }
+      template = {
+        containers = [{
+          name      = "app"
+          image     = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
+          resources = { cpu = ${propertyNumber(node, 'cpu', 0.5)}, memory = "${propertyString(node, 'memory', '1Gi')}" }
+        }]
+        scale = { minReplicas = ${propertyNumber(node, 'minReplicas', 0)}, maxReplicas = ${propertyNumber(node, 'maxReplicas', 10)} }
+      }
+    }
+  }
+}`;
+  }
+  if (node.serviceId === 'front-door') {
+    return `# ARM type: ${service.iac?.resourceType}
+# AVM reference: ${service.iac?.avmModule}
+resource "azapi_resource" "${symbol}" {
+  type      = "Microsoft.Cdn/profiles@2024-09-01"
+  name      = var.${symbol}_name
+  parent_id = local.resource_group_id
+  location  = "global"
+  tags      = var.tags
+  body = {
+    sku = { name = "${propertyString(node, 'sku', 'Premium_AzureFrontDoor')}" }
+  }
+}`;
+  }
   const body = terraformBody(context, resources, diagram);
-  const schemaValidationOverride = node.serviceId === 'log-analytics'
-    ? `\n  # The current AzAPI embedded schema omits Log Analytics' valid ARM sku field.\n  schema_validation_enabled = false\n`
+  const schemaValidationOverride = AZAPI_SCHEMA_OVERRIDE.has(node.serviceId)
+    ? `\n  # The current AzAPI embedded schema is incomplete for ${service.name}; disable strict body validation.\n  schema_validation_enabled = false\n`
     : '';
   return `# ARM type: ${service.iac?.resourceType}
 # AVM reference: ${service.iac?.avmModule ?? 'No catalog AVM mapping'}
@@ -1007,6 +1316,78 @@ ${workspace ? `      WorkspaceResourceId = azapi_resource.${workspace.symbol}.id
     }
   }`;
     }
+    case 'aks':
+      return `{
+    identity = { type = "SystemAssigned" }
+    properties = {
+      dnsPrefix = "${escapeHcl(slugify(context.defaultName).slice(0, 45) || 'aks')}"
+      agentPoolProfiles = [{
+        name   = "systempool"
+        mode   = "System"
+        count  = ${propertyNumber(node, 'nodeCount', 3)}
+        vmSize = "${propertyString(node, 'nodeSize', 'Standard_D4s_v5')}"
+      }]
+    }
+  }`;
+    case 'static-web-app':
+      return `{
+    sku        = { name = "${propertyString(node, 'sku', 'Standard')}", tier = "${propertyString(node, 'sku', 'Standard')}" }
+    properties = {}
+  }`;
+    case 'api-management':
+      return `{
+    sku      = { name = "${propertyString(node, 'sku', 'Developer')}", capacity = 1 }
+    identity = { type = "SystemAssigned" }
+    properties = {
+      publisherEmail = var.${context.symbol}_publisher_email
+      publisherName  = var.${context.symbol}_publisher_name
+    }
+  }`;
+    case 'postgresql':
+      return `{
+    sku = { name = "${propertyString(node, 'size', 'Standard_D2ds_v5')}", tier = "${propertyString(node, 'tier', 'GeneralPurpose')}" }
+    properties = {
+      version                    = "16"
+      administratorLogin         = var.${context.symbol}_administrator_login
+      administratorLoginPassword = var.${context.symbol}_administrator_password
+      storage                    = { storageSizeGB = 128 }
+    }
+  }`;
+    case 'azure-openai':
+      return `{
+    kind = "OpenAI"
+    sku  = { name = "S0" }
+    properties = {
+      customSubDomainName = var.${context.symbol}_name
+      publicNetworkAccess = "Disabled"
+      disableLocalAuth    = true
+    }
+  }`;
+    case 'ai-search':
+      return `{
+    sku = { name = "${propertyString(node, 'sku', 'standard')}" }
+    properties = {
+      replicaCount        = ${propertyNumber(node, 'replicas', 1)}
+      partitionCount      = ${propertyNumber(node, 'partitions', 1)}
+      publicNetworkAccess = "disabled"
+    }
+  }`;
+    case 'event-hubs':
+      return `{
+    sku        = { name = "${propertyString(node, 'sku', 'Standard')}", tier = "${propertyString(node, 'sku', 'Standard')}", capacity = ${propertyNumber(node, 'throughputUnits', 1)} }
+    properties = { minimumTlsVersion = "1.2" }
+  }`;
+    case 'data-explorer':
+      return `{
+    sku      = { name = "${propertyString(node, 'sku', 'Standard_D11_v2')}", tier = "Standard", capacity = ${propertyNumber(node, 'instances', 2)} }
+    identity = { type = "SystemAssigned" }
+    properties = {}
+  }`;
+    case 'service-bus':
+      return `{
+    sku        = { name = "${propertyString(node, 'sku', 'Standard')}", tier = "${propertyString(node, 'sku', 'Standard')}" }
+    properties = { minimumTlsVersion = "1.2" }
+  }`;
     default:
       return '{}';
   }
