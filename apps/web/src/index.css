@@ -100,11 +100,11 @@
 }
 
 /* Selected resource: a broad pulse that remains visible in dense diagrams. */
-.react-flow__node.selected {
+.react-flow__node:has(.aar-azure-node-selected) {
   z-index: 2000 !important;
 }
 
-.react-flow__node.selected .aar-azure-node {
+.aar-azure-node-selected {
   box-shadow:
     0 0 0 2px hsl(var(--primary) / 0.75),
     0 0 10px 3px hsl(var(--primary) / 0.7),
@@ -138,7 +138,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .react-flow__node.selected .aar-azure-node {
+  .aar-azure-node-selected {
     animation: none;
   }
 }

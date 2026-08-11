@@ -33,12 +33,13 @@ function slaBadgeStyle(slaPercent: number): string {
   return 'border-rose-500/30 bg-rose-500/15 text-rose-700 dark:text-rose-400';
 }
 
-export function AzureNode({ data, selected }: NodeProps): JSX.Element {
+export function AzureNode({ id, data }: NodeProps): JSX.Element {
   const nodeData = data as AzureNodeData;
   const def = getServiceDefinition(nodeData.serviceId);
   const category = def?.category ?? 'management';
   const color = categoryColor[category];
   const region = useDiagramStore((s) => s.diagram.metadata.region);
+  const selected = useDiagramStore((s) => s.selection?.type === 'node' && s.selection.id === id);
   const cost = estimateNodeCost(nodeData.serviceId, region);
   const slaOverlay = useUiStore((s) => s.slaOverlay);
   const resiliency = slaOverlay ? nodeData.resiliency : undefined;
@@ -48,7 +49,9 @@ export function AzureNode({ data, selected }: NodeProps): JSX.Element {
       className={cn(
         'aar-azure-node relative flex min-w-[160px] items-center gap-2.5 rounded-lg border border-l-4 bg-card px-3 py-2 shadow-sm transition-colors',
         categoryBorderColor[category],
-        selected ? 'border-primary ring-2 ring-primary/40' : 'border-border hover:border-primary/50',
+        selected
+          ? 'aar-azure-node-selected border-primary ring-2 ring-primary/40'
+          : 'border-border hover:border-primary/50',
         resiliency && slaTint(resiliency.slaPercent),
         resiliency?.isWeakest && 'ring-2 ring-rose-500/60',
       )}
