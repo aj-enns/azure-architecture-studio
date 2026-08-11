@@ -99,6 +99,16 @@
   stroke-width: 3 !important;
 }
 
+.aar-modifier-pan .react-flow__pane,
+.aar-modifier-pan .react-flow__node {
+  cursor: grab !important;
+}
+
+.aar-modifier-panning .react-flow__pane,
+.aar-modifier-panning .react-flow__node {
+  cursor: grabbing !important;
+}
+
 @keyframes aar-edge-flow {
   to {
     stroke-dashoffset: -16;

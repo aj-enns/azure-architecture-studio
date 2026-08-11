@@ -3,11 +3,13 @@ import {
   BackgroundVariant,
   Controls,
   MiniMap,
+  Panel,
   ReactFlow,
   ReactFlowProvider,
   addEdge as rfAddEdge,
   applyNodeChanges,
   MarkerType,
+  useKeyPress,
   useReactFlow,
   type Connection,
   type Edge,
@@ -15,9 +17,11 @@ import {
   type Node,
   type NodeChange,
   type OnSelectionChangeParams,
+  type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Hand } from 'lucide-react';
 import { getServiceDefinition } from '@aar/shared';
 import { AzureNode } from './AzureNode.js';
 import { GroupNode } from './GroupNode.js';
@@ -55,7 +59,6 @@ function toFlowNodes(
     height: g.size.height,
     style: { width: g.size.width, height: g.size.height },
     ...(g.parentId ? { parentId: g.parentId } : {}),
-    draggable: true,
     selectable: true,
     zIndex: depthOf(g),
   }));
@@ -85,7 +88,18 @@ function CanvasInner(): JSX.Element {
   const removeEdge = useDiagramStore((s) => s.removeEdge);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const modifierPanRef = useRef<{
+    pointerId: number;
+    start: { x: number; y: number };
+    viewport: Viewport;
+  } | null>(null);
+  const { screenToFlowPosition, fitView, getViewport, setViewport } = useReactFlow();
+  const controlPressed = useKeyPress('Control');
+  const [modifierPanning, setModifierPanning] = useState(false);
+
+  useEffect(() => {
+    if (!controlPressed) setModifierPanning(false);
+  }, [controlPressed]);
 
   // React Flow owns the live node objects locally so that measured dimensions
   // (set by its ResizeObserver) survive re-renders. If we handed React Flow a
@@ -230,8 +244,56 @@ function CanvasInner(): JSX.Element {
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
+  const onPointerDownCapture = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!event.ctrlKey || event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      modifierPanRef.current = {
+        pointerId: event.pointerId,
+        start: { x: event.clientX, y: event.clientY },
+        viewport: getViewport(),
+      };
+      setModifierPanning(true);
+    },
+    [getViewport],
+  );
+
+  const onPointerMoveCapture = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const pan = modifierPanRef.current;
+      if (!pan || pan.pointerId !== event.pointerId) return;
+      event.preventDefault();
+      event.stopPropagation();
+      void setViewport({
+        x: pan.viewport.x + event.clientX - pan.start.x,
+        y: pan.viewport.y + event.clientY - pan.start.y,
+        zoom: pan.viewport.zoom,
+      });
+    },
+    [setViewport],
+  );
+
+  const endModifierPan = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const pan = modifierPanRef.current;
+    if (!pan || pan.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    modifierPanRef.current = null;
+    setModifierPanning(false);
+  }, []);
+
   return (
-    <div ref={wrapperRef} className="h-full w-full" data-testid="canvas">
+    <div
+      ref={wrapperRef}
+      className="h-full w-full"
+      data-testid="canvas"
+      onPointerDownCapture={onPointerDownCapture}
+      onPointerMoveCapture={onPointerMoveCapture}
+      onPointerUpCapture={endModifierPan}
+      onPointerCancelCapture={endModifierPan}
+    >
       <ReactFlow
         nodes={rfNodes}
         edges={flowEdges}
@@ -243,14 +305,22 @@ function CanvasInner(): JSX.Element {
         onSelectionChange={onSelectionChange}
         onDrop={onDrop}
         onDragOver={onDragOver}
+        nodesDraggable={!controlPressed}
         deleteKeyCode={['Backspace', 'Delete']}
         fitView
         proOptions={{ hideAttribution: true }}
-        className="bg-background"
+        className={`bg-background${controlPressed ? ' aar-modifier-pan' : ''}${modifierPanning ? ' aar-modifier-panning' : ''}`}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         <MiniMap pannable zoomable className="!bg-card" />
         <Controls className="!bg-card !text-foreground" />
+        <Panel position="bottom-center" className="!m-3">
+          <div className="flex items-center gap-1.5 rounded border border-border bg-card/90 px-2 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur-sm">
+            <Hand size={13} aria-hidden="true" />
+            <kbd className="font-sans font-medium text-foreground">Ctrl + drag</kbd>
+            <span>to pan</span>
+          </div>
+        </Panel>
       </ReactFlow>
     </div>
   );
