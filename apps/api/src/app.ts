@@ -290,7 +290,9 @@ export async function buildApp(
         return reply.code(err.status).send({ error: 'ai_error', message: err.message });
       }
       request.log.error(err);
-      return reply.code(500).send({ error: 'internal_error', message: 'Architecture advice failed.' });
+      return reply
+        .code(500)
+        .send({ error: 'internal_error', message: 'Architecture advice failed.' });
     }
   });
 

@@ -12,6 +12,7 @@ import { summarizeDiagram } from './prompt.js';
 import type { AzureOpenAIConfig } from '../config.js';
 
 const MAX_LEARN_QUERIES = 4;
+const MAX_LEARN_CITATIONS = 5;
 
 export interface AdvisorMessage {
   role: 'user' | 'assistant';
@@ -71,7 +72,9 @@ export function buildAdvisorUserPrompt(
   grounding: string,
 ): string {
   const transcript = history.length
-    ? history.map((turn) => `${turn.role === 'user' ? 'User' : 'Assistant'}: ${turn.content}`).join('\n\n')
+    ? history
+        .map((turn) => `${turn.role === 'user' ? 'User' : 'Assistant'}: ${turn.content}`)
+        .join('\n\n')
     : 'No earlier turns.';
   const topology = summarizeDiagram(diagram);
   const waf = validateArchitecture(diagram);
@@ -117,24 +120,29 @@ async function groundAdvice(
   try {
     const results = await searchLearnDocsCached(queries, learnConfig.endpoint);
     const seen = new Set<string>();
-    const citations = results.flat().filter((doc) => {
-      const key = doc.url || doc.title;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    const citations = results
+      .flat()
+      .filter((doc) => {
+        const key = doc.title.trim().toLowerCase() || doc.url;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, MAX_LEARN_CITATIONS);
     return citations.length > 0
       ? { text: formatLearnGrounding(citations), citations }
       : {
           text: '',
           citations: [],
-          groundingError: 'Could not retrieve Microsoft Learn references; the answer uses the built-in analysis only.',
+          groundingError:
+            'Could not retrieve Microsoft Learn references; the answer uses the built-in analysis only.',
         };
   } catch {
     return {
       text: '',
       citations: [],
-      groundingError: 'Could not retrieve Microsoft Learn references; the answer uses the built-in analysis only.',
+      groundingError:
+        'Could not retrieve Microsoft Learn references; the answer uses the built-in analysis only.',
     };
   }
 }

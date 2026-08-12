@@ -22,7 +22,13 @@ type AssistantMode = 'ask' | 'modify';
 type HealthState = 'checking' | 'configured' | 'unconfigured' | 'api-unavailable';
 
 /** Unified architecture advisor and explicit prompt-to-diagram editor. */
-export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element | null {
+export function AiPanel({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}): JSX.Element | null {
   const [assistantMode, setAssistantMode] = useState<AssistantMode>('ask');
   const [prompt, setPrompt] = useState('');
   const [mode, setMode] = useState<DiagramMode>('new');
@@ -46,7 +52,9 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === 'AbortError') return;
         setHealthState('api-unavailable');
-        setError('The API is not reachable. Generation is unavailable until the API server is running.');
+        setError(
+          'The API is not reachable. Generation is unavailable until the API server is running.',
+        );
       });
     return () => controller.abort();
   }, [open]);
@@ -99,7 +107,9 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
   };
 
   return (
-    <aside className={open ? 'flex w-96 shrink-0 flex-col border-l border-border bg-card' : 'hidden'}>
+    <aside
+      className={open ? 'flex w-96 shrink-0 flex-col border-l border-border bg-card' : 'hidden'}
+    >
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <Sparkles size={16} className="text-primary" />
         <span className="text-sm font-semibold">AI assistant</span>
@@ -133,21 +143,21 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
 
       {(healthState === 'api-unavailable' || healthState === 'unconfigured') && (
         <div className="px-3 pt-3">
-        {healthState === 'api-unavailable' && (
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
+          {healthState === 'api-unavailable' && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
               The API is not reachable at <code>/healthz</code>. Start or restart the API server,
               then reopen this panel.
-          </div>
-        )}
+            </div>
+          )}
 
-        {healthState === 'unconfigured' && (
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
+          {healthState === 'unconfigured' && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
               AI is not configured. Set <code>AZURE_FOUNDRY_ENDPOINT</code> and{' '}
-            <code>AZURE_FOUNDRY_MODEL</code> on the API, then either provide{' '}
-            <code>AZURE_FOUNDRY_API_KEY</code> or leave it blank to use Entra ID (for example,{' '}
-            <code>az login</code> locally). Restart the API after changing its environment.
-          </div>
-        )}
+              <code>AZURE_FOUNDRY_MODEL</code> on the API, then either provide{' '}
+              <code>AZURE_FOUNDRY_API_KEY</code> or leave it blank to use Entra ID (for example,{' '}
+              <code>az login</code> locally). Restart the API after changing its environment.
+            </div>
+          )}
         </div>
       )}
 
@@ -165,7 +175,6 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
             : 'hidden'
         }
       >
-
         <div className="space-y-1.5">
           <span className="text-xs font-medium text-muted-foreground">Import from an image</span>
           {image ? (

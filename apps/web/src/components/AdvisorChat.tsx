@@ -27,7 +27,9 @@ const STARTERS = [
 ];
 
 const MD: Components = {
-  p: ({ children }) => <p className="mt-2 text-xs leading-relaxed text-foreground/90 first:mt-0">{children}</p>,
+  p: ({ children }) => (
+    <p className="mt-2 text-xs leading-relaxed text-foreground/90 first:mt-0">{children}</p>
+  ),
   ul: ({ children }) => <ul className="mt-2 list-disc space-y-1 pl-4 text-xs">{children}</ul>,
   ol: ({ children }) => <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs">{children}</ol>,
   li: ({ children }) => <li className="text-foreground/90">{children}</li>,
@@ -37,7 +39,9 @@ const MD: Components = {
       {children}
     </a>
   ),
-  code: ({ children }) => <code className="rounded bg-muted px-1 py-0.5 text-[11px]">{children}</code>,
+  code: ({ children }) => (
+    <code className="rounded bg-muted px-1 py-0.5 text-[11px]">{children}</code>
+  ),
 };
 
 function toHistory(turns: ChatTurn[]): AdvisorMessage[] {

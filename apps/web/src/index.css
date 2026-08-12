@@ -95,6 +95,19 @@
   transition: stroke-width 120ms ease;
 }
 
+.react-flow__edge-text {
+  fill: hsl(var(--foreground)) !important;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.react-flow__edge-textbg {
+  fill: hsl(var(--card)) !important;
+  fill-opacity: 0.96;
+  stroke: hsl(var(--border));
+  stroke-width: 1;
+}
+
 .react-flow__edge:not(.selected):hover .react-flow__edge-path {
   stroke-width: 3 !important;
 }

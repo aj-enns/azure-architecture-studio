@@ -41,4 +41,16 @@ describe('architecture advisor prompt', () => {
     expect(ADVISOR_SYSTEM_PROMPT).toContain('Application Gateway');
     expect(ADVISOR_SYSTEM_PROMPT).toContain('Azure Front Door');
   });
+
+  it('supports general questions when the diagram is empty', () => {
+    const prompt = buildAdvisorUserPrompt(
+      emptyDiagram(),
+      'When should I use Azure Front Door?',
+      [],
+      '',
+    );
+
+    expect(prompt).toContain('Topology: empty');
+    expect(prompt).toContain('When should I use Azure Front Door?');
+  });
 });
