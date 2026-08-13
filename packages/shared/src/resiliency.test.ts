@@ -4,6 +4,7 @@ import { emptyDiagram, type Diagram, type NodeProperties } from './schema.js';
 import {
   analyzeResiliency,
   compositeSla,
+  describeNodeResiliency,
   regionSupportsZones,
   resolveNodeSla,
   slaToDowntimeMinutes,
@@ -18,7 +19,8 @@ function diagramWith(specs: (string | NodeSpec)[], region = 'eastus2'): Diagram 
   const d = emptyDiagram('test');
   d.metadata.region = region;
   d.nodes = specs.map((spec, i) => {
-    const { serviceId, properties } = typeof spec === 'string' ? { serviceId: spec, properties: {} } : spec;
+    const { serviceId, properties } =
+      typeof spec === 'string' ? { serviceId: spec, properties: {} } : spec;
     return {
       id: `n${i}`,
       serviceId,
@@ -85,11 +87,19 @@ describe('zone redundancy gates', () => {
   });
 
   it('treats storage zone redundancy as a function of the sku', () => {
-    const lrs = resolveNodeSla('storage-account', { zoneRedundant: true, sku: 'Standard_LRS' }, 'eastus2');
+    const lrs = resolveNodeSla(
+      'storage-account',
+      { zoneRedundant: true, sku: 'Standard_LRS' },
+      'eastus2',
+    );
     expect(lrs.profile.tier).toBe('nonzonal');
     expect(lrs.blocked?.gate).toBe('service');
 
-    const zrs = resolveNodeSla('storage-account', { zoneRedundant: true, sku: 'Standard_ZRS' }, 'eastus2');
+    const zrs = resolveNodeSla(
+      'storage-account',
+      { zoneRedundant: true, sku: 'Standard_ZRS' },
+      'eastus2',
+    );
     expect(zrs.profile.tier).toBe('zoneRedundant');
   });
 
@@ -102,7 +112,11 @@ describe('zone redundancy gates', () => {
     expect(single.profile.tier).toBe('nonzonal');
     expect(single.blocked?.message).toContain('at least 2');
 
-    const pair = resolveNodeSla('app-service-plan', { zoneRedundant: true, capacity: 2 }, 'eastus2');
+    const pair = resolveNodeSla(
+      'app-service-plan',
+      { zoneRedundant: true, capacity: 2 },
+      'eastus2',
+    );
     expect(pair.profile.tier).toBe('zoneRedundant');
   });
 
@@ -207,7 +221,10 @@ describe('analyzeResiliency', () => {
   it('does not flag a zone-redundant data tier', () => {
     const report = analyzeResiliency(
       diagramWith([
-        { serviceId: 'sql-database', properties: { zoneRedundant: true, tier: 'BusinessCritical' } },
+        {
+          serviceId: 'sql-database',
+          properties: { zoneRedundant: true, tier: 'BusinessCritical' },
+        },
       ]),
     );
     expect(report.findings.map((f) => f.id)).not.toContain('res-single-zone-data');
@@ -238,5 +255,55 @@ describe('analyzeResiliency', () => {
     });
     expect(report.compositeSlaPercent).toBe(99.9);
     expect(report.nodes[0]?.profile.source.kind).toBe('learn');
+  });
+});
+
+describe('describeNodeResiliency', () => {
+  it('recommends zone redundancy for a single-zone service', () => {
+    const explanation = describeNodeResiliency('postgresql', {}, 'eastus2');
+    expect(explanation.tier).toBe('nonzonal');
+    expect(explanation.atBestTier).toBe(false);
+    expect(explanation.summary).toContain('single zone');
+    const zr = explanation.recommendations.find((r) => r.tier === 'zoneRedundant');
+    expect(zr).toBeDefined();
+    expect(zr?.settings).toContainEqual({ property: 'zoneRedundant', value: 'true' });
+    expect(zr?.slaPercent).toBe(99.99);
+  });
+
+  it('names the required sku for storage zone redundancy', () => {
+    const explanation = describeNodeResiliency('storage-account', {}, 'eastus2');
+    const zr = explanation.recommendations.find((r) => r.tier === 'zoneRedundant');
+    expect(zr?.settings).toContainEqual({ property: 'sku', value: 'Standard_ZRS' });
+    const mr = explanation.recommendations.find((r) => r.tier === 'multiRegion');
+    expect(mr?.settings).toContainEqual({ property: 'multiRegion', value: 'true' });
+  });
+
+  it('drops zone-redundant settings and explains when the region has no zones', () => {
+    const explanation = describeNodeResiliency('postgresql', {}, 'westus');
+    const zr = explanation.recommendations.find((r) => r.tier === 'zoneRedundant');
+    expect(zr).toBeDefined();
+    expect(zr?.settings).toEqual([]);
+    expect(zr?.description).toContain('no availability zones');
+  });
+
+  it('reports no recommendations for a global service', () => {
+    const explanation = describeNodeResiliency('front-door', {}, 'eastus2');
+    expect(explanation.tier).toBe('global');
+    expect(explanation.atBestTier).toBe(true);
+    expect(explanation.recommendations).toEqual([]);
+  });
+
+  it('marks a service already at its strongest tier as best', () => {
+    const explanation = describeNodeResiliency('postgresql', { zoneRedundant: true }, 'eastus2');
+    expect(explanation.tier).toBe('zoneRedundant');
+    expect(explanation.atBestTier).toBe(true);
+    expect(explanation.recommendations).toEqual([]);
+  });
+
+  it('marks a multi-region service at its strongest tier as best', () => {
+    const explanation = describeNodeResiliency('cosmos-db', { multiRegion: true }, 'eastus2');
+    expect(explanation.tier).toBe('multiRegion');
+    expect(explanation.atBestTier).toBe(true);
+    expect(explanation.recommendations).toEqual([]);
   });
 });
