@@ -24,6 +24,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Hand } from 'lucide-react';
 import { analyzeResiliency, getServiceDefinition } from '@aar/shared';
 import { AzureNode } from './AzureNode.js';
+import { AzureEdge } from './AzureEdge.js';
 import { GroupNode } from './GroupNode.js';
 import { categoryHex } from '@/lib/icons.js';
 import { useTheme } from '@/lib/theme.js';
@@ -31,6 +32,7 @@ import { useDiagramStore } from '@/store/diagramStore.js';
 import { useUiStore } from '@/store/uiStore.js';
 
 const nodeTypes = { azureNode: AzureNode, azureGroup: GroupNode };
+const edgeTypes = { azureEdge: AzureEdge };
 
 function toFlowNodes(
   groups: ReturnType<typeof useDiagramStore.getState>['diagram']['groups'],
@@ -210,13 +212,10 @@ function CanvasInner(): JSX.Element {
           target: e.target,
           label: e.label,
           selected: selection?.type === 'edge' && selection.id === e.id,
-          type: 'smoothstep',
+          type: 'azureEdge',
           animated: e.kind === 'data',
           style: { stroke: color },
           markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color },
-          labelBgPadding: [6, 3] as [number, number],
-          labelBgBorderRadius: 4,
-          labelShowBg: true,
         };
       }),
     [diagram.edges, nodeById, selection],
@@ -352,6 +351,7 @@ function CanvasInner(): JSX.Element {
         nodes={rfNodes}
         edges={flowEdges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onEdgeClick={onEdgeClick}
