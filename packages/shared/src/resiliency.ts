@@ -312,7 +312,11 @@ const SERVICE_RESILIENCE: Record<string, ServiceResilience> = {
     multiRegion: true,
     tiers: {
       nonzonal: { slaPercent: 99.99, rpoMinutes: 5, basis: 'Single-region account' },
-      zoneRedundant: { slaPercent: 99.995, rpoMinutes: 5, basis: 'Single region with zone redundancy' },
+      zoneRedundant: {
+        slaPercent: 99.995,
+        rpoMinutes: 5,
+        basis: 'Single region with zone redundancy',
+      },
       multiRegion: { slaPercent: 99.999, rpoMinutes: 0, basis: 'Multi-region reads and writes' },
     },
   },
@@ -320,7 +324,11 @@ const SERVICE_RESILIENCE: Record<string, ServiceResilience> = {
     zoneRedundancy: { kind: 'flag' },
     tiers: {
       nonzonal: { slaPercent: 99.9, basis: 'Flexible Server, no high availability' },
-      zoneRedundant: { slaPercent: 99.99, rtoMinutes: 2, basis: 'Zone-redundant high availability' },
+      zoneRedundant: {
+        slaPercent: 99.99,
+        rtoMinutes: 2,
+        basis: 'Zone-redundant high availability',
+      },
     },
   },
   redis: {
@@ -664,6 +672,160 @@ export function resolveNodeSla(
   };
 }
 
+/** A single configuration setting to change to reach a stronger tier. */
+export interface ResiliencySettingChange {
+  property: string;
+  value: string;
+}
+
+/** A concrete way to raise a node to a more resilient tier. */
+export interface ResiliencyRecommendation {
+  /** Tier this recommendation unlocks. */
+  tier: ResilienceTier;
+  /** SLA the node would achieve at that tier. */
+  slaPercent: number;
+  /** Property changes needed to reach the tier. Empty when it is region-gated. */
+  settings: ResiliencySettingChange[];
+  /** Human-readable guidance for the change. */
+  description: string;
+}
+
+/** Why a node sits where it does, and what would make it more resilient. */
+export interface NodeResiliencyExplanation {
+  serviceId: string;
+  /** Tier the node achieves today. */
+  tier: ResilienceTier;
+  slaPercent: number;
+  /** What the current tier covers or assumes. */
+  basis: string;
+  /** True when the node is already at its strongest achievable tier. */
+  atBestTier: boolean;
+  /** Plain-English summary of the current posture and why it is limited. */
+  summary: string;
+  /** Best-first ways to strengthen the node. Empty when already maxed out. */
+  recommendations: ResiliencyRecommendation[];
+}
+
+/** Settings that move a node to the service's zone-redundant tier. */
+function zoneRedundantSettings(rule: ZoneRedundancyRule): ResiliencySettingChange[] {
+  switch (rule.kind) {
+    case 'none':
+      return [];
+    case 'flag':
+      return [{ property: 'zoneRedundant', value: 'true' }];
+    case 'sku':
+      return [
+        { property: 'zoneRedundant', value: 'true' },
+        { property: rule.property, value: rule.zrsSkus[0] ?? '' },
+      ];
+    case 'flagAndInstances':
+      return [
+        { property: 'zoneRedundant', value: 'true' },
+        { property: rule.property, value: String(rule.minInstances) },
+      ];
+    case 'flagAndTier':
+      return [
+        { property: 'zoneRedundant', value: 'true' },
+        { property: rule.property, value: rule.tiers[0] ?? '' },
+      ];
+  }
+}
+
+/**
+ * Explain a node's resiliency posture and, when it is not at its strongest
+ * achievable tier, what to change to improve it. Built on the same baseline as
+ * {@link resolveNodeSla} so the guidance matches the composite analysis.
+ */
+export function describeNodeResiliency(
+  serviceId: string,
+  properties: NodeProperties,
+  region: string,
+  overrides?: SlaProfile[],
+): NodeResiliencyExplanation {
+  const resolved = resolveNodeSla(serviceId, properties, region, overrides);
+  const { profile, blocked } = resolved;
+  const serviceName = getServiceDefinition(serviceId)?.name ?? serviceId;
+  const entry = SERVICE_RESILIENCE[serviceId];
+
+  const base: Omit<NodeResiliencyExplanation, 'summary' | 'recommendations' | 'atBestTier'> = {
+    serviceId,
+    tier: profile.tier,
+    slaPercent: profile.slaPercent,
+    basis: profile.basis,
+  };
+
+  // Global or unmodelled services have no further tier to recommend.
+  if (!entry) {
+    return {
+      ...base,
+      atBestTier: true,
+      summary: `No published resiliency figure for ${serviceName}; using a single-region default of ${profile.slaPercent}%.`,
+      recommendations: [],
+    };
+  }
+  if (entry.global) {
+    return {
+      ...base,
+      atBestTier: true,
+      summary: `${serviceName} is a global service — Azure runs it across regions, so there is nothing to configure for zone or region redundancy.`,
+      recommendations: [],
+    };
+  }
+
+  const recommendations: ResiliencyRecommendation[] = [];
+  const regionHasZones = regionSupportsZones(region);
+
+  // Recommend zone redundancy when the service supports it and the node is not there yet.
+  if (
+    profile.tier === 'nonzonal' &&
+    entry.tiers.zoneRedundant &&
+    entry.zoneRedundancy.kind !== 'none'
+  ) {
+    const settings = zoneRedundantSettings(entry.zoneRedundancy);
+    const description = regionHasZones
+      ? `Set ${settings.map((s) => `${s.property} = ${s.value}`).join(', ')} to spread ${serviceName} across availability zones.`
+      : `Region "${region}" has no availability zones — move the workload to a zone-enabled region, then set ${settings
+          .map((s) => `${s.property} = ${s.value}`)
+          .join(', ')}.`;
+    recommendations.push({
+      tier: 'zoneRedundant',
+      slaPercent: entry.tiers.zoneRedundant.slaPercent,
+      settings: regionHasZones ? settings : [],
+      description,
+    });
+  }
+
+  // Recommend multi-region when supported and not already active.
+  if (profile.tier !== 'multiRegion' && entry.multiRegion && entry.tiers.multiRegion) {
+    recommendations.push({
+      tier: 'multiRegion',
+      slaPercent: entry.tiers.multiRegion.slaPercent,
+      settings: [{ property: 'multiRegion', value: 'true' }],
+      description: `Set multiRegion = true to deploy ${serviceName} across paired regions (${entry.tiers.multiRegion.basis}).`,
+    });
+  }
+
+  let summary: string;
+  if (blocked) {
+    summary = blocked.message;
+  } else if (profile.tier === 'multiRegion') {
+    summary = `${serviceName} is deployed across regions — its strongest tier in this model.`;
+  } else if (profile.tier === 'zoneRedundant') {
+    summary = `${serviceName} is zone-redundant within a single region.`;
+  } else if (recommendations.length > 0) {
+    summary = `${serviceName} is running in a single zone with no redundancy across availability zones or regions.`;
+  } else {
+    summary = `${serviceName} has no higher-resilience configuration in this model; it runs in a single zone at ${profile.slaPercent}%.`;
+  }
+
+  return {
+    ...base,
+    atBestTier: recommendations.length === 0,
+    summary,
+    recommendations,
+  };
+}
+
 export interface ResiliencyOptions {
   /** Overrides the diagram's own target, e.g. from an unsaved panel edit. */
   target?: ResiliencyTarget | null;
@@ -695,7 +857,10 @@ function belowRedundantInstanceCount(serviceId: string, properties: NodeProperti
  * deterministic so results are stable and testable; grounded Learn figures come
  * in through `options.overrides`.
  */
-export function analyzeResiliency(diagram: Diagram, options: ResiliencyOptions = {}): ResiliencyReport {
+export function analyzeResiliency(
+  diagram: Diagram,
+  options: ResiliencyOptions = {},
+): ResiliencyReport {
   const region = diagram.metadata.region || 'eastus2';
   const regionHasZones = regionSupportsZones(region);
   const target = options.target ?? diagram.metadata.resiliency ?? null;
@@ -723,7 +888,11 @@ export function analyzeResiliency(diagram: Diagram, options: ResiliencyOptions =
   const worstRpoMinutes = worstOrNull(critical.map((n) => n.profile.rpoMinutes));
 
   const singleInstanceNodeIds = diagram.nodes
-    .filter((n) => isCriticalPath(n.serviceId, n.properties) && belowRedundantInstanceCount(n.serviceId, n.properties))
+    .filter(
+      (n) =>
+        isCriticalPath(n.serviceId, n.properties) &&
+        belowRedundantInstanceCount(n.serviceId, n.properties),
+    )
     .map((n) => n.id);
 
   const findings = buildFindings({
@@ -848,7 +1017,8 @@ function buildFindings(ctx: {
       id: 'res-single-vm',
       severity: 'medium',
       title: 'Single virtual machine caps availability at 99.9%',
-      message: 'A standalone VM cannot be zone-redundant, so it becomes the ceiling for the whole design.',
+      message:
+        'A standalone VM cannot be zone-redundant, so it becomes the ceiling for the whole design.',
       fix: 'Use a VM Scale Set across two or more availability zones.',
       nodeIds: singleVms.map((n) => n.nodeId),
     });
@@ -862,7 +1032,9 @@ function buildFindings(ctx: {
       title: 'Scalable service runs too few instances to span zones',
       message: `${singleInstance
         .map((n) => n.label)
-        .join(', ')} run below the instance count needed to spread across availability zones, so a single instance failure takes the tier down.`,
+        .join(
+          ', ',
+        )} run below the instance count needed to spread across availability zones, so a single instance failure takes the tier down.`,
       fix: 'Raise the instance, capacity, or replica count to the service\u2019s zone-redundant minimum and spread it across zones.',
       nodeIds: singleInstance.map((n) => n.nodeId),
     });
@@ -878,7 +1050,9 @@ function buildFindings(ctx: {
       title: 'Data tier lives in a single zone',
       message: `${singleZoneData
         .map((n) => n.label)
-        .join(', ')} are not zone-redundant, so a single datacentre fault can take the data offline and risk the last writes.`,
+        .join(
+          ', ',
+        )} are not zone-redundant, so a single datacentre fault can take the data offline and risk the last writes.`,
       fix: ctx.regionHasZones
         ? 'Enable zone redundancy (and geo-replication for regional cover) on the data tier.'
         : 'Move the data tier to a region with availability zones, then enable zone redundancy or geo-replication.',
@@ -892,7 +1066,8 @@ function buildFindings(ctx: {
       id: 'res-single-region',
       severity: 'low',
       title: 'Design is single-region',
-      message: 'Nothing in the design fails over to another region, so a regional outage is unrecoverable within the SLA.',
+      message:
+        'Nothing in the design fails over to another region, so a regional outage is unrecoverable within the SLA.',
       fix: 'Add geo-replication or a paired-region deployment for the data and entry tiers.',
     });
   }

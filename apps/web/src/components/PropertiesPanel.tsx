@@ -1,8 +1,21 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
-import { getServiceDefinition, regionSupportsZones } from '@aar/shared';
+import { ShieldAlert, Trash2 } from 'lucide-react';
+import {
+  describeNodeResiliency,
+  getServiceDefinition,
+  regionSupportsZones,
+  type NodeResiliencyExplanation,
+} from '@aar/shared';
 import { Button } from '@/components/ui/Button.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
+import { useUiStore } from '@/store/uiStore.js';
+
+const TIER_LABEL: Record<NodeResiliencyExplanation['tier'], string> = {
+  global: 'Global',
+  nonzonal: 'Single zone',
+  zoneRedundant: 'Zone redundant',
+  multiRegion: 'Multi-region',
+};
 
 /** Right panel: edit the currently selected node, group, or the diagram itself. */
 export function PropertiesPanel(): JSX.Element {
@@ -16,16 +29,33 @@ export function PropertiesPanel(): JSX.Element {
   const removeEdge = useDiagramStore((s) => s.removeEdge);
   const setName = useDiagramStore((s) => s.setName);
   const setRegion = useDiagramStore((s) => s.setRegion);
+  const showResiliency = useUiStore((s) => s.activePanel === 'resiliency');
 
-  const node = selection?.type === 'node' ? diagram.nodes.find((n) => n.id === selection.id) : undefined;
-  const group = selection?.type === 'group' ? diagram.groups.find((g) => g.id === selection.id) : undefined;
-  const edge = selection?.type === 'edge' ? diagram.edges.find((e) => e.id === selection.id) : undefined;
+  const node =
+    selection?.type === 'node' ? diagram.nodes.find((n) => n.id === selection.id) : undefined;
+  const group =
+    selection?.type === 'group' ? diagram.groups.find((g) => g.id === selection.id) : undefined;
+  const edge =
+    selection?.type === 'edge' ? diagram.edges.find((e) => e.id === selection.id) : undefined;
 
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-l border-border bg-card" aria-label="Properties">
+    <aside
+      className="flex w-72 shrink-0 flex-col border-l border-border bg-card"
+      aria-label="Properties"
+    >
       <div className="border-b border-border px-3 py-2 text-sm font-semibold">Properties</div>
       <div className="flex-1 space-y-4 overflow-y-auto p-3">
-        {node && <NodeEditor key={node.id} node={node} onLabel={updateNodeLabel} onProperty={updateNodeProperty} onRemove={removeNode} />}
+        {node && (
+          <NodeEditor
+            key={node.id}
+            node={node}
+            region={diagram.metadata.region}
+            showResiliency={showResiliency}
+            onLabel={updateNodeLabel}
+            onProperty={updateNodeProperty}
+            onRemove={removeNode}
+          />
+        )}
 
         {group && (
           <div className="space-y-3">
@@ -58,7 +88,11 @@ export function PropertiesPanel(): JSX.Element {
         {!selection && (
           <div className="space-y-3">
             <Field label="Diagram name">
-              <input className="input" value={diagram.metadata.name} onChange={(e) => setName(e.target.value)} />
+              <input
+                className="input"
+                value={diagram.metadata.name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </Field>
             <Field label="Region">
               <input
@@ -69,11 +103,13 @@ export function PropertiesPanel(): JSX.Element {
             </Field>
             {!regionSupportsZones(diagram.metadata.region) && (
               <p className="text-xs text-amber-600 dark:text-amber-400">
-                This region has no availability zones, so zone-redundant resources fall back to a single zone.
+                This region has no availability zones, so zone-redundant resources fall back to a
+                single zone.
               </p>
             )}
             <div className="text-xs text-muted-foreground">
-              {diagram.nodes.length} services · {diagram.groups.length} groups · {diagram.edges.length} connections
+              {diagram.nodes.length} services · {diagram.groups.length} groups ·{' '}
+              {diagram.edges.length} connections
             </div>
             <p className="text-xs text-muted-foreground">
               Select a service or group to edit its properties, or drag services from the palette.
@@ -87,11 +123,15 @@ export function PropertiesPanel(): JSX.Element {
 
 function NodeEditor({
   node,
+  region,
+  showResiliency,
   onLabel,
   onProperty,
   onRemove,
 }: {
   node: NonNullable<ReturnType<typeof useDiagramStore.getState>['diagram']['nodes'][number]>;
+  region: string;
+  showResiliency: boolean;
   onLabel: (id: string, label: string) => void;
   onProperty: (id: string, key: string, value: string | number | boolean) => void;
   onRemove: (id: string) => void;
@@ -101,10 +141,25 @@ function NodeEditor({
 
   return (
     <div className="space-y-3">
-      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{def?.name ?? node.serviceId}</div>
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {def?.name ?? node.serviceId}
+      </div>
       <Field label="Label">
-        <input className="input" value={node.label} onChange={(e) => onLabel(node.id, e.target.value)} />
+        <input
+          className="input"
+          value={node.label}
+          onChange={(e) => onLabel(node.id, e.target.value)}
+        />
       </Field>
+
+      {showResiliency && (
+        <ResiliencyDescription
+          explanation={describeNodeResiliency(node.serviceId, node.properties, region)}
+          onApply={(setting) =>
+            onProperty(node.id, setting.property, coercePropertyValue(setting.value))
+          }
+        />
+      )}
 
       {propertyKeys.length > 0 && (
         <div className="space-y-2">
@@ -130,7 +185,12 @@ function NodeEditor({
       )}
 
       {def?.docsUrl && (
-        <a href={def.docsUrl} target="_blank" rel="noreferrer" className="block text-xs text-primary underline">
+        <a
+          href={def.docsUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="block text-xs text-primary underline"
+        >
           Documentation ↗
         </a>
       )}
@@ -140,6 +200,73 @@ function NodeEditor({
       </Button>
     </div>
   );
+}
+
+/** Explains the selected node's resiliency posture and how to strengthen it.
+ *  Shown in the properties panel while the Resiliency panel is open. */
+function ResiliencyDescription({
+  explanation,
+  onApply,
+}: {
+  explanation: NodeResiliencyExplanation;
+  onApply: (setting: { property: string; value: string }) => void;
+}): JSX.Element {
+  return (
+    <section
+      className="space-y-2 rounded-md border border-border bg-background p-2.5"
+      aria-label="Resiliency description"
+    >
+      <div className="flex items-center gap-1.5">
+        <ShieldAlert size={14} className="text-primary" />
+        <span className="text-xs font-semibold">Resiliency</span>
+        <span className="ml-auto text-xs font-semibold tabular-nums">
+          {explanation.slaPercent}%
+        </span>
+      </div>
+      <p className="text-xs text-muted-foreground">{explanation.summary}</p>
+      {explanation.atBestTier ? (
+        <p className="text-[11px] text-emerald-600 dark:text-emerald-400">
+          This is the strongest tier available for this service.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Recommended
+          </div>
+          {explanation.recommendations.map((rec) => (
+            <div key={rec.tier} className="rounded border border-border p-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium">{TIER_LABEL[rec.tier]}</span>
+                <span className="ml-auto text-xs font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                  {rec.slaPercent}%
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">{rec.description}</p>
+              {rec.settings.length > 0 && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mt-1.5 h-7 text-[11px]"
+                  onClick={() => rec.settings.forEach(onApply)}
+                >
+                  Apply recommended settings
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Coerce a recommended string value into the type the property expects. */
+function coercePropertyValue(value: string): string | number | boolean {
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  const n = Number(value);
+  if (value.trim() !== '' && Number.isFinite(n)) return n;
+  return value;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }): JSX.Element {
