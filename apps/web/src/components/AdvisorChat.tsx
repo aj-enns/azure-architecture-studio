@@ -55,11 +55,13 @@ export function AdvisorChat({
   active,
   healthState,
   diagram,
+  model,
   onModify,
 }: {
   active: boolean;
   healthState: HealthState;
   diagram: Diagram;
+  model?: string;
   onModify: (prompt: string) => void;
 }): JSX.Element {
   const [input, setInput] = useState('');
@@ -86,7 +88,12 @@ export function AdvisorChat({
     setInput('');
     setLoading(true);
     try {
-      const result = await askArchitecture(trimmed, diagram, toHistory(baseTurns));
+      const result = await askArchitecture(
+        trimmed,
+        diagram,
+        toHistory(baseTurns),
+        model ? { model } : undefined,
+      );
       setTurns((current) => [
         ...current,
         {

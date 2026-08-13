@@ -1,5 +1,5 @@
 import cors from '@fastify/cors';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import { z } from 'zod';
 import {
   analyzeResiliency,
@@ -28,7 +28,7 @@ import {
   type ReviewModelList,
 } from './ai/foundryModels.js';
 import { specToDiagram } from './ai/spec.js';
-import type { AppConfig } from './config.js';
+import type { AppConfig, AzureOpenAIConfig } from './config.js';
 
 const resiliencyRequestSchema = z.object({
   diagram: diagramSchema,
@@ -37,12 +37,14 @@ const resiliencyRequestSchema = z.object({
   grounded: z.boolean().default(false),
 });
 
+/** Foundry deployment selected from GET /api/review/models. */
+const modelSchema = z.string().min(1).max(128).regex(/^[A-Za-z0-9._-]+$/).optional();
+
 const reviewRequestSchema = z.object({
   diagram: diagramSchema,
   /** Pull Microsoft Learn references into the review. */
   grounded: z.boolean().default(false),
-  /** Foundry deployment selected from GET /api/review/models. */
-  model: z.string().min(1).max(128).regex(/^[A-Za-z0-9._-]+$/).optional(),
+  model: modelSchema,
 });
 
 const adviseRequestSchema = z.object({
@@ -57,12 +59,14 @@ const adviseRequestSchema = z.object({
     )
     .max(10)
     .default([]),
+  model: modelSchema,
 });
 
 const generateRequestSchema = z.object({
   prompt: z.string().min(1).max(4000),
   current: diagramSchema.optional(),
   mode: z.enum(['faithful', 'bestPractice']).default('bestPractice'),
+  model: modelSchema,
 });
 
 const generateImageRequestSchema = z.object({
@@ -76,6 +80,7 @@ const generateImageRequestSchema = z.object({
     .max(14_000_000, 'Image is too large.'),
   prompt: z.string().max(4000).optional(),
   mode: z.enum(['faithful', 'bestPractice']).default('faithful'),
+  model: modelSchema,
 });
 
 /**
@@ -103,6 +108,31 @@ export async function buildApp(
   const reviewModels = config.azureOpenAI
     ? dependencies.reviewModels ?? createFoundryModelDiscovery(config.azureOpenAI)
     : null;
+
+  /**
+   * Resolves the Azure config for a request, optionally overriding the model
+   * deployment with a caller-selected one. The selection is validated against
+   * the discovered compatible deployments; on failure a 400 is sent and null is
+   * returned. Callers must have already ensured `config.azureOpenAI` is set.
+   */
+  async function resolveAiConfig(
+    model: string | undefined,
+    reply: FastifyReply,
+  ): Promise<AzureOpenAIConfig | null> {
+    const base = config.azureOpenAI!;
+    if (!model || model === base.deployment) return base;
+    if (reviewModels) {
+      const available = await reviewModels.getModels();
+      if (!available.models.some((candidate) => candidate.deploymentName === model)) {
+        reply.code(400).send({
+          error: 'invalid_model',
+          message: 'The selected model is not available.',
+        });
+        return null;
+      }
+    }
+    return { ...base, deployment: model };
+  }
 
   // Liveness/readiness probe used by Container Apps and docker-compose.
   app.get('/healthz', async () => ({
@@ -277,8 +307,10 @@ export async function buildApp(
     }
 
     try {
+      const aiConfig = await resolveAiConfig(parsed.data.model, reply);
+      if (!aiConfig) return reply;
       const result = await adviseArchitecture(
-        config.azureOpenAI,
+        aiConfig,
         config.learn,
         parsed.data.diagram,
         parsed.data.message,
@@ -343,7 +375,9 @@ export async function buildApp(
     );
 
     try {
-      const spec = await generateSpec(config.azureOpenAI, systemPrompt, userPrompt);
+      const aiConfig = await resolveAiConfig(parsed.data.model, reply);
+      if (!aiConfig) return reply;
+      const spec = await generateSpec(aiConfig, systemPrompt, userPrompt);
       const diagram = specToDiagram(spec);
       return reply.send({ diagram, citations: learn?.citations ?? [] });
     } catch (err) {
@@ -373,13 +407,20 @@ export async function buildApp(
       });
     }
 
-    const { image, prompt, mode } = parsed.data;
+    const { image, prompt, mode, model } = parsed.data;
+    const selectedDeployment = model ?? config.azureOpenAI.deployment;
 
-    // Best-effort guard: block only when the active model is known to lack vision.
+    // Best-effort guard: block only when the selected model is known to lack vision.
     if (reviewModels) {
       try {
         const list = await reviewModels.getModels();
-        const active = list.models.find((m) => m.deploymentName === list.defaultDeployment);
+        if (model && !list.models.some((m) => m.deploymentName === model)) {
+          return reply.code(400).send({
+            error: 'invalid_model',
+            message: 'The selected model is not available.',
+          });
+        }
+        const active = list.models.find((m) => m.deploymentName === selectedDeployment);
         if (active?.supportsVision === false) {
           return reply.code(422).send({
             error: 'model_not_vision_capable',
@@ -397,7 +438,8 @@ export async function buildApp(
     const userPrompt = buildImageUserPrompt(prompt);
 
     try {
-      const spec = await generateSpecFromImage(config.azureOpenAI, systemPrompt, userPrompt, [image]);
+      const aiConfig: AzureOpenAIConfig = { ...config.azureOpenAI, deployment: selectedDeployment };
+      const spec = await generateSpecFromImage(aiConfig, systemPrompt, userPrompt, [image]);
       const diagram = specToDiagram(spec);
       return reply.send({ diagram, citations: [] });
     } catch (err) {

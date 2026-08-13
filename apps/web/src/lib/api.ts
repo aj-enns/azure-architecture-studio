@@ -33,9 +33,9 @@ export type DesignMode = 'faithful' | 'bestPractice';
 export async function generateDiagram(
   prompt: string,
   current?: Diagram,
-  options?: { mode?: DesignMode; signal?: AbortSignal },
+  options?: { mode?: DesignMode; model?: string; signal?: AbortSignal },
 ): Promise<Diagram> {
-  const { mode, signal } = options ?? {};
+  const { mode, model, signal } = options ?? {};
   const timeoutController = new AbortController();
   const timeout = setTimeout(() => timeoutController.abort(), 150_000);
   const requestSignal = signal
@@ -47,7 +47,12 @@ export async function generateDiagram(
     res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, ...(current ? { current } : {}), ...(mode ? { mode } : {}) }),
+      body: JSON.stringify({
+        prompt,
+        ...(current ? { current } : {}),
+        ...(mode ? { mode } : {}),
+        ...(model ? { model } : {}),
+      }),
       signal: requestSignal,
     });
   } catch (error) {
@@ -82,9 +87,9 @@ export async function generateDiagram(
 export async function generateDiagramFromImage(
   image: string,
   prompt?: string,
-  options?: { mode?: DesignMode; signal?: AbortSignal },
+  options?: { mode?: DesignMode; model?: string; signal?: AbortSignal },
 ): Promise<Diagram> {
-  const { mode, signal } = options ?? {};
+  const { mode, model, signal } = options ?? {};
   const timeoutController = new AbortController();
   const timeout = setTimeout(() => timeoutController.abort(), 150_000);
   const requestSignal = signal
@@ -100,6 +105,7 @@ export async function generateDiagramFromImage(
         image,
         ...(prompt ? { prompt } : {}),
         ...(mode ? { mode } : {}),
+        ...(model ? { model } : {}),
       }),
       signal: requestSignal,
     });
@@ -186,7 +192,7 @@ export async function askArchitecture(
   message: string,
   diagram: Diagram,
   history: AdvisorMessage[],
-  options?: { signal?: AbortSignal },
+  options?: { model?: string; signal?: AbortSignal },
 ): Promise<ArchitectureAdviceResult> {
   const timeoutController = new AbortController();
   const timeout = setTimeout(() => timeoutController.abort(), 150_000);
@@ -199,7 +205,12 @@ export async function askArchitecture(
     res = await fetch('/api/advise', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, diagram, history: history.slice(-10) }),
+      body: JSON.stringify({
+        message,
+        diagram,
+        history: history.slice(-10),
+        ...(options?.model ? { model: options.model } : {}),
+      }),
       signal: requestSignal,
     });
   } catch (error) {

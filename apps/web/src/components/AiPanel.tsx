@@ -4,9 +4,11 @@ import { AdvisorChat } from '@/components/AdvisorChat.js';
 import { Button } from '@/components/ui/Button.js';
 import {
   fetchHealth,
+  fetchReviewModels,
   generateDiagram,
   generateDiagramFromImage,
   type DesignMode,
+  type ReviewModel,
 } from '@/lib/api.js';
 import { readImageAsDataUrl } from '@/lib/image.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
@@ -38,6 +40,10 @@ export function AiPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [healthState, setHealthState] = useState<HealthState>('checking');
+  const [models, setModels] = useState<ReviewModel[]>([]);
+  const [selectedModel, setSelectedModel] = useState('');
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelWarning, setModelWarning] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const diagram = useDiagramStore((s) => s.diagram);
@@ -63,6 +69,35 @@ export function AiPanel({
     if (open && assistantMode === 'modify') textareaRef.current?.focus();
   }, [open, assistantMode]);
 
+  useEffect(() => {
+    if (!open || healthState !== 'configured') return;
+    const controller = new AbortController();
+    setModelsLoading(true);
+    setModelWarning(null);
+    fetchReviewModels(controller.signal)
+      .then((response) => {
+        setModels(response.models);
+        setSelectedModel((current) =>
+          response.models.some((model) => model.deploymentName === current)
+            ? current
+            : response.defaultDeployment,
+        );
+        setModelWarning(response.warning ?? null);
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        setModels([]);
+        setSelectedModel('');
+        setModelWarning(
+          `${err instanceof Error ? err.message : 'Could not load models.'} The configured default will be used.`,
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setModelsLoading(false);
+      });
+    return () => controller.abort();
+  }, [open, healthState]);
+
   const handleFile = async (file: File | undefined): Promise<void> => {
     if (!file) return;
     setError(null);
@@ -83,11 +118,14 @@ export function AiPanel({
     setError(null);
     try {
       const result = image
-        ? await generateDiagramFromImage(image, trimmed || undefined, { mode: design })
+        ? await generateDiagramFromImage(image, trimmed || undefined, {
+            mode: design,
+            ...(selectedModel ? { model: selectedModel } : {}),
+          })
         : await generateDiagram(
             trimmed,
             mode === 'revise' && diagram.nodes.length > 0 ? diagram : undefined,
-            { mode: design },
+            { mode: design, ...(selectedModel ? { model: selectedModel } : {}) },
           );
       load(result);
     } catch (e) {
@@ -161,10 +199,43 @@ export function AiPanel({
         </div>
       )}
 
+      {healthState === 'configured' && (
+        <div className="space-y-1.5 border-b border-border px-3 py-2.5">
+          <label className="flex flex-col gap-1 text-xs" htmlFor="ai-model">
+            <span className="font-medium text-foreground">Model</span>
+            <select
+              id="ai-model"
+              value={selectedModel}
+              onChange={(event) => setSelectedModel(event.target.value)}
+              disabled={loading || modelsLoading || models.length === 0}
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {modelsLoading && <option value="">Loading models…</option>}
+              {!modelsLoading && models.length === 0 && (
+                <option value="">Configured default</option>
+              )}
+              {models.map((model) => (
+                <option key={model.deploymentName} value={model.deploymentName}>
+                  {model.deploymentName}
+                  {model.modelName
+                    ? ` - ${model.modelName}${model.modelVersion ? ` (${model.modelVersion})` : ''}`
+                    : ''}
+                  {model.isDefault ? ' - default' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          {modelWarning && (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400">{modelWarning}</p>
+          )}
+        </div>
+      )}
+
       <AdvisorChat
         active={open && assistantMode === 'ask'}
         healthState={healthState}
         diagram={diagram}
+        model={selectedModel || undefined}
         onModify={handOffToModify}
       />
 
