@@ -102,7 +102,7 @@ function NodeEditor({
   return (
     <div className="space-y-3">
       <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{def?.name ?? node.serviceId}</div>
-      <Field label="Label">
+      <Field label="Resource Name">
         <input className="input" value={node.label} onChange={(e) => onLabel(node.id, e.target.value)} />
       </Field>
 
@@ -111,18 +111,19 @@ function NodeEditor({
           <div className="text-xs font-semibold text-muted-foreground">Configuration</div>
           {propertyKeys.map((key) => {
             const value = node.properties[key];
+            if (typeof value === 'boolean') {
+              return (
+                <BooleanField
+                  key={key}
+                  label={humanizeLabel(key)}
+                  checked={value}
+                  onChange={(checked) => onProperty(node.id, key, checked)}
+                />
+              );
+            }
             return (
-              <Field key={key} label={key}>
-                {typeof value === 'boolean' ? (
-                  <input
-                    type="checkbox"
-                    checked={value}
-                    onChange={(e) => onProperty(node.id, key, e.target.checked)}
-                    className="h-4 w-4"
-                  />
-                ) : (
-                  <PropertyInput value={value} onChange={(v) => onProperty(node.id, key, v)} />
-                )}
+              <Field key={key} label={humanizeLabel(key)}>
+                <PropertyInput value={value} onChange={(v) => onProperty(node.id, key, v)} />
               </Field>
             );
           })}
@@ -149,6 +150,44 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </label>
   );
+}
+
+/** Checkbox property editor: label and checkbox share a row with the checkbox
+ *  right-aligned so multiple toggles line up cleanly. */
+function BooleanField({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}): JSX.Element {
+  return (
+    <label className="flex cursor-pointer items-center justify-between gap-2 py-0.5">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 shrink-0 accent-primary"
+      />
+    </label>
+  );
+}
+
+const LABEL_ACRONYMS: Record<string, string> = { sku: 'SKU', id: 'ID', url: 'URL', ip: 'IP' };
+
+/** Turn a camelCase or snake_case property key into a human-friendly label,
+ *  e.g. "zoneRedundant" -> "Zone Redundant", "sku" -> "SKU". */
+function humanizeLabel(key: string): string {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .map((word) => LABEL_ACRONYMS[word.toLowerCase()] ?? word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 /** Text/number property editor that keeps the raw keystrokes so numeric coercion
