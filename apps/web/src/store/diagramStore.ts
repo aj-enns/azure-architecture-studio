@@ -203,7 +203,9 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
         );
         d.groups = d.groups.filter((x) => !doomedGroups.has(x.id));
         d.nodes = d.nodes.filter((n) => !doomedNodes.has(n.id));
-        d.edges = d.edges.filter((e) => !doomedNodes.has(e.source) && !doomedNodes.has(e.target));
+        const isDoomedEndpoint = (endpoint: string) =>
+          doomedNodes.has(endpoint) || doomedGroups.has(endpoint);
+        d.edges = d.edges.filter((e) => !isDoomedEndpoint(e.source) && !isDoomedEndpoint(e.target));
       }),
       selection: null,
       revision: s.revision + 1,
