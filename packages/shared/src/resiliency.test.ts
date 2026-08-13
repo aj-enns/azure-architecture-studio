@@ -299,4 +299,11 @@ describe('describeNodeResiliency', () => {
     expect(explanation.atBestTier).toBe(true);
     expect(explanation.recommendations).toEqual([]);
   });
+
+  it('marks a multi-region service at its strongest tier as best', () => {
+    const explanation = describeNodeResiliency('cosmos-db', { multiRegion: true }, 'eastus2');
+    expect(explanation.tier).toBe('multiRegion');
+    expect(explanation.atBestTier).toBe(true);
+    expect(explanation.recommendations).toEqual([]);
+  });
 });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ShieldAlert, Trash2 } from 'lucide-react';
 import {
   describeNodeResiliency,
@@ -138,6 +138,10 @@ function NodeEditor({
 }): JSX.Element {
   const def = getServiceDefinition(node.serviceId);
   const propertyKeys = Object.keys(node.properties);
+  const explanation = useMemo(
+    () => (showResiliency ? describeNodeResiliency(node.serviceId, node.properties, region) : null),
+    [showResiliency, node.serviceId, node.properties, region],
+  );
 
   return (
     <div className="space-y-3">
@@ -152,9 +156,9 @@ function NodeEditor({
         />
       </Field>
 
-      {showResiliency && (
+      {explanation && (
         <ResiliencyDescription
-          explanation={describeNodeResiliency(node.serviceId, node.properties, region)}
+          explanation={explanation}
           onApply={(setting) =>
             onProperty(node.id, setting.property, coercePropertyValue(setting.value))
           }
