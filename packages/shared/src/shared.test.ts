@@ -1,11 +1,21 @@
 import { describe, expect, it } from 'vitest';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import {
   azureServiceCatalog,
   emptyDiagram,
   getServiceDefinition,
   getServicesByCategory,
   safeParseDiagram,
+  serviceDefinitionSchema,
 } from './index.js';
+import { generatedServiceCatalog } from './catalog.generated.js';
+
+const ICONS_DIR = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../../apps/web/src/assets/azure-icons',
+);
 
 describe('diagram schema', () => {
   it('creates a valid empty diagram', () => {
@@ -54,5 +64,25 @@ describe('azure service catalog', () => {
     const dbs = getServicesByCategory('databases');
     expect(dbs.length).toBeGreaterThan(0);
     expect(dbs.every((s) => s.category === 'databases')).toBe(true);
+  });
+});
+
+describe('generated catalog candidates', () => {
+  it('every generated entry validates and is marked draft', () => {
+    for (const s of generatedServiceCatalog) {
+      expect(serviceDefinitionSchema.safeParse(s).success).toBe(true);
+      expect(s.draft).toBe(true);
+    }
+  });
+
+  it('has no duplicate ids among generated entries', () => {
+    const ids = generatedServiceCatalog.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('references an icon SVG that exists on disk', () => {
+    for (const s of generatedServiceCatalog) {
+      expect(existsSync(resolve(ICONS_DIR, `${s.icon}.svg`))).toBe(true);
+    }
   });
 });

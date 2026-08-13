@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" role="img" aria-label="Service Fabric (placeholder)">
+  <defs>
+    <linearGradient id="sf-g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0078d4"/>
+      <stop offset="1" stop-color="#005ba1"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#sf-g)" d="M9 1l3.9 2.25v4.5L9 10 5.1 7.75v-4.5z"/>
+  <path fill="#50e6ff" d="M5 8.5l3.1 1.8v3.6L5 15.6 1.9 13.8v-3.5z"/>
+  <path fill="#32bedd" d="M13 8.5l3.1 1.8v3.5L13 15.6 9.9 13.9v-3.6z"/>
+</svg>

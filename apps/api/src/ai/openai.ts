@@ -52,16 +52,18 @@ async function buildAuthHeaders(config: AzureOpenAIConfig): Promise<Record<strin
 }
 
 /**
- * Calls Azure OpenAI Chat Completions with structured outputs and returns a
- * validated AI spec. Uses global fetch (Node 22) — no SDK (ADR-0010). Supports
- * API-key and keyless Entra ID auth (ADR-0011).
+ * Calls Azure OpenAI Chat Completions with structured outputs and returns the
+ * parsed JSON. Uses global fetch (Node 22) — no SDK (ADR-0010). Supports
+ * API-key and keyless Entra ID auth (ADR-0011). Callers validate the shape.
  */
-export async function generateSpec(
+export async function generateJson(
   config: AzureOpenAIConfig,
   systemPrompt: string,
   userPrompt: string,
+  schema: { name: string; jsonSchema: unknown },
   signal?: AbortSignal,
-): Promise<AiDiagramSpec> {
+  images?: string[],
+): Promise<unknown> {
   const endpoint = config.endpoint.replace(/\/$/, '');
   const isFoundryModelsEndpoint = new URL(endpoint).hostname.endsWith('.services.ai.azure.com');
   const url = isFoundryModelsEndpoint
@@ -75,6 +77,15 @@ export async function generateSpec(
     ? AbortSignal.any([signal, requestController.signal])
     : requestController.signal;
 
+  // Vision path: user content becomes an array of text + image parts (ADR-0010).
+  const userContent =
+    images && images.length > 0
+      ? [
+          { type: 'text', text: userPrompt },
+          ...images.map((url) => ({ type: 'image_url', image_url: { url } })),
+        ]
+      : userPrompt;
+
   let response: Response;
   try {
     response = await fetch(url, {
@@ -86,15 +97,15 @@ export async function generateSpec(
       body: JSON.stringify({
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
+          { role: 'user', content: userContent },
         ],
         ...(isFoundryModelsEndpoint ? { model: config.deployment } : {}),
         response_format: {
           type: 'json_schema',
           json_schema: {
-            name: 'azure_architecture_diagram',
+            name: schema.name,
             strict: true,
-            schema: aiDiagramJsonSchema,
+            schema: schema.jsonSchema,
           },
         },
       }),
@@ -146,6 +157,50 @@ export async function generateSpec(
   } catch {
     throw new AiGenerationError('Azure OpenAI returned invalid JSON.', 502);
   }
+  return json;
+}
+
+/** Prompt-to-diagram generation: structured output validated against the AI spec. */
+export async function generateSpec(
+  config: AzureOpenAIConfig,
+  systemPrompt: string,
+  userPrompt: string,
+  signal?: AbortSignal,
+): Promise<AiDiagramSpec> {
+  const json = await generateJson(
+    config,
+    systemPrompt,
+    userPrompt,
+    { name: 'azure_architecture_diagram', jsonSchema: aiDiagramJsonSchema },
+    signal,
+  );
+
+  const parsed = aiDiagramSpecSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new AiGenerationError(
+      `Model output did not match the expected schema: ${parsed.error.issues[0]?.message ?? 'invalid'}`,
+      502,
+    );
+  }
+  return parsed.data;
+}
+
+/** Image-to-diagram: transcribes an architecture diagram image into the AI spec. */
+export async function generateSpecFromImage(
+  config: AzureOpenAIConfig,
+  systemPrompt: string,
+  userPrompt: string,
+  images: string[],
+  signal?: AbortSignal,
+): Promise<AiDiagramSpec> {
+  const json = await generateJson(
+    config,
+    systemPrompt,
+    userPrompt,
+    { name: 'azure_architecture_diagram', jsonSchema: aiDiagramJsonSchema },
+    signal,
+    images,
+  );
 
   const parsed = aiDiagramSpecSchema.safeParse(json);
   if (!parsed.success) {

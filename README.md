@@ -61,6 +61,7 @@ leave them blank to run without AI:
 | ---------------------------- | ------------------------------------------------------------------------- |
 | `AZURE_FOUNDRY_ENDPOINT`     | Microsoft Foundry resource endpoint, e.g. `https://<resource>.services.ai.azure.com` |
 | `AZURE_FOUNDRY_MODEL`        | Foundry model/deployment name, e.g. `gpt-5-mini`                          |
+| `AZURE_FOUNDRY_RESOURCE_ID`  | Optional ARM resource ID used to discover compatible review deployments   |
 | `AZURE_FOUNDRY_API_KEY`      | Optional Foundry API key; leave blank to use Entra ID                     |
 | `AZURE_FOUNDRY_API_VERSION`  | Foundry model-inference API version (default `2024-05-01-preview`)       |
 | `AZURE_OPENAI_ENDPOINT`      | Your Azure OpenAI / Foundry resource endpoint                             |
@@ -76,6 +77,18 @@ For keyless authentication, leave `AZURE_OPENAI_API_KEY` blank and authenticate
 the API host with `az login` locally, or a managed identity/workload identity in
 Azure. Grant that identity the **Cognitive Services OpenAI User** role on the
 Azure OpenAI resource. See [ADR-0011](docs/adr/0011-entra-id-keyless-azure-openai-auth.md).
+
+The architecture review can list compatible deployments from a Foundry resource.
+Set `AZURE_FOUNDRY_RESOURCE_ID` to the full resource ID of its
+`Microsoft.CognitiveServices/accounts` resource. Discovery always uses
+`DefaultAzureCredential`, even when inference uses `AZURE_FOUNDRY_API_KEY`. Run
+`az login` for local development, or configure a managed/workload identity in
+Azure, and grant it `Microsoft.CognitiveServices/accounts/deployments/read`
+(the built-in **Reader** role on the Foundry resource includes this action).
+Only succeeded chat-completion deployments advertising JSON response support are
+offered. If discovery or authorization fails, reviews remain available with the
+configured `AZURE_FOUNDRY_MODEL` and the panel shows a warning. See
+[ADR-0015](docs/adr/0015-foundry-review-model-discovery.md).
 
 ## Security
 

@@ -16,7 +16,8 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "catalog:sync": "pnpm --filter @aar/catalog-sync sync"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

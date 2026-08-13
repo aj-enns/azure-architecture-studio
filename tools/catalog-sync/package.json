@@ -1,0 +1,20 @@
+{
+  "name": "@aar/catalog-sync",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Detects new Azure resource types (AVM + official icon) and scaffolds catalog draft candidates.",
+  "scripts": {
+    "sync": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@aar/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

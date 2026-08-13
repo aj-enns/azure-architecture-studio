@@ -82,3 +82,67 @@ export function summarizeDiagram(diagram: Diagram): string {
     .join(', ');
   return `nodes: ${nodes}${edges ? `\nedges: ${edges}` : ''}`;
 }
+
+/**
+ * System prompt for image-to-diagram. The model transcribes an existing
+ * architecture diagram image into the schema, mapping drawn boxes to catalog
+ * service ids (nearest Azure equivalent for non-Azure elements; the server
+ * drops anything unmappable — ADR-0010).
+ */
+export function buildImageSystemPrompt(mode: DesignMode = 'faithful'): string {
+  const catalog = azureServiceCatalog
+    .map((s) => `- ${s.id} (${s.name}, ${s.category}): ${s.description}`)
+    .join('\n');
+
+  const scopeRules =
+    mode === 'faithful'
+      ? `- Transcribe faithfully: include only what the image actually shows. Do not
+  add supporting services the diagram does not depict.`
+      : `- Transcribe what the image shows, then add the supporting services a
+  competent Azure architect would include to make it a Well-Architected
+  baseline (managed identity, Key Vault, Application Insights, Log Analytics).`;
+
+  const nonAzureRule =
+    mode === 'faithful'
+      ? `- Map a component to an Azure service ONLY when it clearly IS that Azure
+  service (identify by icon and label). For every other component that has no
+  Azure equivalent (third-party SaaS, other clouds, on-premises systems, a
+  browser or client, external data sources), KEEP it as a node with "serviceId"
+  set to exactly "external" and use its drawn text as the "label". Never drop a
+  component.`
+      : `- Map each drawn component to the closest catalog service. Identify Azure
+  services by their icon and label. For non-Azure elements (e.g. third-party
+  SaaS, CDNs, on-premises, other clouds), map to the nearest Azure equivalent
+  when one clearly fits; otherwise omit it rather than guessing.`;
+
+  return `You are an Azure solution architect. Transcribe the architecture diagram in
+the provided image into a JSON object matching the provided schema. Read the
+boxes, icons, labels, arrows, and dashed boundaries in the image.
+
+Rules:
+- Use ONLY these catalog service ids for "serviceId", or the literal "external"
+  for a non-Azure component. Never invent other ids.
+${nonAzureRule}
+${scopeRules}
+- Preserve the diagram's labels: use the text next to each box as the node
+  "label" (e.g. "orders-api", "SQL Database").
+- Turn dashed/solid boundary boxes into groups: a virtual network box ->
+  vnet, a subnet box -> subnet (parent = its vnet), a subscription boundary ->
+  subscription, other labelled containers -> resourceGroup. Set node.group to
+  the enclosing group's key; nest groups via "parent".
+- Turn arrows and connector lines into edges, pointing from caller/source to
+  callee/target. Use the arrow's text as the edge "label" when present.
+- Keys ("key", "from", "to", "group") are your own arbitrary unique strings used
+  only to wire the graph; they are not shown to users.
+
+Available catalog services:
+${catalog}`;
+}
+
+/** User message for image-to-diagram, optionally with the user's guidance. */
+export function buildImageUserPrompt(guidance?: string): string {
+  const base =
+    'Transcribe the attached architecture diagram into the schema, following the rules.';
+  const trimmed = guidance?.trim();
+  return trimmed ? `${base}\n\nAdditional guidance:\n${trimmed}` : base;
+}

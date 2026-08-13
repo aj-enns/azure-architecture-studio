@@ -568,7 +568,7 @@ ${workspace ? `    WorkspaceResourceId: ${workspace.symbol}.id\n` : ''}  }
   properties: {
     databaseAccountOfferType: 'Standard'
     disableLocalAuth: true
-    locations: [{ locationName: location, failoverPriority: 0 }]
+    locations: [{ locationName: location, failoverPriority: 0, isZoneRedundant: ${propertyBool(node, 'zoneRedundant', false)} }]
     publicNetworkAccess: 'Disabled'
     consistencyPolicy: { defaultConsistencyLevel: 'Session' }
   }
@@ -585,6 +585,7 @@ ${workspace ? `    WorkspaceResourceId: ${workspace.symbol}.id\n` : ''}  }
   }
   properties: {
     reserved: ${propertyString(node, 'os', 'Linux').toLowerCase() === 'linux'}
+    zoneRedundant: ${propertyBool(node, 'zoneRedundant', false)}
   }
 }`;
     case 'app-service': {
@@ -642,7 +643,7 @@ resource ${symbol} 'Microsoft.Sql/servers/databases@2023-08-01' = {
   properties: {
     autoPauseDelay: 60
     minCapacity: json('0.5')
-    zoneRedundant: false
+    zoneRedundant: ${propertyBool(node, 'zoneRedundant', false)}
   }
 }`;
     }
@@ -1007,7 +1008,7 @@ resource "azapi_resource" "${symbol}" {
   tags      = var.tags
   body = {
     sku = { name = "GP_S_Gen5_1", tier = "${propertyString(node, 'tier', 'GeneralPurpose')}", capacity = 1 }
-    properties = { autoPauseDelay = 60, minCapacity = 0.5, zoneRedundant = false }
+    properties = { autoPauseDelay = 60, minCapacity = 0.5, zoneRedundant = ${propertyBool(node, 'zoneRedundant', false)} }
   }
 }`;
   }
@@ -1266,7 +1267,7 @@ ${workspace ? `      WorkspaceResourceId = azapi_resource.${workspace.symbol}.id
     properties = {
       databaseAccountOfferType = "Standard"
       disableLocalAuth          = true
-      locations                 = [{ locationName = var.location, failoverPriority = 0 }]
+      locations                 = [{ locationName = var.location, failoverPriority = 0, isZoneRedundant = ${propertyBool(node, 'zoneRedundant', false)} }]
       publicNetworkAccess       = "Disabled"
       consistencyPolicy         = { defaultConsistencyLevel = "Session" }
     }
@@ -1275,7 +1276,7 @@ ${workspace ? `      WorkspaceResourceId = azapi_resource.${workspace.symbol}.id
       return `{
     kind = "${propertyString(node, 'os', 'Linux').toLowerCase() === 'linux' ? 'linux' : 'app'}"
     sku  = { name = "${propertyString(node, 'sku', 'P1v3')}", capacity = ${propertyNumber(node, 'capacity', 1)} }
-    properties = { reserved = ${propertyString(node, 'os', 'Linux').toLowerCase() === 'linux'} }
+    properties = { reserved = ${propertyString(node, 'os', 'Linux').toLowerCase() === 'linux'}, zoneRedundant = ${propertyBool(node, 'zoneRedundant', false)} }
   }`;
     case 'app-service': {
       const plan = findResource(resources, findRelatedNode(diagram, node, 'app-service-plan'))!;
@@ -1477,6 +1478,14 @@ function propertyString(node: DiagramNode, key: string, fallback: string): strin
 function propertyNumber(node: DiagramNode, key: string, fallback: number): number {
   const value = node.properties[key];
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function propertyBool(node: DiagramNode, key: string, fallback: boolean): boolean {
+  const value = node.properties[key];
+  if (typeof value === 'boolean') return value;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return fallback;
 }
 
 function escapeBicep(value: string): string {

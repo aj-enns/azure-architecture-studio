@@ -19,6 +19,14 @@ const envSchema = z.object({
   // Bring-your-own Microsoft Foundry model inference (optional).
   AZURE_FOUNDRY_ENDPOINT: z.string().url().optional().or(z.literal('')),
   AZURE_FOUNDRY_MODEL: z.string().optional().or(z.literal('')),
+  AZURE_FOUNDRY_RESOURCE_ID: z
+    .string()
+    .regex(
+      /^\/subscriptions\/[^/]+\/resourceGroups\/[^/]+\/providers\/Microsoft\.CognitiveServices\/accounts\/[^/]+\/?$/i,
+      'AZURE_FOUNDRY_RESOURCE_ID must identify a Microsoft.CognitiveServices account.',
+    )
+    .optional()
+    .or(z.literal('')),
   AZURE_FOUNDRY_API_KEY: z.string().optional().or(z.literal('')),
   AZURE_FOUNDRY_API_VERSION: z.string().default('2024-05-01-preview'),
 
@@ -45,10 +53,13 @@ export type AzureOpenAIAuth =
   | { kind: 'entra' };
 
 export interface AzureOpenAIConfig {
+  provider: 'foundry' | 'azureOpenAI';
   endpoint: string;
   deployment: string;
   apiVersion: string;
   auth: AzureOpenAIAuth;
+  /** ARM resource ID used to discover Foundry model deployments. */
+  resourceId?: string;
 }
 
 export interface AppConfig {
@@ -81,9 +92,13 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     corsOrigin: env.CORS_ORIGIN,
     azureOpenAI: hasAi
       ? {
+          provider: isFoundry ? 'foundry' : 'azureOpenAI',
           endpoint: endpoint as string,
           deployment: deployment as string,
           apiVersion,
+          ...(isFoundry && env.AZURE_FOUNDRY_RESOURCE_ID
+            ? { resourceId: env.AZURE_FOUNDRY_RESOURCE_ID.replace(/\/$/, '') }
+            : {}),
           auth: apiKey
             ? { kind: 'apiKey', apiKey }
             : { kind: 'entra' },

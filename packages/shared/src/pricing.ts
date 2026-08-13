@@ -80,6 +80,11 @@ function regionMultiplier(region: string): number {
   return REGION_MULTIPLIER[region.toLowerCase()] ?? 1.0;
 }
 
+/** Rough regional cost multiplier relative to East US 2 (1.0), for scaling estimates. */
+export function regionCostMultiplier(region: string): number {
+  return regionMultiplier(region);
+}
+
 /** Estimate the monthly cost of a single service in a region. */
 export function estimateNodeCost(serviceId: string, region = 'eastus2'): CostEstimate {
   const entry = COST_MODEL[serviceId];

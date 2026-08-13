@@ -6,36 +6,32 @@ import { CostPanel } from '@/components/CostPanel.js';
 import { IacPanel } from '@/components/IacPanel.js';
 import { Palette } from '@/components/Palette.js';
 import { PropertiesPanel } from '@/components/PropertiesPanel.js';
+import { ResiliencyPanel } from '@/components/ResiliencyPanel.js';
+import { ReviewPanel } from '@/components/ReviewPanel.js';
 import { ValidationPanel } from '@/components/ValidationPanel.js';
 import { Toolbar } from '@/components/Toolbar.js';
 import { useUiStore } from '@/store/uiStore.js';
 
 export function App(): JSX.Element {
   const [commandOpen, setCommandOpen] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false);
-  const [validationOpen, setValidationOpen] = useState(false);
-  const [costOpen, setCostOpen] = useState(false);
-  const [iacOpen, setIacOpen] = useState(false);
   const showProperties = useUiStore((s) => s.showProperties);
+  const activePanel = useUiStore((s) => s.activePanel);
+  const closePanel = useUiStore((s) => s.closePanel);
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
-      <Toolbar
-        onOpenCommand={() => setCommandOpen(true)}
-        onToggleAi={() => setAiOpen((v) => !v)}
-        onToggleValidation={() => setValidationOpen((v) => !v)}
-        onToggleCost={() => setCostOpen((v) => !v)}
-        onToggleIac={() => setIacOpen((v) => !v)}
-      />
+      <Toolbar onOpenCommand={() => setCommandOpen(true)} />
       <div className="flex min-h-0 flex-1">
         <Palette />
         <main className="relative min-w-0 flex-1">
           <Canvas />
         </main>
-        <AiPanel open={aiOpen} onClose={() => setAiOpen(false)} />
-        <ValidationPanel open={validationOpen} onClose={() => setValidationOpen(false)} />
-        <CostPanel open={costOpen} onClose={() => setCostOpen(false)} />
-        <IacPanel open={iacOpen} onClose={() => setIacOpen(false)} />
+        <AiPanel open={activePanel === 'ai'} onClose={closePanel} />
+        <ValidationPanel open={activePanel === 'validation'} onClose={closePanel} />
+        <CostPanel open={activePanel === 'cost'} onClose={closePanel} />
+        <ResiliencyPanel open={activePanel === 'resiliency'} onClose={closePanel} />
+        <ReviewPanel open={activePanel === 'review'} onClose={closePanel} />
+        <IacPanel open={activePanel === 'iac'} onClose={closePanel} />
         {showProperties && <PropertiesPanel />}
       </div>
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />

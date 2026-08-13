@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, Sparkles, X } from 'lucide-react';
+import { ImagePlus, Loader2, MessageCircle, PencilLine, Sparkles, X } from 'lucide-react';
+import { AdvisorChat } from '@/components/AdvisorChat.js';
 import { Button } from '@/components/ui/Button.js';
-import { fetchHealth, generateDiagram, type DesignMode } from '@/lib/api.js';
+import {
+  fetchHealth,
+  generateDiagram,
+  generateDiagramFromImage,
+  type DesignMode,
+} from '@/lib/api.js';
+import { readImageAsDataUrl } from '@/lib/image.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
 
 const EXAMPLES = [
@@ -10,14 +17,24 @@ const EXAMPLES = [
   'A secure AI chat app using Azure OpenAI, AI Search, Key Vault, and managed identity.',
 ];
 
-type Mode = 'replace' | 'append';
+type DiagramMode = 'new' | 'revise';
+type AssistantMode = 'ask' | 'modify';
 type HealthState = 'checking' | 'configured' | 'unconfigured' | 'api-unavailable';
 
-/** Guided chat panel: prompt-to-diagram generation (ADR-0010). */
-export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element | null {
+/** Unified architecture advisor and explicit prompt-to-diagram editor. */
+export function AiPanel({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}): JSX.Element | null {
+  const [assistantMode, setAssistantMode] = useState<AssistantMode>('ask');
   const [prompt, setPrompt] = useState('');
-  const [mode, setMode] = useState<Mode>('replace');
+  const [mode, setMode] = useState<DiagramMode>('new');
   const [design, setDesign] = useState<DesignMode>('bestPractice');
+  const [image, setImage] = useState<string | null>(null);
+  const [imageName, setImageName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [healthState, setHealthState] = useState<HealthState>('checking');
@@ -25,7 +42,6 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
 
   const diagram = useDiagramStore((s) => s.diagram);
   const load = useDiagramStore((s) => s.load);
-  const mergeDiagram = useDiagramStore((s) => s.mergeDiagram);
 
   useEffect(() => {
     if (!open) return;
@@ -36,24 +52,44 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === 'AbortError') return;
         setHealthState('api-unavailable');
-        setError('The API is not reachable. Generation is unavailable until the API server is running.');
+        setError(
+          'The API is not reachable. Generation is unavailable until the API server is running.',
+        );
       });
-    textareaRef.current?.focus();
     return () => controller.abort();
   }, [open]);
 
-  if (!open) return null;
+  useEffect(() => {
+    if (open && assistantMode === 'modify') textareaRef.current?.focus();
+  }, [open, assistantMode]);
+
+  const handleFile = async (file: File | undefined): Promise<void> => {
+    if (!file) return;
+    setError(null);
+    try {
+      const dataUrl = await readImageAsDataUrl(file);
+      setImage(dataUrl);
+      setImageName(file.name);
+      setDesign('faithful');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not read the image.');
+    }
+  };
 
   const handleGenerate = async (): Promise<void> => {
     const trimmed = prompt.trim();
-    if (!trimmed || loading) return;
+    if ((!trimmed && !image) || loading) return;
     setLoading(true);
     setError(null);
     try {
-      const useContext = mode === 'append' && diagram.nodes.length > 0;
-      const result = await generateDiagram(trimmed, useContext ? diagram : undefined, { mode: design });
-      if (mode === 'append') mergeDiagram(result);
-      else load(result);
+      const result = image
+        ? await generateDiagramFromImage(image, trimmed || undefined, { mode: design })
+        : await generateDiagram(
+            trimmed,
+            mode === 'revise' && diagram.nodes.length > 0 ? diagram : undefined,
+            { mode: design },
+          );
+      load(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed.');
     } finally {
@@ -61,11 +97,22 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
     }
   };
 
+  const handOffToModify = (diagramPrompt: string): void => {
+    setPrompt(diagramPrompt);
+    setMode(diagram.nodes.length > 0 ? 'revise' : 'new');
+    setImage(null);
+    setImageName(null);
+    setError(null);
+    setAssistantMode('modify');
+  };
+
   return (
-    <aside className="flex w-80 shrink-0 flex-col border-l border-border bg-card">
+    <aside
+      className={open ? 'flex w-96 shrink-0 flex-col border-l border-border bg-card' : 'hidden'}
+    >
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <Sparkles size={16} className="text-primary" />
-        <span className="text-sm font-semibold">Generate with AI</span>
+        <span className="text-sm font-semibold">AI assistant</span>
         <Button
           variant="ghost"
           size="icon"
@@ -77,32 +124,116 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
         </Button>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
-        {healthState === 'api-unavailable' && (
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
-            The API is not reachable at <code>/healthz</code>. Start or restart the API server,
-            then reopen this panel. If you use F5, make sure the <code>dev: web + api</code>{' '}
-            task is still running.
-          </div>
-        )}
+      <div className="grid grid-cols-2 gap-1 border-b border-border bg-muted/50 p-1.5">
+        <Button
+          variant={assistantMode === 'ask' ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => setAssistantMode('ask')}
+        >
+          <MessageCircle size={15} /> Ask
+        </Button>
+        <Button
+          variant={assistantMode === 'modify' ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => setAssistantMode('modify')}
+        >
+          <PencilLine size={15} /> Modify
+        </Button>
+      </div>
 
-        {healthState === 'unconfigured' && (
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
-            AI generation is not configured. Set <code>AZURE_FOUNDRY_ENDPOINT</code> and{' '}
-            <code>AZURE_FOUNDRY_MODEL</code> on the API, then either provide{' '}
-            <code>AZURE_FOUNDRY_API_KEY</code> or leave it blank to use Entra ID (for example,{' '}
-            <code>az login</code> locally). Restart the API after changing its environment.
-          </div>
-        )}
+      {(healthState === 'api-unavailable' || healthState === 'unconfigured') && (
+        <div className="px-3 pt-3">
+          {healthState === 'api-unavailable' && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
+              The API is not reachable at <code>/healthz</code>. Start or restart the API server,
+              then reopen this panel.
+            </div>
+          )}
+
+          {healthState === 'unconfigured' && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
+              AI is not configured. Set <code>AZURE_FOUNDRY_ENDPOINT</code> and{' '}
+              <code>AZURE_FOUNDRY_MODEL</code> on the API, then either provide{' '}
+              <code>AZURE_FOUNDRY_API_KEY</code> or leave it blank to use Entra ID (for example,{' '}
+              <code>az login</code> locally). Restart the API after changing its environment.
+            </div>
+          )}
+        </div>
+      )}
+
+      <AdvisorChat
+        active={open && assistantMode === 'ask'}
+        healthState={healthState}
+        diagram={diagram}
+        onModify={handOffToModify}
+      />
+
+      <div
+        className={
+          assistantMode === 'modify'
+            ? 'flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3'
+            : 'hidden'
+        }
+      >
+        <div className="space-y-1.5">
+          <span className="text-xs font-medium text-muted-foreground">Import from an image</span>
+          {image ? (
+            <div className="flex items-center gap-2 rounded-md border border-border bg-background p-2">
+              <img
+                src={image}
+                alt="Diagram to import"
+                className="h-12 w-12 shrink-0 rounded object-cover"
+              />
+              <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                {imageName ?? 'Selected image'}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setImage(null);
+                  setImageName(null);
+                }}
+                aria-label="Remove image"
+                disabled={loading}
+              >
+                <X size={16} />
+              </Button>
+            </div>
+          ) : (
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-input bg-background px-2 py-3 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+              <ImagePlus size={16} />
+              <span>Upload a PNG or JPEG diagram</span>
+              <input
+                type="file"
+                accept="image/png,image/jpeg"
+                className="hidden"
+                onChange={(e) => {
+                  void handleFile(e.target.files?.[0]);
+                  e.target.value = '';
+                }}
+                disabled={loading}
+              />
+            </label>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            The diagram is transcribed into Azure services; non-Azure items are mapped to the
+            nearest equivalent or dropped.
+          </p>
+        </div>
 
         <label className="text-xs font-medium text-muted-foreground" htmlFor="ai-prompt">
-          Describe the architecture
+          {image ? 'Guidance (optional)' : 'Describe the architecture'}
         </label>
         <textarea
           id="ai-prompt"
           ref={textareaRef}
           className="min-h-28 w-full resize-y rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          placeholder="e.g. A web app with a SQL database and a Redis cache…"
+          placeholder={
+            image
+              ? 'e.g. treat the dashed box as a VNet…'
+              : 'e.g. A web app with a SQL database and a Redis cache…'
+          }
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={(e) => {
@@ -116,19 +247,20 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
             <input
               type="radio"
               name="ai-mode"
-              checked={mode === 'replace'}
-              onChange={() => setMode('replace')}
+              checked={mode === 'new'}
+              onChange={() => setMode('new')}
             />
-            Replace canvas
+            New diagram
           </label>
           <label className="flex items-center gap-1.5">
             <input
               type="radio"
               name="ai-mode"
-              checked={mode === 'append'}
-              onChange={() => setMode('append')}
+              checked={mode === 'revise'}
+              onChange={() => setMode('revise')}
+              disabled={diagram.nodes.length === 0}
             />
-            Add to canvas
+            Modify current
           </label>
         </fieldset>
 
@@ -162,10 +294,20 @@ export function AiPanel({ open, onClose }: { open: boolean; onClose: () => void 
 
         <Button
           onClick={() => void handleGenerate()}
-          disabled={loading || !prompt.trim() || healthState !== 'configured'}
+          disabled={loading || (!prompt.trim() && !image) || healthState !== 'configured'}
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-          {loading ? 'Generating…' : 'Generate'}
+          {loading
+            ? image
+              ? 'Importing…'
+              : mode === 'revise'
+                ? 'Modifying…'
+                : 'Generating…'
+            : image
+              ? 'Import diagram'
+              : mode === 'revise'
+                ? 'Modify diagram'
+                : 'Generate diagram'}
         </Button>
 
         {error && (

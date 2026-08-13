@@ -57,6 +57,7 @@ Live status for the Azure Architecture Review build. Mirrors the working plan.
 | 2.1 | `/api/generate` with Azure OpenAI structured outputs      | ✅     |
 | 2.2 | Guided Chat UI → diagram, Zod-validated at boundary       | ✅     |
 | 2.3 | Merge/replace generated diagram into canvas               | ✅     |
+| 2.4 | Contextual Ask mode with explicit Modify handoff           | ✅     |
 
 ---
 
@@ -110,12 +111,74 @@ associated workspace resources) are modeled.
 | #   | Task                                                      | Status |
 | --- | --------------------------------------------------------- | ------ |
 | 6.1 | Rule engine over the diagram model                        | ✅     |
-| 6.2 | AI-assisted Well-Architected review                       | ⬜     |
+| 6.2 | AI-assisted Well-Architected review                       | ✅     |
 | 6.3 | ARB report export                                         | ⬜     |
 
 ---
 
+## Phase 7 — Resiliency (SLA / RPO / RTO)
+
+| #   | Task                                                      | Status |
+| --- | --------------------------------------------------------- | ------ |
+| 7.1 | Baseline SLA table + three-gate zone-redundancy model      | ✅     |
+| 7.2 | Composite SLA, weakest link, target comparison             | ✅     |
+| 7.3 | Canvas SLA overlay (badge, heat-map tint, weakest ring)    | ✅     |
+| 7.4 | Microsoft Learn grounded refresh with citations            | ✅     |
+| 7.5 | Per-node region modelling for true multi-region topologies | ⬜     |
+
+---
+
 ## Change log
+
+- **2026-08-11** — The AI rail is now a unified assistant with explicit `Ask` and
+  `Modify` modes (ADR-0016). `POST /api/advise` answers focused architecture
+  questions using the latest diagram, a bounded client-owned transcript,
+  deterministic WAF/resiliency/cost analysis, and best-effort Microsoft Learn
+  grounding. Advice returns Markdown, citations, and an optional self-contained
+  modification prompt; it never mutates the canvas. The UI supports follow-ups,
+  starter questions, retry, clear, source links, and a `Modify diagram` handoff that
+  only pre-fills the existing generator. `Modify current` now replaces the canvas
+  with the model's complete revised diagram, removing the duplicate-prone append
+  merge path. Advisor API tests and web/API typechecks pass.
+
+- **2026-08-11** — AI architecture review (Phase 6.2) landed: `POST /api/review`
+  runs the model with the `waf-architecture-review` skill methodology as the system
+  prompt (`apps/api/src/ai/review.ts`), fed the deterministic WAF + resiliency + cost
+  analysis and optional Microsoft Learn grounding, and returns a Markdown review.
+  503 when the model is unconfigured (like `/api/generate`), 400 for an empty
+  diagram, soft-fail grounding. Web: a `review` panel (part of the single
+  `activePanel` rail) with a run button, Learn toggle, and `react-markdown` +
+  `remark-gfm` rendering; Toolbar `Review` button. Reuses the generalized
+  `generateJson` helper. `pnpm typecheck` clean; 27 API tests pass (3 new: 503
+  unconfigured, 400 empty). ADR-0014 recorded. The API embeds a copy of the skill
+  methodology that must be kept in sync with the SKILL.md (noted in `review.ts`).
+  Live model run and browser click-through unverified here (no credentials; the
+  animating canvas blocks Playwright's stability check).
+
+- **2026-08-11** — Phase 7 resiliency landed: `packages/shared/src/resiliency.ts`
+  adds a curated per-service SLA/RPO/RTO baseline for all 32 catalog services with
+  provenance (`source.kind`, url, `verifiedOn`, `confidence`), plus `AZ_REGIONS`.
+  Zone redundancy resolves through three gates — availability-zone region,
+  service/SKU capability, and the user's `zoneRedundant` flag — downgrading the tier
+  and naming the blocking gate when any fails. Composite SLA is the product of
+  request-path services per WAF guidance, excluding management/identity/devops
+  categories. New `POST /api/resiliency` always returns the deterministic baseline
+  and, with `grounded: true`, refreshes figures from the Microsoft Learn reliability
+  guides over a single MCP session plus one structured-output call, returning
+  citations; grounding failure degrades to the baseline and never 5xxs.
+  `learnGrounding.ts` refactored for session reuse (`searchLearnDocsBatch`,
+  `searchLearnDocsCached`) and no longer caches empty results for the full TTL;
+  `openai.ts` gained a reusable `generateJson`. Web: `ResiliencyPanel` (target
+  editor, composite + downtime, weakest link, worst-first list, Learn refresh with
+  citations, CSV export), opt-in canvas SLA overlay, editable diagram region with a
+  no-zones warning, and `diagramMetadataSchema.resiliency`. `zoneRedundant` /
+  `multiRegion` added to catalog defaults where the service supports them, and the
+  Bicep/Terraform emitters now read `zoneRedundant` instead of hardcoding `false`.
+  Panels moved to a single persisted `activePanel`. `pnpm test`/`typecheck` green
+  (78 tests: 53 shared + 25 api). ADRs 0012–0013 recorded. Grounded refresh is
+  unverified against a live model (no credentials configured here). Repo-wide
+  `lint` (eslint not installed) and `format:check` were already failing before this
+  change and remain so.
 
 - **2026-08-06** — Phase 0 complete: shared schema + catalog, api, web shell,
   Docker, Bicep, OSS hygiene. `pnpm build`/`test`/`typecheck` green (9 shared+api
