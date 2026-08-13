@@ -114,7 +114,8 @@ function CanvasInner(): JSX.Element {
     start: { x: number; y: number };
     viewport: Viewport;
   } | null>(null);
-  const { screenToFlowPosition, fitView, getViewport, setViewport } = useReactFlow();
+  const { screenToFlowPosition, fitView, getViewport, setViewport, setCenter, getInternalNode } =
+    useReactFlow();
   const controlPressed = useKeyPress('Control');
   const [modifierPanning, setModifierPanning] = useState(false);
 
@@ -163,6 +164,33 @@ function CanvasInner(): JSX.Element {
     () => new Map(diagram.nodes.map((node) => [node.id, node])),
     [diagram.nodes],
   );
+
+  // Pan the viewport so the newly selected node or group is centred, keeping the
+  // current zoom so the diagram itself is untouched — only its framing changes.
+  // Tracks the last centred id so re-selecting the same item (e.g. at drag start)
+  // does not fight the user's interaction with an unwanted animation.
+  const centeredSelectionRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!selection || selection.type === 'edge') {
+      centeredSelectionRef.current = null;
+      return;
+    }
+    if (centeredSelectionRef.current === selection.id) return;
+    const raf = requestAnimationFrame(() => {
+      const internal = getInternalNode(selection.id);
+      if (!internal) return;
+      const { x, y } = internal.internals.positionAbsolute;
+      const width = internal.measured?.width ?? 0;
+      const height = internal.measured?.height ?? 0;
+      centeredSelectionRef.current = selection.id;
+      void setCenter(x + width / 2, y + height / 2, {
+        zoom: getViewport().zoom,
+        duration: 300,
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [selection, getInternalNode, getViewport, setCenter]);
+
   const flowEdges = useMemo<Edge[]>(
     () =>
       diagram.edges.map((e) => {
