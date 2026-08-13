@@ -86,33 +86,20 @@ function exportStyle(layout: ExportLayout): Partial<CSSStyleDeclaration> {
 }
 
 /**
- * Connector labels are native SVG `<rect>`/`<text>`. html-to-image serializes
- * them without inlining our class-based styles, and the exported SVG references
- * no stylesheet, so the box falls back to solid black and the text to black —
- * the "black box over the label" bug. Injecting a `<style>` block restyles those
- * classes (hides the box, outlines the text) without touching the live DOM, so
- * there is no on-screen flicker during export. A full-coverage background
- * `<rect>` is also injected because html-to-image only paints the background on
- * the transformed viewport element, leaving the SVG's padding strips transparent
- * (white bands in dark mode).
+ * Connector labels render as HTML (via React Flow's `EdgeLabelRenderer`), so
+ * html-to-image inlines their computed styles automatically — just like the node
+ * cards — and they export readably without any restyling. A full-coverage
+ * background `<rect>` is still injected because html-to-image only paints the
+ * background on the transformed viewport element, leaving the SVG's padding
+ * strips transparent (white bands in dark mode).
  */
-function withReadableLabels(svgDataUrl: string): string {
-  const dark = document.documentElement.classList.contains('dark');
-  const fill = dark ? '#f8fafc' : '#0f172a';
-  const stroke = dark ? '#0b0f19' : '#ffffff';
-  const css =
-    `.react-flow__edge-textbg{display:none}` +
-    `.react-flow__edge-text{fill:${fill};stroke:${stroke};stroke-width:4px;` +
-    `stroke-linejoin:round;paint-order:stroke;font-size:11px;font-weight:600}`;
+function withExportBackground(svgDataUrl: string): string {
   const background = `<rect x="0" y="0" width="100%" height="100%" fill="${backgroundColor()}"/>`;
   const markup = decodeURIComponent(
     svgDataUrl.startsWith(SVG_DATA_PREFIX) ? svgDataUrl.slice(SVG_DATA_PREFIX.length) : svgDataUrl,
   );
-  const withStyle = markup.replace(
-    /<svg\b[^>]*>/,
-    (open) => `${open}<style>${css}</style>${background}`,
-  );
-  return `${SVG_DATA_PREFIX}${encodeURIComponent(withStyle)}`;
+  const withBackground = markup.replace(/<svg\b[^>]*>/, (open) => `${open}${background}`);
+  return `${SVG_DATA_PREFIX}${encodeURIComponent(withBackground)}`;
 }
 
 /** Rasterize the (label-corrected) SVG to a PNG data URL at 2x density. */
@@ -144,7 +131,7 @@ async function captureSvg(viewport: HTMLElement, layout: ExportLayout): Promise<
     skipFonts: true,
     style: exportStyle(layout),
   });
-  return withReadableLabels(dataUrl);
+  return withExportBackground(dataUrl);
 }
 
 export async function exportPng(name: string): Promise<void> {
