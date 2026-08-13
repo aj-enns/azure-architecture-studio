@@ -57,6 +57,7 @@ describe('sla arithmetic', () => {
 describe('baseline coverage', () => {
   it('has a profile for every catalog service', () => {
     const missing = azureServiceCatalog
+      .filter((s) => !s.draft)
       .map((s) => s.id)
       .filter((id) => resolveNodeSla(id, {}, 'eastus2').profile.source.confidence === 'estimated');
     expect(missing).toEqual(['ai-foundry']);
@@ -166,6 +167,50 @@ describe('analyzeResiliency', () => {
   it('warns when a zone-capable region has no zone-redundant resource', () => {
     const report = analyzeResiliency(diagramWith(['app-service', 'sql-database']));
     expect(report.findings.map((f) => f.id)).toContain('res-no-zone-redundancy');
+  });
+
+  it('flags a scalable service running too few instances to span zones', () => {
+    const report = analyzeResiliency(
+      diagramWith([{ serviceId: 'app-service-plan', properties: { capacity: 1 } }]),
+    );
+    const finding = report.findings.find((f) => f.id === 'res-single-instance');
+    expect(finding?.nodeIds).toEqual(['n0']);
+  });
+
+  it('does not flag single-instance when the count meets the zone-redundant minimum', () => {
+    const report = analyzeResiliency(
+      diagramWith([{ serviceId: 'app-service-plan', properties: { capacity: 2 } }]),
+    );
+    expect(report.findings.map((f) => f.id)).not.toContain('res-single-instance');
+  });
+
+  it('flags a scale set with a single instance', () => {
+    const report = analyzeResiliency(
+      diagramWith([{ serviceId: 'vmss', properties: { instances: 1 } }]),
+    );
+    expect(report.findings.map((f) => f.id)).toContain('res-single-instance');
+  });
+
+  it('flags a single-zone data tier per node', () => {
+    const report = analyzeResiliency(diagramWith(['app-service', 'sql-database']));
+    const finding = report.findings.find((f) => f.id === 'res-single-zone-data');
+    expect(finding?.nodeIds).toEqual(['n1']);
+    expect(finding?.fix).toContain('Enable zone redundancy');
+  });
+
+  it('flags a single-zone data tier even in a region without zones', () => {
+    const report = analyzeResiliency(diagramWith(['sql-database'], 'westus'));
+    const finding = report.findings.find((f) => f.id === 'res-single-zone-data');
+    expect(finding?.fix).toContain('region with availability zones');
+  });
+
+  it('does not flag a zone-redundant data tier', () => {
+    const report = analyzeResiliency(
+      diagramWith([
+        { serviceId: 'sql-database', properties: { zoneRedundant: true, tier: 'BusinessCritical' } },
+      ]),
+    );
+    expect(report.findings.map((f) => f.id)).not.toContain('res-single-zone-data');
   });
 
   it('surfaces a region gate failure as a high-severity finding', () => {

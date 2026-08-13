@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" role="img" aria-label="Power BI (placeholder)">
+  <defs>
+    <linearGradient id="pbi-g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2c811"/>
+      <stop offset="1" stop-color="#e6a000"/>
+    </linearGradient>
+  </defs>
+  <rect x="11" y="2" width="4" height="14" rx="1" fill="url(#pbi-g)"/>
+  <rect x="6.5" y="5.5" width="4" height="10.5" rx="1" fill="#f2c811"/>
+  <rect x="2" y="9" width="4" height="7" rx="1" fill="#ffd94d"/>
+</svg>

@@ -38,6 +38,8 @@ Each ADR follows [Michael Nygard's format](https://cognitect.com/blog/2011/11/15
 | [0014](0014-in-app-ai-architecture-review.md) | In-app AI architecture review (skill methodology server-side) | Accepted | 2026-08-11 |
 | [0015](0015-foundry-review-model-discovery.md) | Discover and allowlist Foundry review deployments through ARM | Accepted | 2026-08-11 |
 | [0016](0016-unified-ai-advisor.md) | Unified AI advisor with explicit diagram modification | Accepted | 2026-08-11 |
+| [0017](0017-throughput-capacity-modelling.md) | Throughput capacity modelling — bottleneck sizing against a load target | Accepted | 2026-08-12 |
+| [0018](0018-automated-catalog-ingestion.md) | Automated Azure resource-type catalog ingestion (AVM + icons, PR for review) | Accepted | 2026-08-12 |
 
 ## When to write an ADR
 

@@ -83,6 +83,14 @@ export function Palette(): JSX.Element {
                         <ServiceIcon category={s.category} slug={s.icon} size={14} />
                       </span>
                       <span className="truncate">{s.name}</span>
+                      {s.draft && (
+                        <span
+                          title="Auto-detected candidate awaiting curation"
+                          className="ml-auto shrink-0 rounded border border-sky-500/30 bg-sky-500/15 px-1 py-0.5 text-[9px] font-medium uppercase text-sky-600 dark:text-sky-400"
+                        >
+                          New
+                        </span>
+                      )}
                     </div>
                   </li>
                 );

@@ -8,4 +8,5 @@ export * from './waf.js';
 export * from './resiliency.js';
 export * from './layout.js';
 export * from './pricing.js';
+export * from './throughput.js';
 export * from './iac.js';

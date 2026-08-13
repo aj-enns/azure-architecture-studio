@@ -1,0 +1,66 @@
+name: catalog-sync
+
+# Detects new Azure resource types (AVM module + official icon) and opens a PR
+# with draft catalog candidates for human review. All feeds are public; the only
+# secret used is the built-in GITHUB_TOKEN (for popularity ranking + PR creation).
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter @aar/shared build
+
+      - name: Sync catalog candidates
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional: point at an extracted official Azure icon set to widen coverage.
+          AZURE_ICONS_DIR: ${{ vars.AZURE_ICONS_DIR }}
+        run: pnpm catalog:sync
+
+      - name: Validate generated catalog
+        run: |
+          pnpm --filter @aar/shared build
+          pnpm --filter @aar/shared test
+          pnpm --filter @aar/web typecheck
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: catalog-sync/candidates
+          title: 'chore(catalog): sync Azure resource-type candidates'
+          commit-message: 'chore(catalog): sync Azure resource-type candidates'
+          labels: catalog-sync
+          body: |
+            Automated draft candidates from **tools/catalog-sync** (Azure Verified
+            Modules + official icons). Each new entry is `draft: true` and rendered
+            with a "New" badge.
+
+            Before promoting a draft into the core catalog (`catalog.ts`):
+            - [ ] Fill `defaults` (SKU/tier/scale properties).
+            - [ ] Add a `COST_MODEL` entry in `pricing.ts`.
+            - [ ] Add a `SERVICE_RESILIENCE` entry in `resiliency.ts`.
+            - [ ] Add a `SERVICE_THROUGHPUT` entry in `throughput.ts` (if request-serving).
+            - [ ] Swap the placeholder icon for the official SVG where applicable.
+            - [ ] Remove the entry from `catalog.generated.ts` once promoted.

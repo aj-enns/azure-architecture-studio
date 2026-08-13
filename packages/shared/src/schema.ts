@@ -72,12 +72,20 @@ export const resiliencyTargetSchema = z.object({
 });
 export type ResiliencyTarget = z.infer<typeof resiliencyTargetSchema>;
 
+/** Peak load the design is sized against — usersPerMinute × requestsPerUser = target requests/min. */
+export const throughputTargetSchema = z.object({
+  usersPerMinute: z.number().nonnegative(),
+  requestsPerUser: z.number().positive(),
+});
+export type ThroughputTarget = z.infer<typeof throughputTargetSchema>;
+
 export const diagramMetadataSchema = z.object({
   name: z.string().default('Untitled Architecture'),
   description: z.string().default(''),
   /** Default Azure region used for pricing + deployment (e.g. "eastus2"). */
   region: z.string().default('eastus2'),
   resiliency: resiliencyTargetSchema.optional(),
+  throughput: throughputTargetSchema.optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });

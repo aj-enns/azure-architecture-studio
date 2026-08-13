@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { generatedServiceCatalog } from './catalog.generated.js';
 
 /**
  * Azure service catalog — the shared registry of services that can be placed on
@@ -64,15 +65,20 @@ export const serviceDefinitionSchema = z.object({
   iac: iacHintSchema.optional(),
   /** Documentation URL for the service. */
   docsUrl: z.string().url().optional(),
+  /** Machine-added candidate awaiting curation (from tools/catalog-sync). */
+  draft: z.boolean().optional(),
+  /** GitHub-usage rank used only for ordering + a "popular" badge. */
+  popularityScore: z.number().optional(),
 });
 export type ServiceDefinition = z.infer<typeof serviceDefinitionSchema>;
 
 /**
- * The catalog. Kept as a plain array so it is trivially serializable and can be
- * shipped to the client. Icon slugs assume the official Microsoft Azure
- * Architecture Icons set bundled under apps/web/src/assets/azure-icons/.
+ * The hand-authored core catalog. Kept as a plain array so it is trivially
+ * serializable and can be shipped to the client. Icon slugs assume the official
+ * Microsoft Azure Architecture Icons set bundled under apps/web/src/assets/azure-icons/.
+ * Machine-detected candidates live in catalog.generated.ts and are merged below.
  */
-export const azureServiceCatalog: ServiceDefinition[] = [
+export const coreServiceCatalog: ServiceDefinition[] = [
   // ---- Compute ------------------------------------------------------------
   {
     id: 'vm',
@@ -516,6 +522,22 @@ export const azureServiceCatalog: ServiceDefinition[] = [
     },
   },
 ];
+
+/** Core entries win over generated candidates that share an id. */
+function mergeCatalog(
+  core: ServiceDefinition[],
+  generated: ServiceDefinition[],
+): ServiceDefinition[] {
+  const byId = new Map(core.map((s) => [s.id, s]));
+  for (const s of generated) if (!byId.has(s.id)) byId.set(s.id, s);
+  return [...byId.values()];
+}
+
+/** The full catalog: hand-authored core plus machine-detected draft candidates. */
+export const azureServiceCatalog: ServiceDefinition[] = mergeCatalog(
+  coreServiceCatalog,
+  generatedServiceCatalog,
+);
 
 /** Fast lookup map keyed by service id. Built once at module load. */
 export const azureServiceCatalogById: Readonly<Record<string, ServiceDefinition>> =

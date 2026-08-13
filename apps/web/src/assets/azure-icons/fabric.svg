@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" role="img" aria-label="Microsoft Fabric (placeholder)">
+  <defs>
+    <linearGradient id="fabric-g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#32bedd"/>
+      <stop offset="1" stop-color="#0078d4"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#fabric-g)" d="M9 1.5l3 1.7v3.5L9 8.4 6 6.7V3.2z"/>
+  <path fill="#50e6ff" d="M4 7.6l3 1.7v3.5L4 14.5 1 12.8V9.3z"/>
+  <path fill="#0078d4" d="M14 7.6l3 1.7v3.5l-3 1.7-3-1.7V9.3z"/>
+</svg>

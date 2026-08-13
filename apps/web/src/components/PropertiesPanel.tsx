@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { getServiceDefinition, regionSupportsZones } from '@aar/shared';
 import { Button } from '@/components/ui/Button.js';
@@ -120,15 +121,7 @@ function NodeEditor({
                     className="h-4 w-4"
                   />
                 ) : (
-                  <input
-                    className="input"
-                    value={String(value)}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      const next = typeof value === 'number' && raw !== '' && !Number.isNaN(Number(raw)) ? Number(raw) : raw;
-                      onProperty(node.id, key, next);
-                    }}
-                  />
+                  <PropertyInput value={value} onChange={(v) => onProperty(node.id, key, v)} />
                 )}
               </Field>
             );
@@ -155,5 +148,32 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
       {children}
     </label>
+  );
+}
+
+/** Text/number property editor that keeps the raw keystrokes so numeric coercion
+ *  never reverts an in-progress edit. Remounts per node via NodeEditor's key. */
+function PropertyInput({
+  value,
+  onChange,
+}: {
+  value: string | number;
+  onChange: (value: string | number) => void;
+}): JSX.Element {
+  const isNumber = typeof value === 'number';
+  const [text, setText] = useState(String(value));
+
+  return (
+    <input
+      className="input"
+      inputMode={isNumber ? 'decimal' : undefined}
+      value={text}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setText(raw);
+        const n = Number(raw);
+        onChange(isNumber && raw !== '' && Number.isFinite(n) ? n : raw);
+      }}
+    />
   );
 }

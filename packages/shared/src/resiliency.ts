@@ -190,6 +190,15 @@ const SUPPORTING_CATEGORIES: ReadonlySet<ServiceCategory> = new Set<ServiceCateg
   'devops',
 ]);
 
+/** Data-tier services whose single-zone posture is called out per node. */
+const DATA_TIER: ReadonlySet<string> = new Set([
+  'sql-database',
+  'cosmos-db',
+  'postgresql',
+  'redis',
+  'storage-account',
+]);
+
 const SERVICE_RESILIENCE: Record<string, ServiceResilience> = {
   vm: {
     // A single VM can be zonal, but never zone-redundant.
@@ -674,6 +683,13 @@ function worstOrNull(values: (number | null)[]): number | null {
   return present.length === 0 ? null : Math.max(...present);
 }
 
+/** True when a scalable service runs below the instance count needed to span zones. */
+function belowRedundantInstanceCount(serviceId: string, properties: NodeProperties): boolean {
+  const rule = SERVICE_RESILIENCE[serviceId]?.zoneRedundancy;
+  if (rule?.kind !== 'flagAndInstances') return false;
+  return numProp(properties, rule.property, 1) < rule.minInstances;
+}
+
 /**
  * Evaluate a diagram's composite availability and recovery posture. Pure and
  * deterministic so results are stable and testable; grounded Learn figures come
@@ -706,6 +722,10 @@ export function analyzeResiliency(diagram: Diagram, options: ResiliencyOptions =
   const worstRtoMinutes = worstOrNull(critical.map((n) => n.profile.rtoMinutes));
   const worstRpoMinutes = worstOrNull(critical.map((n) => n.profile.rpoMinutes));
 
+  const singleInstanceNodeIds = diagram.nodes
+    .filter((n) => isCriticalPath(n.serviceId, n.properties) && belowRedundantInstanceCount(n.serviceId, n.properties))
+    .map((n) => n.id);
+
   const findings = buildFindings({
     nodes,
     critical,
@@ -715,6 +735,7 @@ export function analyzeResiliency(diagram: Diagram, options: ResiliencyOptions =
     target,
     region,
     regionHasZones,
+    singleInstanceNodeIds,
   });
 
   const meetsTarget =
@@ -748,6 +769,7 @@ function buildFindings(ctx: {
   target: ResiliencyTarget | null;
   region: string;
   regionHasZones: boolean;
+  singleInstanceNodeIds: string[];
 }): ResiliencyFinding[] {
   const findings: ResiliencyFinding[] = [];
   const { nodes, critical, target } = ctx;
@@ -829,6 +851,38 @@ function buildFindings(ctx: {
       message: 'A standalone VM cannot be zone-redundant, so it becomes the ceiling for the whole design.',
       fix: 'Use a VM Scale Set across two or more availability zones.',
       nodeIds: singleVms.map((n) => n.nodeId),
+    });
+  }
+
+  const singleInstance = nodes.filter((n) => ctx.singleInstanceNodeIds.includes(n.nodeId));
+  if (singleInstance.length > 0) {
+    findings.push({
+      id: 'res-single-instance',
+      severity: 'medium',
+      title: 'Scalable service runs too few instances to span zones',
+      message: `${singleInstance
+        .map((n) => n.label)
+        .join(', ')} run below the instance count needed to spread across availability zones, so a single instance failure takes the tier down.`,
+      fix: 'Raise the instance, capacity, or replica count to the service\u2019s zone-redundant minimum and spread it across zones.',
+      nodeIds: singleInstance.map((n) => n.nodeId),
+    });
+  }
+
+  const singleZoneData = critical.filter(
+    (n) => DATA_TIER.has(n.serviceId) && n.profile.tier === 'nonzonal',
+  );
+  if (singleZoneData.length > 0) {
+    findings.push({
+      id: 'res-single-zone-data',
+      severity: 'medium',
+      title: 'Data tier lives in a single zone',
+      message: `${singleZoneData
+        .map((n) => n.label)
+        .join(', ')} are not zone-redundant, so a single datacentre fault can take the data offline and risk the last writes.`,
+      fix: ctx.regionHasZones
+        ? 'Enable zone redundancy (and geo-replication for regional cover) on the data tier.'
+        : 'Move the data tier to a region with availability zones, then enable zone redundancy or geo-replication.',
+      nodeIds: singleZoneData.map((n) => n.nodeId),
     });
   }
 
