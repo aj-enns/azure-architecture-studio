@@ -339,7 +339,7 @@ function CanvasInner(): JSX.Element {
   return (
     <div
       ref={wrapperRef}
-      className="h-full w-full"
+      className={`h-full w-full${controlPressed ? ' aar-modifier-pan' : ''}${modifierPanning ? ' aar-modifier-panning' : ''}`}
       data-testid="canvas"
       onPointerDownCapture={onPointerDownCapture}
       onPointerMoveCapture={onPointerMoveCapture}
@@ -366,7 +366,7 @@ function CanvasInner(): JSX.Element {
         colorMode={theme}
         fitView
         proOptions={{ hideAttribution: true }}
-        className={`bg-background${controlPressed ? ' aar-modifier-pan' : ''}${modifierPanning ? ' aar-modifier-panning' : ''}`}
+        className="bg-background"
       >
         {showGrid && <Background variant={BackgroundVariant.Dots} gap={16} size={1} />}
         <MiniMap pannable zoomable position="bottom-left" className="!bg-card" />

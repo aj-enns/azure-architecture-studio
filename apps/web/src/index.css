@@ -112,13 +112,13 @@
   animation: aar-node-glow 0.9s ease-in-out infinite alternate;
 }
 
-.aar-modifier-pan .react-flow__pane,
-.aar-modifier-pan .react-flow__node {
+.aar-modifier-pan,
+.aar-modifier-pan * {
   cursor: grab !important;
 }
 
-.aar-modifier-panning .react-flow__pane,
-.aar-modifier-panning .react-flow__node {
+.aar-modifier-panning,
+.aar-modifier-panning * {
   cursor: grabbing !important;
 }
 
