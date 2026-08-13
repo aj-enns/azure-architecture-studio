@@ -185,8 +185,27 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
   removeGroup: (id) =>
     set((s) => ({
       diagram: mutate(s.diagram, (d) => {
-        d.groups = d.groups.filter((x) => x.id !== id);
-        for (const n of d.nodes) if (n.parentId === id) n.parentId = undefined;
+        // Deleting a container (e.g. a resource group) deletes everything inside
+        // it: nested groups, contained nodes, and any edges touching those nodes.
+        const doomedGroups = new Set<string>([id]);
+        let grew = true;
+        while (grew) {
+          grew = false;
+          for (const g of d.groups) {
+            if (g.parentId && doomedGroups.has(g.parentId) && !doomedGroups.has(g.id)) {
+              doomedGroups.add(g.id);
+              grew = true;
+            }
+          }
+        }
+        const doomedNodes = new Set(
+          d.nodes.filter((n) => n.parentId && doomedGroups.has(n.parentId)).map((n) => n.id),
+        );
+        d.groups = d.groups.filter((x) => !doomedGroups.has(x.id));
+        d.nodes = d.nodes.filter((n) => !doomedNodes.has(n.id));
+        const isDoomedEndpoint = (endpoint: string) =>
+          doomedNodes.has(endpoint) || doomedGroups.has(endpoint);
+        d.edges = d.edges.filter((e) => !isDoomedEndpoint(e.source) && !isDoomedEndpoint(e.target));
       }),
       selection: null,
       revision: s.revision + 1,
