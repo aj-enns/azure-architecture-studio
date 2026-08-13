@@ -359,6 +359,79 @@ describe('api', () => {
     await app.close();
   });
 
+  it('rejects a generate request whose model is outside the compatible set', async () => {
+    const config = loadConfig({
+      AZURE_FOUNDRY_ENDPOINT: 'https://example.services.ai.azure.com',
+      AZURE_FOUNDRY_MODEL: 'gpt-default',
+    } as NodeJS.ProcessEnv);
+    const app = await buildApp(config, {
+      reviewModels: {
+        getModels: async () => ({
+          models: [{ deploymentName: 'gpt-default', isDefault: true }],
+          defaultDeployment: 'gpt-default',
+        }),
+      },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/generate',
+      payload: { prompt: 'a web app with a database', model: 'not-allowed' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: 'invalid_model' });
+    await app.close();
+  });
+
+  it('rejects an advise request whose model is outside the compatible set', async () => {
+    const config = loadConfig({
+      AZURE_FOUNDRY_ENDPOINT: 'https://example.services.ai.azure.com',
+      AZURE_FOUNDRY_MODEL: 'gpt-default',
+    } as NodeJS.ProcessEnv);
+    const app = await buildApp(config, {
+      reviewModels: {
+        getModels: async () => ({
+          models: [{ deploymentName: 'gpt-default', isDefault: true }],
+          defaultDeployment: 'gpt-default',
+        }),
+      },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/advise',
+      payload: {
+        message: 'Do I need a load balancer?',
+        diagram: { version: 1, metadata: {}, nodes: [], groups: [], edges: [] },
+        model: 'not-allowed',
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: 'invalid_model' });
+    await app.close();
+  });
+
+  it('rejects a generate/image request whose model is outside the compatible set', async () => {
+    const config = loadConfig({
+      AZURE_FOUNDRY_ENDPOINT: 'https://example.services.ai.azure.com',
+      AZURE_FOUNDRY_MODEL: 'gpt-4o',
+    } as NodeJS.ProcessEnv);
+    const app = await buildApp(config, {
+      reviewModels: {
+        getModels: async () => ({
+          models: [{ deploymentName: 'gpt-4o', modelName: 'gpt-4o', isDefault: true, supportsVision: true }],
+          defaultDeployment: 'gpt-4o',
+        }),
+      },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/generate/image',
+      payload: { image: 'data:image/png;base64,iVBORw0KGgo=', model: 'not-allowed' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: 'invalid_model' });
+    await app.close();
+  });
+
   it('rejects a review of an empty diagram when AI is configured', async () => {
     const config = loadConfig({
       AZURE_OPENAI_ENDPOINT: 'https://example.openai.azure.com',
