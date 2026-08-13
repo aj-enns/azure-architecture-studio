@@ -1,11 +1,8 @@
 import {
   Background,
   BackgroundVariant,
-  Controls,
   MiniMap,
-  Panel,
   ReactFlow,
-  ReactFlowProvider,
   addEdge as rfAddEdge,
   applyNodeChanges,
   MarkerType,
@@ -21,7 +18,6 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Hand } from 'lucide-react';
 import { analyzeResiliency, getServiceDefinition } from '@aar/shared';
 import { AzureNode } from './AzureNode.js';
 import { AzureEdge } from './AzureEdge.js';
@@ -33,6 +29,9 @@ import { useUiStore } from '@/store/uiStore.js';
 
 const nodeTypes = { azureNode: AzureNode, azureGroup: GroupNode };
 const edgeTypes = { azureEdge: AzureEdge };
+
+export const MIN_ZOOM = 0.1;
+export const MAX_ZOOM = 2;
 
 function toFlowNodes(
   groups: ReturnType<typeof useDiagramStore.getState>['diagram']['groups'],
@@ -362,30 +361,20 @@ function CanvasInner(): JSX.Element {
         onDragOver={onDragOver}
         nodesDraggable={!controlPressed}
         deleteKeyCode={['Backspace', 'Delete']}
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
         colorMode={theme}
         fitView
         proOptions={{ hideAttribution: true }}
         className={`bg-background${controlPressed ? ' aar-modifier-pan' : ''}${modifierPanning ? ' aar-modifier-panning' : ''}`}
       >
         {showGrid && <Background variant={BackgroundVariant.Dots} gap={16} size={1} />}
-        <MiniMap pannable zoomable className="!bg-card" />
-        <Controls className="!bg-card !text-foreground" />
-        <Panel position="bottom-center" className="!m-3">
-          <div className="flex items-center gap-1.5 rounded border border-border bg-card/90 px-2 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur-sm">
-            <Hand size={13} aria-hidden="true" />
-            <kbd className="font-sans font-medium text-foreground">Ctrl + drag</kbd>
-            <span>to pan</span>
-          </div>
-        </Panel>
+        <MiniMap pannable zoomable position="bottom-left" className="!bg-card" />
       </ReactFlow>
     </div>
   );
 }
 
 export function Canvas(): JSX.Element {
-  return (
-    <ReactFlowProvider>
-      <CanvasInner />
-    </ReactFlowProvider>
-  );
+  return <CanvasInner />;
 }
