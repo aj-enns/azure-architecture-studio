@@ -91,6 +91,10 @@
   transition: stroke-width 120ms ease;
 }
 
+.react-flow__edgelabel-renderer {
+  z-index: 1000;
+}
+
 .react-flow__edge:not(.selected):hover .react-flow__edge-path {
   stroke-width: 3 !important;
 }
