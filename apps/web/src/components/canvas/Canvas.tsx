@@ -179,9 +179,13 @@ function CanvasInner(): JSX.Element {
     const raf = requestAnimationFrame(() => {
       const internal = getInternalNode(selection.id);
       if (!internal) return;
-      const { x, y } = internal.internals.positionAbsolute;
       const width = internal.measured?.width ?? 0;
       const height = internal.measured?.height ?? 0;
+      // Bail (without recording the id) until the node has been measured, so a
+      // later render — once dimensions are known — retries and centres on the
+      // true middle rather than the top-left corner.
+      if (width === 0 && height === 0) return;
+      const { x, y } = internal.internals.positionAbsolute;
       centeredSelectionRef.current = selection.id;
       void setCenter(x + width / 2, y + height / 2, {
         zoom: getViewport().zoom,
@@ -189,7 +193,7 @@ function CanvasInner(): JSX.Element {
       });
     });
     return () => cancelAnimationFrame(raf);
-  }, [selection, getInternalNode, getViewport, setCenter]);
+  }, [selection, rfNodes, getInternalNode, getViewport, setCenter]);
 
   const flowEdges = useMemo<Edge[]>(
     () =>
