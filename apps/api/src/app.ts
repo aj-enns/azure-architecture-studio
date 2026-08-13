@@ -408,19 +408,14 @@ export async function buildApp(
     }
 
     const { image, prompt, mode, model } = parsed.data;
-    const selectedDeployment = model ?? config.azureOpenAI.deployment;
+    const aiConfig = await resolveAiConfig(model, reply);
+    if (!aiConfig) return reply;
 
     // Best-effort guard: block only when the selected model is known to lack vision.
     if (reviewModels) {
       try {
         const list = await reviewModels.getModels();
-        if (model && !list.models.some((m) => m.deploymentName === model)) {
-          return reply.code(400).send({
-            error: 'invalid_model',
-            message: 'The selected model is not available.',
-          });
-        }
-        const active = list.models.find((m) => m.deploymentName === selectedDeployment);
+        const active = list.models.find((m) => m.deploymentName === aiConfig.deployment);
         if (active?.supportsVision === false) {
           return reply.code(422).send({
             error: 'model_not_vision_capable',
@@ -438,7 +433,6 @@ export async function buildApp(
     const userPrompt = buildImageUserPrompt(prompt);
 
     try {
-      const aiConfig: AzureOpenAIConfig = { ...config.azureOpenAI, deployment: selectedDeployment };
       const spec = await generateSpecFromImage(aiConfig, systemPrompt, userPrompt, [image]);
       const diagram = specToDiagram(spec);
       return reply.send({ diagram, citations: [] });
