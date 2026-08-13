@@ -186,7 +186,9 @@ function humanizeLabel(key: string): string {
     .replace(/[_-]+/g, ' ')
     .trim()
     .split(/\s+/)
-    .map((word) => LABEL_ACRONYMS[word.toLowerCase()] ?? word.charAt(0).toUpperCase() + word.slice(1))
+    .map(
+      (word) => LABEL_ACRONYMS[word.toLowerCase()] ?? word.charAt(0).toUpperCase() + word.slice(1),
+    )
     .join(' ');
 }
 
