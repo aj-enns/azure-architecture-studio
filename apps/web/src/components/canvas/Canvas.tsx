@@ -24,6 +24,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Hand } from 'lucide-react';
 import { analyzeResiliency, getServiceDefinition } from '@aar/shared';
 import { AzureNode } from './AzureNode.js';
+import { AzureEdge } from './AzureEdge.js';
 import { GroupNode } from './GroupNode.js';
 import { categoryHex } from '@/lib/icons.js';
 import { useTheme } from '@/lib/theme.js';
@@ -31,6 +32,7 @@ import { useDiagramStore } from '@/store/diagramStore.js';
 import { useUiStore } from '@/store/uiStore.js';
 
 const nodeTypes = { azureNode: AzureNode, azureGroup: GroupNode };
+const edgeTypes = { azureEdge: AzureEdge };
 
 function toFlowNodes(
   groups: ReturnType<typeof useDiagramStore.getState>['diagram']['groups'],
@@ -114,7 +116,8 @@ function CanvasInner(): JSX.Element {
     start: { x: number; y: number };
     viewport: Viewport;
   } | null>(null);
-  const { screenToFlowPosition, fitView, getViewport, setViewport } = useReactFlow();
+  const { screenToFlowPosition, fitView, getViewport, setViewport, setCenter, getInternalNode } =
+    useReactFlow();
   const controlPressed = useKeyPress('Control');
   const [modifierPanning, setModifierPanning] = useState(false);
 
@@ -163,6 +166,37 @@ function CanvasInner(): JSX.Element {
     () => new Map(diagram.nodes.map((node) => [node.id, node])),
     [diagram.nodes],
   );
+
+  // Pan the viewport so the newly selected node or group is centred, keeping the
+  // current zoom so the diagram itself is untouched — only its framing changes.
+  // Tracks the last centred id so re-selecting the same item (e.g. at drag start)
+  // does not fight the user's interaction with an unwanted animation.
+  const centeredSelectionRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!selection || selection.type === 'edge') {
+      centeredSelectionRef.current = null;
+      return;
+    }
+    if (centeredSelectionRef.current === selection.id) return;
+    const raf = requestAnimationFrame(() => {
+      const internal = getInternalNode(selection.id);
+      if (!internal) return;
+      const width = internal.measured?.width ?? 0;
+      const height = internal.measured?.height ?? 0;
+      // Bail (without recording the id) until the node has been measured, so a
+      // later render — once dimensions are known — retries and centres on the
+      // true middle rather than the top-left corner.
+      if (width === 0 && height === 0) return;
+      const { x, y } = internal.internals.positionAbsolute;
+      centeredSelectionRef.current = selection.id;
+      void setCenter(x + width / 2, y + height / 2, {
+        zoom: getViewport().zoom,
+        duration: 300,
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [selection, rfNodes, getInternalNode, getViewport, setCenter]);
+
   const flowEdges = useMemo<Edge[]>(
     () =>
       diagram.edges.map((e) => {
@@ -178,13 +212,10 @@ function CanvasInner(): JSX.Element {
           target: e.target,
           label: e.label,
           selected: selection?.type === 'edge' && selection.id === e.id,
-          type: 'smoothstep',
+          type: 'azureEdge',
           animated: e.kind === 'data',
           style: { stroke: color },
           markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color },
-          labelBgPadding: [6, 3] as [number, number],
-          labelBgBorderRadius: 4,
-          labelShowBg: true,
         };
       }),
     [diagram.edges, nodeById, selection],
@@ -320,6 +351,7 @@ function CanvasInner(): JSX.Element {
         nodes={rfNodes}
         edges={flowEdges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onEdgeClick={onEdgeClick}
