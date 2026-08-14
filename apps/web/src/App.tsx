@@ -7,6 +7,7 @@ import { CostPanel } from '@/components/CostPanel.js';
 import { IacPanel } from '@/components/IacPanel.js';
 import { Palette } from '@/components/Palette.js';
 import { PropertiesPanel } from '@/components/PropertiesPanel.js';
+import { RepositoryImportDialog } from '@/components/RepositoryImportDialog.js';
 import { ResiliencyPanel } from '@/components/ResiliencyPanel.js';
 import { ReviewPanel } from '@/components/ReviewPanel.js';
 import { StatusBar } from '@/components/StatusBar.js';
@@ -16,6 +17,7 @@ import { useUiStore } from '@/store/uiStore.js';
 
 export function App(): JSX.Element {
   const [commandOpen, setCommandOpen] = useState(false);
+  const [repositoryImportOpen, setRepositoryImportOpen] = useState(false);
   const showProperties = useUiStore((s) => s.showProperties);
   const showPalette = useUiStore((s) => s.showPalette);
   const activePanel = useUiStore((s) => s.activePanel);
@@ -23,7 +25,10 @@ export function App(): JSX.Element {
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
-      <Toolbar onOpenCommand={() => setCommandOpen(true)} />
+      <Toolbar
+        onOpenCommand={() => setCommandOpen(true)}
+        onOpenRepositoryImport={() => setRepositoryImportOpen(true)}
+      />
       <ReactFlowProvider>
         <div className="flex min-h-0 flex-1">
           {showPalette && <Palette />}
@@ -40,7 +45,12 @@ export function App(): JSX.Element {
         </div>
         <StatusBar />
       </ReactFlowProvider>
-      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
+      <CommandPalette
+        open={commandOpen}
+        onOpenChange={setCommandOpen}
+        onOpenRepositoryImport={() => setRepositoryImportOpen(true)}
+      />
+      <RepositoryImportDialog open={repositoryImportOpen} onClose={() => setRepositoryImportOpen(false)} />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import type { ServiceCategory } from '@aar/shared';
+import { Cloud, UserRound } from 'lucide-react';
 import { azureIconUrl, categoryColor, iconForCategory } from '@/lib/icons.js';
 import { cn } from '@/lib/utils.js';
 
@@ -14,7 +15,29 @@ interface ServiceIconProps {
  * Renders the official Microsoft Azure icon for a service when its SVG has been
  * bundled, otherwise falls back to the tinted Lucide category glyph.
  */
-export function ServiceIcon({ category, slug, size = 18, className }: ServiceIconProps): JSX.Element {
+export function ServiceIcon({
+  category,
+  slug,
+  size = 18,
+  className,
+}: ServiceIconProps): JSX.Element {
+  if (slug === 'browser-user') {
+    return (
+      <span
+        aria-hidden
+        className={cn('relative inline-flex shrink-0 items-center justify-center', className)}
+        style={{ width: size, height: size }}
+      >
+        <Cloud size={size} strokeWidth={1.8} className="absolute text-sky-500" />
+        <UserRound
+          size={Math.max(8, Math.round(size * 0.45))}
+          strokeWidth={2.2}
+          className="absolute top-[42%] text-sky-700 dark:text-sky-300"
+        />
+      </span>
+    );
+  }
+
   const url = azureIconUrl(slug);
   if (url) {
     return (

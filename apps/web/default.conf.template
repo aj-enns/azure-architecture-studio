@@ -9,9 +9,12 @@ server {
     try_files $uri $uri/ /index.html;
   }
 
-  # Proxy API + health calls to the api service (compose service name: api).
+  # Proxy API + health calls to the API. API_UPSTREAM is substituted at container
+  # start (nginx envsubst): http://api:8080 for docker-compose, or the internal
+  # Container Apps name (http://aar-api) in Azure. Only ${API_UPSTREAM} is
+  # replaced; nginx runtime vars like $host are left untouched.
   location /api/ {
-    proxy_pass http://api:8080;
+    proxy_pass ${API_UPSTREAM};
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -19,7 +22,7 @@ server {
   }
 
   location /healthz {
-    proxy_pass http://api:8080;
+    proxy_pass ${API_UPSTREAM};
     proxy_set_header Host $host;
   }
 }

@@ -1,26 +1,40 @@
 targetScope = 'resourceGroup'
 
+// App resources: Log Analytics, a Container Apps environment, and the internal
+// API + external web apps. Runs AFTER registry.bicep (which creates the ACR and
+// the pull identity) and AFTER the images are pushed, so the apps start on a
+// real image. Web reverse-proxies the internal API (ADR-0009); the upstream is
+// injected as API_UPSTREAM so nginx can reach the API by its environment name.
+
 @description('Base name used to derive resource names.')
 param name string = 'aar'
 
 @description('Location for all resources.')
 param location string = resourceGroup().location
 
-@description('Container image for the API (e.g. myregistry.azurecr.io/aar-api:latest).')
-param apiImage string
+@description('ACR login server, e.g. aaracrxxxx.azurecr.io (registry.bicep output).')
+param acrLoginServer string
 
-@description('Container image for the web app (e.g. myregistry.azurecr.io/aar-web:latest).')
-param webImage string
+@description('Resource id of the user-assigned identity used to pull images and for keyless AI auth (registry.bicep output).')
+param managedIdentityId string
 
-@description('Azure OpenAI endpoint (bring-your-own). Leave empty to run without AI.')
-param azureOpenAiEndpoint string = ''
+@description('Client id of the user-assigned identity, used for keyless Foundry auth (registry.bicep output).')
+param managedIdentityClientId string
 
-@description('Azure OpenAI deployment name. Leave empty to run without AI.')
-param azureOpenAiDeployment string = ''
+@description('Container image tag to deploy (e.g. the git SHA).')
+param imageTag string = 'latest'
 
-@description('Azure OpenAI API key (bring-your-own). Stored as a Container App secret.')
-@secure()
-param azureOpenAiApiKey string = ''
+@description('Microsoft Foundry endpoint, e.g. https://<resource>.services.ai.azure.com. Leave empty to run without AI.')
+param azureFoundryEndpoint string = ''
+
+@description('Foundry model/deployment name, e.g. gpt-5-mini. Leave empty to run without AI.')
+param azureFoundryModel string = ''
+
+@description('Optional Foundry ARM resource id to enable review model discovery.')
+param azureFoundryResourceId string = ''
+
+@description('Foundry model-inference API version.')
+param azureFoundryApiVersion string = '2024-05-01-preview'
 
 var tags = {
   application: 'azure-architecture-review'
@@ -28,6 +42,26 @@ var tags = {
 }
 
 var uniqueSuffix = uniqueString(resourceGroup().id)
+
+var apiAppName = '${name}-api'
+var webAppName = '${name}-web'
+var apiImage = '${acrLoginServer}/aar-api:${imageTag}'
+var webImage = '${acrLoginServer}/aar-web:${imageTag}'
+
+// Registry reference shared by both apps; images are pulled with the identity.
+var registries = [
+  {
+    server: acrLoginServer
+    identity: managedIdentityId
+  }
+]
+
+var appIdentity = {
+  type: 'UserAssigned'
+  userAssignedIdentities: {
+    '${managedIdentityId}': {}
+  }
+}
 
 // ---- Observability ----------------------------------------------------------
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -58,9 +92,10 @@ resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
 
 // ---- API container app (internal ingress) -----------------------------------
 resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
-  name: '${name}-api'
+  name: apiAppName
   location: location
   tags: tags
+  identity: appIdentity
   properties: {
     managedEnvironmentId: containerEnv.id
     configuration: {
@@ -70,14 +105,7 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
         targetPort: 8080
         transport: 'http'
       }
-      secrets: empty(azureOpenAiApiKey)
-        ? []
-        : [
-            {
-              name: 'azure-openai-api-key'
-              value: azureOpenAiApiKey
-            }
-          ]
+      registries: registries
     }
     template: {
       containers: [
@@ -88,17 +116,18 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json('0.5')
             memory: '1Gi'
           }
-          env: concat(
-            [
-              { name: 'PORT', value: '8080' }
-              { name: 'CORS_ORIGIN', value: 'https://${name}-web.${containerEnv.properties.defaultDomain}' }
-              { name: 'AZURE_OPENAI_ENDPOINT', value: azureOpenAiEndpoint }
-              { name: 'AZURE_OPENAI_DEPLOYMENT', value: azureOpenAiDeployment }
-            ],
-            empty(azureOpenAiApiKey)
-              ? []
-              : [ { name: 'AZURE_OPENAI_API_KEY', secretRef: 'azure-openai-api-key' } ]
-          )
+          // Keyless Foundry auth: DefaultAzureCredential uses AZURE_CLIENT_ID to
+          // pick the user-assigned identity (ADR-0011). Grant that identity roles
+          // on the Foundry resource (see README).
+          env: [
+            { name: 'PORT', value: '8080' }
+            { name: 'CORS_ORIGIN', value: 'https://${webAppName}.${containerEnv.properties.defaultDomain}' }
+            { name: 'AZURE_CLIENT_ID', value: managedIdentityClientId }
+            { name: 'AZURE_FOUNDRY_ENDPOINT', value: azureFoundryEndpoint }
+            { name: 'AZURE_FOUNDRY_MODEL', value: azureFoundryModel }
+            { name: 'AZURE_FOUNDRY_RESOURCE_ID', value: azureFoundryResourceId }
+            { name: 'AZURE_FOUNDRY_API_VERSION', value: azureFoundryApiVersion }
+          ]
         }
       ]
       scale: {
@@ -111,9 +140,10 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
 
 // ---- Web container app (external ingress) -----------------------------------
 resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
-  name: '${name}-web'
+  name: webAppName
   location: location
   tags: tags
+  identity: appIdentity
   properties: {
     managedEnvironmentId: containerEnv.id
     configuration: {
@@ -123,6 +153,7 @@ resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
         targetPort: 80
         transport: 'http'
       }
+      registries: registries
     }
     template: {
       containers: [
@@ -133,6 +164,11 @@ resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json('0.25')
             memory: '0.5Gi'
           }
+          // nginx reverse-proxies /api and /healthz to the internal API app,
+          // reachable by name inside the Container Apps environment (ADR-0009).
+          env: [
+            { name: 'API_UPSTREAM', value: 'http://${apiApp.name}' }
+          ]
         }
       ]
       scale: {
@@ -144,4 +180,4 @@ resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
 }
 
 output webFqdn string = webApp.properties.configuration.ingress.fqdn
-output apiFqdn string = apiApp.properties.configuration.ingress.fqdn
+output apiInternalName string = apiApp.name

@@ -5,11 +5,33 @@ import { layoutDiagram } from './layout.js';
 function build(): Diagram {
   const d = emptyDiagram('test');
   d.groups = [
-    { id: 'g1', kind: 'resourceGroup', label: 'rg', position: { x: 0, y: 0 }, size: { width: 320, height: 220 }, collapsed: false, properties: {} },
+    {
+      id: 'g1',
+      kind: 'resourceGroup',
+      label: 'rg',
+      position: { x: 0, y: 0 },
+      size: { width: 320, height: 220 },
+      collapsed: false,
+      properties: {},
+    },
   ];
   d.nodes = [
-    { id: 'a', serviceId: 'app-service', label: 'web', position: { x: 0, y: 0 }, parentId: 'g1', properties: {} },
-    { id: 'b', serviceId: 'sql-database', label: 'db', position: { x: 0, y: 0 }, parentId: 'g1', properties: {} },
+    {
+      id: 'a',
+      serviceId: 'app-service',
+      label: 'web',
+      position: { x: 0, y: 0 },
+      parentId: 'g1',
+      properties: {},
+    },
+    {
+      id: 'b',
+      serviceId: 'sql-database',
+      label: 'db',
+      position: { x: 0, y: 0 },
+      parentId: 'g1',
+      properties: {},
+    },
     { id: 'c', serviceId: 'front-door', label: 'fd', position: { x: 0, y: 0 }, properties: {} },
   ];
   d.edges = [
@@ -57,11 +79,35 @@ describe('layoutDiagram', () => {
   it('nests a child group inside its parent group', () => {
     const d = emptyDiagram('nested');
     d.groups = [
-      { id: 'vnet', kind: 'vnet', label: 'vnet', position: { x: 0, y: 0 }, size: { width: 320, height: 220 }, collapsed: false, properties: {} },
-      { id: 'subnet', kind: 'subnet', label: 'subnet', position: { x: 0, y: 0 }, size: { width: 320, height: 220 }, parentId: 'vnet', collapsed: false, properties: {} },
+      {
+        id: 'vnet',
+        kind: 'vnet',
+        label: 'vnet',
+        position: { x: 0, y: 0 },
+        size: { width: 320, height: 220 },
+        collapsed: false,
+        properties: {},
+      },
+      {
+        id: 'subnet',
+        kind: 'subnet',
+        label: 'subnet',
+        position: { x: 0, y: 0 },
+        size: { width: 320, height: 220 },
+        parentId: 'vnet',
+        collapsed: false,
+        properties: {},
+      },
     ];
     d.nodes = [
-      { id: 'a', serviceId: 'app-service', label: 'web', position: { x: 0, y: 0 }, parentId: 'subnet', properties: {} },
+      {
+        id: 'a',
+        serviceId: 'app-service',
+        label: 'web',
+        position: { x: 0, y: 0 },
+        parentId: 'subnet',
+        properties: {},
+      },
     ];
     const out = layoutDiagram(d);
     const vnet = out.groups.find((x) => x.id === 'vnet')!;

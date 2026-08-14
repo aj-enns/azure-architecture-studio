@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import {
   estimateNodeCost,
@@ -37,6 +38,14 @@ function slaBadgeStyle(slaPercent: number): string {
     return 'border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400';
   return 'border-rose-500/30 bg-rose-500/15 text-rose-700 dark:text-rose-400';
 }
+
+/** Sides that expose a connection point, so edges can attach to the closest one. */
+const HANDLE_SIDES = [
+  ['left', Position.Left],
+  ['right', Position.Right],
+  ['top', Position.Top],
+  ['bottom', Position.Bottom],
+] as const;
 
 export function AzureNode({ id, data }: NodeProps): JSX.Element {
   const nodeData = data as AzureNodeData;
@@ -91,9 +100,33 @@ export function AzureNode({ id, data }: NodeProps): JSX.Element {
           {cost.usageBased ? '~' : ''}${cost.monthlyUsd}/mo
         </span>
       )}
-      <Handle type="target" position={Position.Left} className="!h-2 !w-2 !bg-muted-foreground" />
-      <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted', color)}>
-        <ServiceIcon category={category} slug={def?.icon} size={18} />
+      {HANDLE_SIDES.map(([side, position]) => (
+        <Fragment key={side}>
+          <Handle
+            id={`${side}-target`}
+            type="target"
+            position={position}
+            className="!h-1.5 !w-1.5 !border-0 !bg-muted-foreground/40"
+          />
+          <Handle
+            id={`${side}-source`}
+            type="source"
+            position={position}
+            className="!h-1.5 !w-1.5 !border-0 !bg-muted-foreground/40"
+          />
+        </Fragment>
+      ))}
+      <span
+        className={cn(
+          'flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted',
+          color,
+        )}
+      >
+        <ServiceIcon
+          category={category}
+          slug={nodeData.serviceId === 'external:browser' ? 'browser-user' : def?.icon}
+          size={22}
+        />
       </span>
       <div className="min-w-0">
         <div className="truncate text-sm font-medium leading-tight">{nodeData.label}</div>
@@ -101,7 +134,6 @@ export function AzureNode({ id, data }: NodeProps): JSX.Element {
           {def?.name ?? (isExternal ? 'Non-Azure' : nodeData.serviceId)}
         </div>
       </div>
-      <Handle type="source" position={Position.Right} className="!h-2 !w-2 !bg-muted-foreground" />
     </div>
   );
 }

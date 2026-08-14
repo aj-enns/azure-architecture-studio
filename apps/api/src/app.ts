@@ -3,11 +3,13 @@ import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import { z } from 'zod';
 import {
   analyzeResiliency,
+  armTemplateToDiagram,
   azureServiceCatalog,
   diagramSchema,
   estimateDiagramCost,
   generateIacBundle,
   resiliencyTargetSchema,
+  scanRepoFiles,
   validateArchitecture,
 } from '@aar/shared';
 import { AiGenerationError, generateSpec, generateSpecFromImage } from './ai/openai.js';
@@ -28,6 +30,8 @@ import {
   type ReviewModelList,
 } from './ai/foundryModels.js';
 import { specToDiagram } from './ai/spec.js';
+import { AzureImportError, importFromResourceGraph } from './importAzure.js';
+import { importFromGitHub, RepoImportError } from './importRepo.js';
 import type { AppConfig, AzureOpenAIConfig } from './config.js';
 
 const resiliencyRequestSchema = z.object({
@@ -167,6 +171,115 @@ export async function buildApp(
     if (!config.learn.enabled) return reply.send({ results: [] });
     const results = await searchLearnDocs(body.data.query, config.learn.endpoint);
     return reply.send({ results });
+  });
+
+  // Deterministic import of a compiled ARM/Bicep template (no model, no creds).
+  app.post('/api/import/arm', async (request, reply) => {
+    const body = z
+      .object({
+        template: z.record(z.string(), z.unknown()),
+        name: z.string().max(200).optional(),
+      })
+      .safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({
+        error: 'invalid_request',
+        message: body.error.issues[0]?.message ?? 'Invalid template.',
+      });
+    }
+    const diagram = armTemplateToDiagram(
+      body.data.template,
+      body.data.name ? { name: body.data.name } : {},
+    );
+    if (diagram.nodes.length === 0) {
+      return reply.code(400).send({
+        error: 'empty_template',
+        message: 'No supported Azure resources were found in the template.',
+      });
+    }
+    return reply.send({ diagram });
+  });
+
+  // Live import of a resource group via Azure Resource Graph (needs Azure auth).
+  app.post('/api/import/azure', async (request, reply) => {
+    const body = z
+      .object({
+        subscriptionId: z.string().uuid(),
+        resourceGroup: z
+          .string()
+          .regex(/^[A-Za-z0-9._()-]{1,90}$/, 'Invalid resource group name.'),
+        name: z.string().max(200).optional(),
+      })
+      .safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({
+        error: 'invalid_request',
+        message: body.error.issues[0]?.message ?? 'Invalid request.',
+      });
+    }
+    try {
+      const diagram = await importFromResourceGraph(body.data);
+      if (diagram.nodes.length === 0) {
+        return reply.code(404).send({
+          error: 'empty_resource_group',
+          message: 'No supported Azure resources were found in that resource group.',
+        });
+      }
+      return reply.send({ diagram });
+    } catch (err) {
+      if (err instanceof AzureImportError) {
+        return reply.code(err.status).send({ error: 'azure_import_error', message: err.message });
+      }
+      request.log.error(err);
+      return reply.code(500).send({ error: 'internal_error', message: 'Azure import failed.' });
+    }
+  });
+
+  // Deterministic import of a repository's IaC (Bicep/Terraform/ARM). Accepts
+  // browser-sent files or fetches a public GitHub repo server-side.
+  app.post('/api/import/repo', { bodyLimit: 20 * 1024 * 1024 }, async (request, reply) => {
+    const body = z
+      .object({
+        files: z
+          .array(
+            z.object({
+              path: z.string().min(1).max(1024),
+              content: z.string().max(2_000_000),
+            }),
+          )
+          .max(500)
+          .optional(),
+        githubUrl: z.string().url().optional(),
+        name: z.string().max(200).optional(),
+      })
+      .refine((value) => value.files?.length || value.githubUrl, {
+        message: 'Provide repository files or a githubUrl.',
+      })
+      .safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({
+        error: 'invalid_request',
+        message: body.error.issues[0]?.message ?? 'Invalid request.',
+      });
+    }
+    try {
+      const diagram = body.data.githubUrl
+        ? await importFromGitHub(body.data.githubUrl)
+        : scanRepoFiles(body.data.files!, body.data.name ?? 'Imported repository');
+      if (diagram.nodes.length === 0) {
+        return reply.code(400).send({
+          error: 'empty_repository',
+          message: 'No supported Bicep, Terraform, or ARM resources were found.',
+        });
+      }
+      return reply.send({ diagram });
+    } catch (err) {
+      if (err instanceof RepoImportError) {
+        return reply.code(err.status).send({ error: 'repo_import_error', message: err.message });
+      }
+      request.log.error(err);
+      return reply.code(500).send({ error: 'internal_error', message: 'Repository import failed.' });
+    }
   });
 
   // Deterministic Well-Architected Framework validation (no model call).

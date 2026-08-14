@@ -1,0 +1,136 @@
+name: deploy
+
+# Builds the API + web images and deploys them to Azure Container Apps.
+#
+# Flow (breaks the image chicken-and-egg):
+#   1. provision  - deploy registry.bicep (ACR + pull identity)
+#   2. build      - az acr build both images, tagged with the commit SHA
+#   3. deploy     - deploy main.bicep (env + apps) on the freshly pushed images
+#
+# Auth is keyless via OIDC (no stored service-principal secret). Configure once:
+#   Repo secrets:  AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
+#   Repo variables: AZURE_RESOURCE_GROUP, AZURE_LOCATION
+#                   AZURE_FOUNDRY_ENDPOINT, AZURE_FOUNDRY_MODEL   (optional, enable AI)
+#                   AZURE_FOUNDRY_RESOURCE_ID                     (optional, model discovery)
+#
+# The federated app registration needs, on the resource group:
+#   - Contributor          (deploy resources + push images via az acr build)
+#   - User Access Administrator  (create the AcrPull role assignment in registry.bicep)
+# Owner covers both if you prefer a single assignment.
+#
+# Keyless Foundry: grant the app's user-assigned identity (aar-id-*) the
+# "Cognitive Services OpenAI User" (inference) and "Reader" (discovery) roles on
+# your Foundry resource. See README (Deploy to Azure).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'infra/**'
+      - '.github/workflows/deploy.yml'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  NAME: aar
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    outputs:
+      acrName: ${{ steps.registry.outputs.acrName }}
+      acrLoginServer: ${{ steps.registry.outputs.acrLoginServer }}
+      identityId: ${{ steps.registry.outputs.identityId }}
+      identityClientId: ${{ steps.registry.outputs.identityClientId }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Ensure resource group
+        run: az group create --name "${{ vars.AZURE_RESOURCE_GROUP }}" --location "${{ vars.AZURE_LOCATION }}"
+
+      - name: Deploy registry + identity
+        id: registry
+        run: |
+          outputs=$(az deployment group create \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file infra/registry.bicep \
+            --parameters name="$NAME" \
+            --query properties.outputs -o json)
+          echo "acrName=$(echo "$outputs" | jq -r .acrName.value)" >> "$GITHUB_OUTPUT"
+          echo "acrLoginServer=$(echo "$outputs" | jq -r .acrLoginServer.value)" >> "$GITHUB_OUTPUT"
+          echo "identityId=$(echo "$outputs" | jq -r .identityId.value)" >> "$GITHUB_OUTPUT"
+          echo "identityClientId=$(echo "$outputs" | jq -r .identityClientId.value)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: provision
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build & push API image
+        run: |
+          az acr build \
+            --registry "${{ needs.provision.outputs.acrName }}" \
+            --image "aar-api:${{ github.sha }}" \
+            --file apps/api/Dockerfile .
+
+      - name: Build & push web image
+        run: |
+          az acr build \
+            --registry "${{ needs.provision.outputs.acrName }}" \
+            --image "aar-web:${{ github.sha }}" \
+            --file apps/web/Dockerfile .
+
+  deploy:
+    needs: [provision, build]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy app (Container Apps)
+        id: app
+        run: |
+          outputs=$(az deployment group create \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file infra/main.bicep \
+            --parameters \
+              name="$NAME" \
+              acrLoginServer="${{ needs.provision.outputs.acrLoginServer }}" \
+              managedIdentityId="${{ needs.provision.outputs.identityId }}" \
+              managedIdentityClientId="${{ needs.provision.outputs.identityClientId }}" \
+              imageTag="${{ github.sha }}" \
+              azureFoundryEndpoint="${{ vars.AZURE_FOUNDRY_ENDPOINT }}" \
+              azureFoundryModel="${{ vars.AZURE_FOUNDRY_MODEL }}" \
+              azureFoundryResourceId="${{ vars.AZURE_FOUNDRY_RESOURCE_ID }}" \
+            --query properties.outputs -o json)
+          echo "webFqdn=$(echo "$outputs" | jq -r .webFqdn.value)" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        run: echo "### Deployed → https://${{ steps.app.outputs.webFqdn }}" >> "$GITHUB_STEP_SUMMARY"

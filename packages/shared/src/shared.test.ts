@@ -7,6 +7,7 @@ import {
   emptyDiagram,
   getServiceDefinition,
   getServicesByCategory,
+  isExternalServiceId,
   safeParseDiagram,
   serviceDefinitionSchema,
 } from './index.js';
@@ -64,6 +65,12 @@ describe('azure service catalog', () => {
     const dbs = getServicesByCategory('databases');
     expect(dbs.length).toBeGreaterThan(0);
     expect(dbs.every((s) => s.category === 'databases')).toBe(true);
+  });
+
+  it('recognizes generic and typed external service ids', () => {
+    expect(isExternalServiceId('external')).toBe(true);
+    expect(isExternalServiceId('external:browser')).toBe(true);
+    expect(isExternalServiceId('container-apps')).toBe(false);
   });
 });
 

@@ -26,6 +26,13 @@ A pnpm monorepo (see [ADR-0001](docs/adr/0001-monorepo-and-stack.md)):
 | `packages/shared` | Zod diagram schema + Azure service catalog (single source of truth)|
 | `infra`           | Bicep for Azure Container Apps                                     |
 
+The AI layer computes Well-Architected, resiliency, and cost analysis with
+deterministic functions in `packages/shared` and uses a single model call to
+synthesise the cross-pillar review — rather than separate per-pillar agents. See
+[ADR-0019](docs/adr/0019-single-synthesizer-over-multi-agent.md) for what was
+considered and why, and [docs/architecture-flow.md](docs/architecture-flow.md)
+for a diagram of the prompt, AI, and deterministic calls.
+
 ## Prerequisites
 
 - **Node.js** ≥ 20 (22 recommended)
@@ -89,6 +96,54 @@ Only succeeded chat-completion deployments advertising JSON response support are
 offered. If discovery or authorization fails, reviews remain available with the
 configured `AZURE_FOUNDRY_MODEL` and the panel shows a warning. See
 [ADR-0015](docs/adr/0015-foundry-review-model-discovery.md).
+
+## Deploy to Azure
+
+Infrastructure is Bicep, targeting Azure Container Apps (ADR-0004):
+
+| File | What it provisions |
+| ---- | ------------------ |
+| [infra/registry.bicep](infra/registry.bicep) | Azure Container Registry + a user-assigned identity with `AcrPull` |
+| [infra/main.bicep](infra/main.bicep) | Log Analytics, Container Apps environment, internal API app, external web app |
+
+The web container reverse-proxies the internal API (ADR-0009); nginx's upstream is
+injected as `API_UPSTREAM` at container start (the internal app name in Azure,
+`http://api:8080` in Docker Compose).
+
+### CI/CD (GitHub Actions)
+
+[.github/workflows/deploy.yml](.github/workflows/deploy.yml) provisions the
+registry, builds both images with `az acr build` (tagged by commit SHA), then
+deploys the apps — keyless via **OIDC** (no stored service-principal secret).
+
+Configure once:
+
+- **Secrets:** `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
+- **Variables:** `AZURE_RESOURCE_GROUP`, `AZURE_LOCATION`, and optionally
+  `AZURE_FOUNDRY_ENDPOINT` / `AZURE_FOUNDRY_MODEL` (and `AZURE_FOUNDRY_RESOURCE_ID`
+  to enable review model discovery).
+- Grant the federated app registration **Owner** on the resource group (or
+  **Contributor** + **User Access Administrator** — the latter is needed to create
+  the `AcrPull` role assignment).
+
+AI runs **keyless**: the app's user-assigned identity (`aar-id-*`) authenticates to
+Foundry via `DefaultAzureCredential` (ADR-0011). Grant it access on your Foundry
+resource once — either with [infra/foundry-roles.bicep](infra/foundry-roles.bicep)
+(deploy into the Foundry account's resource group):
+
+```bash
+az deployment group create -g <foundry-rg> -f infra/foundry-roles.bicep \
+  -p foundryAccountName=<account> principalId=<identity-principal-id>
+```
+
+or the equivalent CLI role assignments:
+
+```bash
+az role assignment create --assignee <identity-client-id> \
+  --role "Cognitive Services OpenAI User" --scope <foundry-resource-id>   # inference
+az role assignment create --assignee <identity-client-id> \
+  --role "Reader" --scope <foundry-resource-id>                          # model discovery
+```
 
 ## Security
 

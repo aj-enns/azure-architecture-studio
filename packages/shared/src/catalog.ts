@@ -113,7 +113,12 @@ export const coreServiceCatalog: ServiceDefinition[] = [
     category: 'compute',
     description: 'Event-driven serverless compute.',
     icon: 'function-app',
-    defaults: { plan: 'FlexConsumption', runtime: 'node', zoneRedundant: false, multiRegion: false },
+    defaults: {
+      plan: 'FlexConsumption',
+      runtime: 'node',
+      zoneRedundant: false,
+      multiRegion: false,
+    },
     pricing: { serviceName: 'Functions', consumptionBased: true },
     iac: {
       resourceType: 'Microsoft.Web/sites',
@@ -136,6 +141,20 @@ export const coreServiceCatalog: ServiceDefinition[] = [
       avmModule: 'br/public:avm/res/app/container-app',
     },
     docsUrl: 'https://learn.microsoft.com/azure/container-apps/',
+  },
+  {
+    id: 'container-apps-environment',
+    name: 'Container Apps Environment',
+    category: 'containers',
+    description: 'Shared isolation, networking, and logging boundary for Container Apps.',
+    icon: 'container-app',
+    defaults: {},
+    pricing: { serviceName: 'Azure Container Apps', consumptionBased: true },
+    iac: {
+      resourceType: 'Microsoft.App/managedEnvironments',
+      avmModule: 'br/public:avm/res/app/managed-environment',
+    },
+    docsUrl: 'https://learn.microsoft.com/azure/container-apps/environment',
   },
   {
     id: 'aks',
@@ -227,7 +246,12 @@ export const coreServiceCatalog: ServiceDefinition[] = [
     category: 'databases',
     description: 'Managed relational SQL database.',
     icon: 'sql-database',
-    defaults: { tier: 'GeneralPurpose', compute: 'Serverless', zoneRedundant: false, multiRegion: false },
+    defaults: {
+      tier: 'GeneralPurpose',
+      compute: 'Serverless',
+      zoneRedundant: false,
+      multiRegion: false,
+    },
     pricing: { serviceName: 'SQL Database', consumptionBased: false },
     iac: {
       resourceType: 'Microsoft.Sql/servers/databases',
@@ -540,10 +564,9 @@ export const azureServiceCatalog: ServiceDefinition[] = mergeCatalog(
 );
 
 /** Fast lookup map keyed by service id. Built once at module load. */
-export const azureServiceCatalogById: Readonly<Record<string, ServiceDefinition>> =
-  Object.freeze(
-    Object.fromEntries(azureServiceCatalog.map((s) => [s.id, s])),
-  );
+export const azureServiceCatalogById: Readonly<Record<string, ServiceDefinition>> = Object.freeze(
+  Object.fromEntries(azureServiceCatalog.map((s) => [s.id, s])),
+);
 
 /** Resolve a service definition by id, or undefined if unknown. */
 export function getServiceDefinition(id: string): ServiceDefinition | undefined {
@@ -559,7 +582,7 @@ export const EXTERNAL_SERVICE_ID = 'external';
 
 /** Whether a node represents a non-Azure / external component. */
 export function isExternalServiceId(id: string): boolean {
-  return id === EXTERNAL_SERVICE_ID;
+  return id === EXTERNAL_SERVICE_ID || id.startsWith(`${EXTERNAL_SERVICE_ID}:`);
 }
 
 /** All services in a given category. */

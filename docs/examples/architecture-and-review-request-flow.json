@@ -1,0 +1,230 @@
+{
+  "version": 1,
+  "metadata": {
+    "name": "Architecture Generation and Review Request Flow",
+    "description": "Logical application flow showing how architecture generation and architecture review share one Microsoft Foundry model-inference endpoint but use different orchestration, evidence, prompts, and response schemas. This is a workflow view, not a deployment topology.",
+    "region": "eastus2"
+  },
+  "nodes": [
+    {
+      "id": "web-ui",
+      "serviceId": "static-web-app",
+      "label": "Azure Architecture Review UI",
+      "position": { "x": 0, "y": 330 },
+      "properties": { "role": "Browser client" }
+    },
+    {
+      "id": "api",
+      "serviceId": "container-apps",
+      "label": "Fastify API",
+      "position": { "x": 280, "y": 330 },
+      "properties": { "role": "Request validation and orchestration" }
+    },
+    {
+      "id": "reference-kb",
+      "serviceId": "storage-account",
+      "label": "Reference Architecture Knowledge Base",
+      "position": { "x": 560, "y": 20 },
+      "properties": { "source": "Curated Azure Architecture Center patterns" }
+    },
+    {
+      "id": "learn",
+      "serviceId": "external",
+      "label": "Microsoft Learn Grounding",
+      "position": { "x": 560, "y": 140 },
+      "properties": { "integration": "MCP documentation search", "failureMode": "Soft fail" }
+    },
+    {
+      "id": "generation-orchestrator",
+      "serviceId": "functions",
+      "label": "Generation Prompt Assembly",
+      "position": { "x": 560, "y": 270 },
+      "properties": {
+        "route": "/api/generate",
+        "outputSchema": "azure_architecture_diagram",
+        "mode": "faithful or bestPractice"
+      }
+    },
+    {
+      "id": "waf-analysis",
+      "serviceId": "functions",
+      "label": "Deterministic WAF Analysis",
+      "position": { "x": 560, "y": 480 },
+      "properties": { "function": "validateArchitecture" }
+    },
+    {
+      "id": "resiliency-analysis",
+      "serviceId": "functions",
+      "label": "Deterministic Resiliency Analysis",
+      "position": { "x": 560, "y": 600 },
+      "properties": { "function": "analyzeResiliency" }
+    },
+    {
+      "id": "cost-analysis",
+      "serviceId": "functions",
+      "label": "Deterministic Cost Analysis",
+      "position": { "x": 560, "y": 720 },
+      "properties": { "function": "estimateDiagramCost" }
+    },
+    {
+      "id": "review-orchestrator",
+      "serviceId": "functions",
+      "label": "Review Evidence and Prompt Assembly",
+      "position": { "x": 840, "y": 570 },
+      "properties": {
+        "route": "/api/review",
+        "methodology": "waf-architecture-review",
+        "outputSchema": "azure_architecture_review"
+      }
+    },
+    {
+      "id": "foundry-model",
+      "serviceId": "ai-foundry",
+      "label": "Foundry Model Inference (Not an Agent)",
+      "position": { "x": 1120, "y": 330 },
+      "properties": {
+        "api": "/models/chat/completions",
+        "interaction": "Stateless structured output",
+        "agentName": "None"
+      }
+    },
+    {
+      "id": "diagram-normalizer",
+      "serviceId": "functions",
+      "label": "Schema Validation and Dagre Layout",
+      "position": { "x": 1400, "y": 220 },
+      "properties": { "function": "specToDiagram", "schemaVersion": 1 }
+    },
+    {
+      "id": "diagram-canvas",
+      "serviceId": "static-web-app",
+      "label": "Rendered Architecture Diagram",
+      "position": { "x": 1680, "y": 220 },
+      "properties": { "result": "Validated Diagram JSON" }
+    },
+    {
+      "id": "review-panel",
+      "serviceId": "static-web-app",
+      "label": "Rendered Architecture Review",
+      "position": { "x": 1400, "y": 570 },
+      "properties": { "result": "Markdown review and citations" }
+    }
+  ],
+  "groups": [],
+  "edges": [
+    {
+      "id": "edge-generate-request",
+      "source": "web-ui",
+      "target": "api",
+      "label": "Architecture request: POST /api/generate"
+    },
+    {
+      "id": "edge-api-generation",
+      "source": "api",
+      "target": "generation-orchestrator",
+      "label": "Prompt, mode, current diagram"
+    },
+    {
+      "id": "edge-api-reference",
+      "source": "api",
+      "target": "reference-kb",
+      "label": "Retrieve matching patterns"
+    },
+    {
+      "id": "edge-reference-generation",
+      "source": "reference-kb",
+      "target": "generation-orchestrator",
+      "label": "Recommended topology context"
+    },
+    {
+      "id": "edge-api-learn-generation",
+      "source": "api",
+      "target": "learn",
+      "label": "Best-effort guidance search"
+    },
+    {
+      "id": "edge-learn-generation",
+      "source": "learn",
+      "target": "generation-orchestrator",
+      "label": "Learn excerpts and citations"
+    },
+    {
+      "id": "edge-generation-foundry",
+      "source": "generation-orchestrator",
+      "target": "foundry-model",
+      "label": "System + user prompts; Diagram JSON schema"
+    },
+    {
+      "id": "edge-foundry-normalizer",
+      "source": "foundry-model",
+      "target": "diagram-normalizer",
+      "label": "AiDiagramSpec JSON"
+    },
+    {
+      "id": "edge-normalizer-canvas",
+      "source": "diagram-normalizer",
+      "target": "diagram-canvas",
+      "label": "Catalog-filtered, positioned Diagram"
+    },
+    {
+      "id": "edge-review-request",
+      "source": "web-ui",
+      "target": "api",
+      "label": "Review request: POST /api/review"
+    },
+    {
+      "id": "edge-api-waf",
+      "source": "api",
+      "target": "waf-analysis",
+      "label": "Current Diagram"
+    },
+    {
+      "id": "edge-api-resiliency",
+      "source": "api",
+      "target": "resiliency-analysis",
+      "label": "Current Diagram"
+    },
+    {
+      "id": "edge-api-cost",
+      "source": "api",
+      "target": "cost-analysis",
+      "label": "Current Diagram"
+    },
+    {
+      "id": "edge-waf-review",
+      "source": "waf-analysis",
+      "target": "review-orchestrator",
+      "label": "Five-pillar findings"
+    },
+    {
+      "id": "edge-resiliency-review",
+      "source": "resiliency-analysis",
+      "target": "review-orchestrator",
+      "label": "Composite SLA, RPO/RTO, weakest link"
+    },
+    {
+      "id": "edge-cost-review",
+      "source": "cost-analysis",
+      "target": "review-orchestrator",
+      "label": "Representative monthly estimate"
+    },
+    {
+      "id": "edge-learn-review",
+      "source": "learn",
+      "target": "review-orchestrator",
+      "label": "Optional service reliability guidance"
+    },
+    {
+      "id": "edge-review-foundry",
+      "source": "review-orchestrator",
+      "target": "foundry-model",
+      "label": "Evidence-bound review prompt; Markdown schema"
+    },
+    {
+      "id": "edge-foundry-review-panel",
+      "source": "foundry-model",
+      "target": "review-panel",
+      "label": "Markdown review and citations"
+    }
+  ]
+}

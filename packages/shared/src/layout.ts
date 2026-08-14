@@ -21,7 +21,7 @@ export function layoutDiagram(diagram: Diagram): Diagram {
   if (diagram.nodes.length === 0) return diagram;
 
   const g = new dagre.graphlib.Graph({ compound: true });
-  g.setGraph({ rankdir: 'LR', nodesep: 55, ranksep: 130, marginx: 24, marginy: 24 });
+  g.setGraph({ rankdir: 'LR', nodesep: 64, ranksep: 210, marginx: 24, marginy: 24 });
   g.setDefaultEdgeLabel(() => ({}));
 
   const groupById = new Map(diagram.groups.map((gr) => [gr.id, gr]));
@@ -39,7 +39,15 @@ export function layoutDiagram(diagram: Diagram): Diagram {
 
   const nodeIds = new Set(diagram.nodes.map((n) => n.id));
   for (const e of diagram.edges) {
-    if (nodeIds.has(e.source) && nodeIds.has(e.target)) g.setEdge(e.source, e.target);
+    if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) continue;
+    // Give labelled edges a reserved box so Dagre spaces connectors apart and
+    // labels don't land on top of each other or on a node.
+    if (e.label) {
+      const width = Math.min(240, Math.max(48, e.label.length * 6.4));
+      g.setEdge(e.source, e.target, { label: e.label, width, height: 22, labelpos: 'c' });
+    } else {
+      g.setEdge(e.source, e.target, {});
+    }
   }
 
   dagre.layout(g);

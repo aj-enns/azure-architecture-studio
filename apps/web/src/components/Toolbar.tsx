@@ -1,7 +1,8 @@
-import { useRef, type ComponentType } from 'react';
+import { useRef } from 'react';
 import {
   ChevronDown,
   ClipboardCheck,
+  Cloud,
   Command,
   DollarSign,
   Download,
@@ -16,9 +17,11 @@ import {
   Sparkles,
   Sun,
   Upload,
+  type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button.js';
 import { DropdownItem, DropdownMenu } from '@/components/ui/DropdownMenu.js';
+import { importArmTemplate, importFromAzure } from '@/lib/api.js';
 import { cn } from '@/lib/utils.js';
 import { useTheme } from '@/lib/theme.js';
 import { downloadJson, exportPng, exportSvg } from '@/lib/export.js';
@@ -26,7 +29,7 @@ import { useDiagramStore } from '@/store/diagramStore.js';
 import { useUiStore, type PanelId } from '@/store/uiStore.js';
 
 /** Analysis lenses that share the right rail — rendered as a segmented tab strip. */
-const insightLenses: { id: PanelId; label: string; icon: ComponentType<{ size?: number }>; title: string }[] = [
+const insightLenses: { id: PanelId; label: string; icon: LucideIcon; title: string }[] = [
   { id: 'validation', label: 'Validate', icon: ShieldCheck, title: 'Well-Architected review' },
   { id: 'cost', label: 'Costs', icon: DollarSign, title: 'Monthly cost estimate' },
   { id: 'resiliency', label: 'Resiliency', icon: ShieldAlert, title: 'Composite SLA, RPO and RTO' },
@@ -34,21 +37,51 @@ const insightLenses: { id: PanelId; label: string; icon: ComponentType<{ size?: 
 ];
 
 /** Top toolbar: document context on the left, analysis lenses and tools on the right. */
-export function Toolbar({ onOpenCommand }: { onOpenCommand: () => void }): JSX.Element {
+export function Toolbar({
+  onOpenCommand,
+  onOpenRepositoryImport,
+}: {
+  onOpenCommand: () => void;
+  onOpenRepositoryImport: () => void;
+}): JSX.Element {
   const { theme, toggleTheme } = useTheme();
   const name = useDiagramStore((s) => s.diagram.metadata.name);
   const setName = useDiagramStore((s) => s.setName);
   const reset = useDiagramStore((s) => s.reset);
   const importJson = useDiagramStore((s) => s.importJson);
+  const load = useDiagramStore((s) => s.load);
   const exportJson = useDiagramStore((s) => s.exportJson);
   const activePanel = useUiStore((s) => s.activePanel);
   const togglePanel = useUiStore((s) => s.togglePanel);
   const fileRef = useRef<HTMLInputElement>(null);
+  const armFileRef = useRef<HTMLInputElement>(null);
 
   const handleImport = async (file: File): Promise<void> => {
     const text = await file.text();
     const result = importJson(text);
     if (!result.ok) window.alert(`Import failed: ${result.error}`);
+  };
+
+  // Compiled ARM/Bicep template (JSON) -> diagram via the deterministic API import.
+  const handleImportArm = async (file: File): Promise<void> => {
+    try {
+      const template = JSON.parse(await file.text());
+      load(await importArmTemplate(template, file.name.replace(/\.[^.]+$/, '')));
+    } catch (e) {
+      window.alert(`Import failed: ${e instanceof Error ? e.message : 'Invalid template'}`);
+    }
+  };
+
+  const handleImportAzure = async (): Promise<void> => {
+    const subscriptionId = window.prompt('Azure subscription id (GUID):')?.trim();
+    if (!subscriptionId) return;
+    const resourceGroup = window.prompt('Resource group name:')?.trim();
+    if (!resourceGroup) return;
+    try {
+      load(await importFromAzure(subscriptionId, resourceGroup));
+    } catch (e) {
+      window.alert(`Azure import failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    }
   };
 
   return (
@@ -79,6 +112,15 @@ export function Toolbar({ onOpenCommand }: { onOpenCommand: () => void }): JSX.E
         </DropdownItem>
         <DropdownItem onSelect={() => fileRef.current?.click()}>
           <Upload size={16} /> Import JSON…
+        </DropdownItem>
+        <DropdownItem onSelect={() => armFileRef.current?.click()}>
+          <FileCode2 size={16} /> Import ARM/Bicep template (JSON)…
+        </DropdownItem>
+        <DropdownItem onSelect={onOpenRepositoryImport}>
+          <Folder size={16} /> Import Git repository…
+        </DropdownItem>
+        <DropdownItem onSelect={() => void handleImportAzure()}>
+          <Cloud size={16} /> Import from Azure (resource group)…
         </DropdownItem>
         <MenuSeparator />
         <MenuLabel>Export</MenuLabel>
@@ -161,6 +203,17 @@ export function Toolbar({ onOpenCommand }: { onOpenCommand: () => void }): JSX.E
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) void handleImport(file);
+          e.target.value = '';
+        }}
+      />
+      <input
+        ref={armFileRef}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void handleImportArm(file);
           e.target.value = '';
         }}
       />

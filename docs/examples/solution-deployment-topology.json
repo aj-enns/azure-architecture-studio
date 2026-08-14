@@ -1,0 +1,249 @@
+{
+  "version": 1,
+  "metadata": {
+    "name": "Azure Architecture Review - Deployment Topology",
+    "description": "Faithful repository-derived topology: external web and internal API Container Apps, ACR image delivery, a shared pull/inference identity, Log Analytics, BYO Microsoft Foundry, and Microsoft Learn grounding.",
+    "region": "eastus2"
+  },
+  "nodes": [
+    {
+      "id": "browser",
+      "serviceId": "external:browser",
+      "label": "User (Browser)",
+      "position": {
+        "x": 672,
+        "y": 719.5
+      },
+      "properties": {
+        "role": "Client"
+      }
+    },
+    {
+      "id": "acr",
+      "serviceId": "container-registry",
+      "label": "aar images (ACR)",
+      "position": {
+        "x": 466,
+        "y": 320.5
+      },
+      "parentId": "resource-group",
+      "properties": {
+        "sku": "Basic",
+        "adminUserEnabled": false
+      }
+    },
+    {
+      "id": "identity",
+      "serviceId": "managed-identity",
+      "label": "aar pull and inference identity",
+      "position": {
+        "x": 28,
+        "y": 226
+      },
+      "parentId": "resource-group",
+      "properties": {
+        "type": "UserAssigned"
+      }
+    },
+    {
+      "id": "container-env",
+      "serviceId": "container-apps-environment",
+      "label": "Container Apps Environment",
+      "position": {
+        "x": 466,
+        "y": 130.5
+      },
+      "parentId": "resource-group",
+      "properties": {
+        "logDestination": "Log Analytics"
+      }
+    },
+    {
+      "id": "web",
+      "serviceId": "container-apps",
+      "label": "Web (nginx + React)",
+      "position": {
+        "x": 971.2,
+        "y": 363
+      },
+      "parentId": "resource-group",
+      "properties": {
+        "ingress": "External",
+        "targetPort": 80,
+        "minReplicas": 1,
+        "maxReplicas": 3,
+        "image": "aar-web:<git-sha>"
+      }
+    },
+    {
+      "id": "api",
+      "serviceId": "container-apps",
+      "label": "API (Fastify)",
+      "position": {
+        "x": 1559.6,
+        "y": 204.5
+      },
+      "parentId": "resource-group",
+      "properties": {
+        "ingress": "Internal",
+        "targetPort": 8080,
+        "minReplicas": 0,
+        "maxReplicas": 3,
+        "image": "aar-api:<git-sha>"
+      }
+    },
+    {
+      "id": "logs",
+      "serviceId": "log-analytics",
+      "label": "${name}-logs-${uniqueSuffix}",
+      "position": {
+        "x": 971.2,
+        "y": 56
+      },
+      "parentId": "resource-group",
+      "properties": {
+        "sku": "PerGB2018",
+        "retentionInDays": 30
+      }
+    },
+    {
+      "id": "foundry",
+      "serviceId": "ai-foundry",
+      "label": "Microsoft Foundry (BYO)",
+      "position": {
+        "x": 2236.2,
+        "y": 429
+      },
+      "parentId": "azure",
+      "properties": {
+        "existing": true,
+        "integration": "Model inference and deployment discovery",
+        "auth": "Microsoft Entra ID via the user-assigned identity"
+      }
+    },
+    {
+      "id": "learn",
+      "serviceId": "external",
+      "label": "Microsoft Learn MCP",
+      "position": {
+        "x": 2414.2,
+        "y": 24
+      },
+      "properties": {
+        "integration": "Documentation grounding",
+        "failureMode": "Best effort"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": "azure",
+      "kind": "subscription",
+      "label": "Azure",
+      "position": {
+        "x": 178,
+        "y": 132.5
+      },
+      "size": {
+        "width": 2444.2,
+        "height": 539
+      },
+      "collapsed": false,
+      "properties": {
+        "scope": "Azure cloud boundary"
+      }
+    },
+    {
+      "id": "resource-group",
+      "kind": "resourceGroup",
+      "label": "AZURE_RESOURCE_GROUP",
+      "position": {
+        "x": 28,
+        "y": 56
+      },
+      "size": {
+        "width": 1767.6,
+        "height": 455
+      },
+      "parentId": "azure",
+      "collapsed": false,
+      "properties": {
+        "source": "AZURE_RESOURCE_GROUP deployment variable"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "browser-web",
+      "source": "browser",
+      "target": "web",
+      "label": "HTTPS"
+    },
+    {
+      "id": "web-api",
+      "source": "web",
+      "target": "api",
+      "label": "/api and /healthz reverse proxy"
+    },
+    {
+      "id": "env-web",
+      "source": "container-env",
+      "target": "web",
+      "label": "hosts"
+    },
+    {
+      "id": "env-api",
+      "source": "container-env",
+      "target": "api",
+      "label": "hosts"
+    },
+    {
+      "id": "env-logs",
+      "source": "container-env",
+      "target": "logs",
+      "label": "app logs"
+    },
+    {
+      "id": "acr-web",
+      "source": "acr",
+      "target": "web",
+      "label": "aar-web image pull"
+    },
+    {
+      "id": "acr-api",
+      "source": "acr",
+      "target": "api",
+      "label": "aar-api image pull"
+    },
+    {
+      "id": "identity-acr",
+      "source": "identity",
+      "target": "acr",
+      "label": "AcrPull"
+    },
+    {
+      "id": "identity-web",
+      "source": "identity",
+      "target": "web",
+      "label": "assigned identity"
+    },
+    {
+      "id": "identity-api",
+      "source": "identity",
+      "target": "api",
+      "label": "assigned identity"
+    },
+    {
+      "id": "api-foundry",
+      "source": "api",
+      "target": "foundry",
+      "label": "Entra ID model inference"
+    },
+    {
+      "id": "api-learn",
+      "source": "api",
+      "target": "learn",
+      "label": "grounding (best effort)"
+    }
+  ]
+}

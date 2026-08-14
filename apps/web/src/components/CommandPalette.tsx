@@ -2,8 +2,10 @@ import { Command } from 'cmdk';
 import { useEffect } from 'react';
 import {
   azureServiceCatalog,
+  type Diagram,
   type GroupKind,
 } from '@aar/shared';
+import { importArmTemplate, importFromAzure } from '@/lib/api.js';
 import { downloadJson, exportPng, exportSvg } from '@/lib/export.js';
 import { useTheme } from '@/lib/theme.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
@@ -40,12 +42,52 @@ async function pickAndImport(importJson: (json: string) => { ok: true } | { ok: 
   input.click();
 }
 
+/** Prompts for a compiled ARM/Bicep template file, then imports it via the API. */
+async function pickAndImportArm(load: (diagram: Diagram) => void): Promise<void> {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/json,.json';
+  input.onchange = async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const template = JSON.parse(await file.text());
+      load(await importArmTemplate(template, file.name.replace(/\.[^.]+$/, '')));
+    } catch (e) {
+      window.alert(`Import failed: ${e instanceof Error ? e.message : 'Invalid template'}`);
+    }
+  };
+  input.click();
+}
+
+/** Prompts for a subscription + resource group, then imports live via the API. */
+async function importAzureResourceGroup(load: (diagram: Diagram) => void): Promise<void> {
+  const subscriptionId = window.prompt('Azure subscription id (GUID):')?.trim();
+  if (!subscriptionId) return;
+  const resourceGroup = window.prompt('Resource group name:')?.trim();
+  if (!resourceGroup) return;
+  try {
+    load(await importFromAzure(subscriptionId, resourceGroup));
+  } catch (e) {
+    window.alert(`Azure import failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+  }
+}
+
 /** Command palette (Ctrl/Cmd+K): open panels, run diagram actions, add services. */
-export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }): JSX.Element {
+export function CommandPalette({
+  open,
+  onOpenChange,
+  onOpenRepositoryImport,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onOpenRepositoryImport: () => void;
+}): JSX.Element {
   const addNode = useDiagramStore((s) => s.addNode);
   const addGroup = useDiagramStore((s) => s.addGroup);
   const exportJson = useDiagramStore((s) => s.exportJson);
   const importJson = useDiagramStore((s) => s.importJson);
+  const load = useDiagramStore((s) => s.load);
   const relayout = useDiagramStore((s) => s.relayout);
   const reset = useDiagramStore((s) => s.reset);
   const name = useDiagramStore((s) => s.diagram.metadata.name);
@@ -117,6 +159,9 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               New diagram
             </Item>
             <Item onSelect={() => run(() => void pickAndImport(importJson))}>Import JSON…</Item>
+            <Item onSelect={() => run(() => void pickAndImportArm(load))}>Import ARM/Bicep template (JSON)…</Item>
+            <Item onSelect={() => run(onOpenRepositoryImport)}>Import Git repository…</Item>
+            <Item onSelect={() => run(() => void importAzureResourceGroup(load))}>Import from Azure (resource group)…</Item>
           </Command.Group>
 
           <Command.Group heading="Export" className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">

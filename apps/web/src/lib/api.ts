@@ -81,6 +81,94 @@ export async function generateDiagram(
 }
 
 /**
+ * Imports a compiled ARM/Bicep template (JSON) into a diagram deterministically
+ * (no model). Throws with a human-readable message on failure.
+ */
+export async function importArmTemplate(template: unknown, name?: string): Promise<Diagram> {
+  const res = await fetch('/api/import/arm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ template, ...(name ? { name } : {}) }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as ApiError | null;
+    throw new Error(body?.message ?? `Template import failed (${res.status})`);
+  }
+  const body = (await res.json()) as { diagram?: unknown };
+  const parsed = safeParseDiagram(body.diagram);
+  if (!parsed.success) {
+    throw new Error('The API returned an invalid diagram.');
+  }
+  return parsed.data;
+}
+
+/**
+ * Imports the resources of an Azure resource group into a diagram via the API's
+ * Azure Resource Graph query. Requires the API host to be authenticated to Azure.
+ */
+export async function importFromAzure(
+  subscriptionId: string,
+  resourceGroup: string,
+): Promise<Diagram> {
+  const res = await fetch('/api/import/azure', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subscriptionId, resourceGroup }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as ApiError | null;
+    throw new Error(body?.message ?? `Azure import failed (${res.status})`);
+  }
+  const body = (await res.json()) as { diagram?: unknown };
+  const parsed = safeParseDiagram(body.diagram);
+  if (!parsed.success) {
+    throw new Error('The API returned an invalid diagram.');
+  }
+  return parsed.data;
+}
+
+/** Imports a repository's IaC files (Bicep/Terraform/ARM) into a diagram. */
+export async function importRepoFiles(
+  files: { path: string; content: string }[],
+  name?: string,
+): Promise<Diagram> {
+  const res = await fetch('/api/import/repo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ files, ...(name ? { name } : {}) }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as ApiError | null;
+    throw new Error(body?.message ?? `Repository import failed (${res.status})`);
+  }
+  const body = (await res.json()) as { diagram?: unknown };
+  const parsed = safeParseDiagram(body.diagram);
+  if (!parsed.success) {
+    throw new Error('The API returned an invalid diagram.');
+  }
+  return parsed.data;
+}
+
+/** Imports a public GitHub repository's IaC into a diagram (server fetches it). */
+export async function importRepoFromGitHub(githubUrl: string): Promise<Diagram> {
+  const res = await fetch('/api/import/repo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ githubUrl }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as ApiError | null;
+    throw new Error(body?.message ?? `GitHub import failed (${res.status})`);
+  }
+  const body = (await res.json()) as { diagram?: unknown };
+  const parsed = safeParseDiagram(body.diagram);
+  if (!parsed.success) {
+    throw new Error('The API returned an invalid diagram.');
+  }
+  return parsed.data;
+}
+
+/**
  * Transcribes an uploaded diagram image (PNG/JPEG data URL) into a diagram via
  * the API. Throws with a human-readable message on failure.
  */

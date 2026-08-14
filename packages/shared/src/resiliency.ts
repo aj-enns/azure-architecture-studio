@@ -230,6 +230,13 @@ const SERVICE_RESILIENCE: Record<string, ServiceResilience> = {
       zoneRedundant: { slaPercent: 99.99, basis: 'Zone-redundant environment' },
     },
   },
+  'container-apps-environment': {
+    zoneRedundancy: { kind: 'flag' },
+    tiers: {
+      nonzonal: { slaPercent: 99.95, basis: 'Container Apps environment' },
+      zoneRedundant: { slaPercent: 99.99, basis: 'Zone-redundant environment' },
+    },
+  },
   aks: {
     zoneRedundancy: { kind: 'flagAndTier', property: 'tier', tiers: ['Standard', 'Premium'] },
     tiers: {

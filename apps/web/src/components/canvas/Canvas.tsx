@@ -79,6 +79,43 @@ function toFlowNodes(
   return [...groupNodes, ...serviceNodes];
 }
 
+type Side = 'left' | 'right' | 'top' | 'bottom';
+
+/** Absolute canvas position of each group, resolving nested group offsets. */
+function absoluteGroupPositions(
+  groups: ReturnType<typeof useDiagramStore.getState>['diagram']['groups'],
+): Map<string, { x: number; y: number }> {
+  const byId = new Map(groups.map((g) => [g.id, g]));
+  const cache = new Map<string, { x: number; y: number }>();
+  const resolve = (g: (typeof groups)[number]): { x: number; y: number } => {
+    const cached = cache.get(g.id);
+    if (cached) return cached;
+    let pos = { x: g.position.x, y: g.position.y };
+    const parent = g.parentId ? byId.get(g.parentId) : undefined;
+    if (parent) {
+      const base = resolve(parent);
+      pos = { x: pos.x + base.x, y: pos.y + base.y };
+    }
+    cache.set(g.id, pos);
+    return pos;
+  };
+  for (const g of groups) resolve(g);
+  return cache;
+}
+
+/** Facing sides for an edge so it leaves and enters via the nearest edges. */
+function closestSides(
+  s: { x: number; y: number },
+  t: { x: number; y: number },
+): { source: Side; target: Side } {
+  const dx = t.x - s.x;
+  const dy = t.y - s.y;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx >= 0 ? { source: 'right', target: 'left' } : { source: 'left', target: 'right' };
+  }
+  return dy >= 0 ? { source: 'bottom', target: 'top' } : { source: 'top', target: 'bottom' };
+}
+
 function CanvasInner(): JSX.Element {
   const { theme } = useTheme();
   const diagram = useDiagramStore((s) => s.diagram);
@@ -166,6 +203,57 @@ function CanvasInner(): JSX.Element {
     [diagram.nodes],
   );
 
+  // Absolute centre of each node (resolving group offsets and measured sizes),
+  // used to route every edge through the closest-facing side of both endpoints.
+  const nodeCenters = useMemo(() => {
+    const groupAbs = absoluteGroupPositions(diagram.groups);
+    const measured = new Map(rfNodes.map((n) => [n.id, n.measured]));
+    const centers = new Map<string, { x: number; y: number }>();
+    for (const n of diagram.nodes) {
+      const base = n.parentId ? (groupAbs.get(n.parentId) ?? { x: 0, y: 0 }) : { x: 0, y: 0 };
+      const size = measured.get(n.id);
+      const w = size?.width ?? 200;
+      const h = size?.height ?? 64;
+      centers.set(n.id, {
+        x: n.position.x + base.x + w / 2,
+        y: n.position.y + base.y + h / 2,
+      });
+    }
+    return centers;
+  }, [diagram.nodes, diagram.groups, rfNodes]);
+
+  const flowEdges = useMemo<Edge[]>(
+    () =>
+      diagram.edges.map((e) => {
+        const sourceNode = nodeById.get(e.source);
+        const category = sourceNode
+          ? (getServiceDefinition(sourceNode.serviceId)?.category ?? 'management')
+          : 'management';
+        const color = categoryHex[category];
+        const sourceCenter = nodeCenters.get(e.source);
+        const targetCenter = nodeCenters.get(e.target);
+        const sides =
+          sourceCenter && targetCenter
+            ? closestSides(sourceCenter, targetCenter)
+            : ({ source: 'right', target: 'left' } as const);
+
+        return {
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          sourceHandle: `${sides.source}-source`,
+          targetHandle: `${sides.target}-target`,
+          label: e.label,
+          selected: selection?.type === 'edge' && selection.id === e.id,
+          type: 'azureEdge',
+          animated: e.kind === 'data',
+          style: { stroke: color },
+          markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color },
+        };
+      }),
+    [diagram.edges, nodeById, selection, nodeCenters],
+  );
+
   // Pan the viewport so the newly selected node or group is centred, keeping the
   // current zoom so the diagram itself is untouched — only its framing changes.
   // Tracks the last centred id so re-selecting the same item (e.g. at drag start)
@@ -195,30 +283,6 @@ function CanvasInner(): JSX.Element {
     });
     return () => cancelAnimationFrame(raf);
   }, [selection, rfNodes, getInternalNode, getViewport, setCenter]);
-
-  const flowEdges = useMemo<Edge[]>(
-    () =>
-      diagram.edges.map((e) => {
-        const sourceNode = nodeById.get(e.source);
-        const category = sourceNode
-          ? (getServiceDefinition(sourceNode.serviceId)?.category ?? 'management')
-          : 'management';
-        const color = categoryHex[category];
-
-        return {
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          label: e.label,
-          selected: selection?.type === 'edge' && selection.id === e.id,
-          type: 'azureEdge',
-          animated: e.kind === 'data',
-          style: { stroke: color },
-          markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color },
-        };
-      }),
-    [diagram.edges, nodeById, selection],
-  );
 
   const onEdgeClick = useCallback(
     (_event: React.MouseEvent, edge: Edge) => select({ type: 'edge', id: edge.id }),
