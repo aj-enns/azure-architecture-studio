@@ -2,29 +2,64 @@
 
 An open-source, self-hostable **Azure architecture diagram builder** for your
 Architecture Review Board (ARB) process. Design Azure architectures on an
-interactive canvas, generate them from natural language, export Infrastructure
-as Code, estimate cost, and validate against Well-Architected principles — all
-running inside your own environment.
+interactive canvas, generate them from natural language or a screenshot, import
+them from IaC or live Azure, export Infrastructure as Code, estimate cost and
+throughput, model resiliency (SLA / RPO / RTO), and validate against
+Well-Architected principles — all running inside your own environment.
 
 > Inspired by the Azure Architecture Diagram Builder, rebuilt open-source with a
 > significantly upgraded UI and bring-your-own Azure OpenAI so enterprises can
 > self-host it for ARB reviews.
+
+## Features
+
+- **Interactive canvas** — drag-and-drop Azure services from a categorized
+  palette, group them (subscription / resource group / VNet / subnet), auto-layout
+  with Dagre, and edit properties. Export to PNG, SVG, or JSON.
+- **AI prompt-to-diagram** — generate or modify a diagram from natural language,
+  or transcribe one from a pasted screenshot ([ADR-0010](docs/adr/0010-ai-prompt-to-diagram.md)).
+- **Unified AI advisor** — an `Ask` / `Modify` assistant that answers architecture
+  questions from the current diagram and hands off explicit edits
+  ([ADR-0016](docs/adr/0016-unified-ai-advisor.md)).
+- **AI architecture review** — a cross-pillar Well-Architected review using the
+  `waf-architecture-review` methodology, optionally grounded in Microsoft Learn
+  ([ADR-0014](docs/adr/0014-in-app-ai-architecture-review.md)).
+- **Well-Architected validation** — a deterministic rule engine over the diagram
+  model, independent of any AI provider.
+- **Resiliency modelling** — composite SLA, RPO/RTO, and weakest-link analysis
+  with a canvas overlay and optional Learn-grounded SLA refresh
+  ([ADR-0012](docs/adr/0012-resiliency-sla-rpo-rto-modelling.md)).
+- **Cost & throughput** — per-service and total monthly estimates plus
+  bottleneck sizing against a load target
+  ([ADR-0017](docs/adr/0017-throughput-capacity-modelling.md)).
+- **Infrastructure as Code export** — deterministic Bicep (AVM-aware) and
+  Terraform generation, previewed and downloaded in-app.
+- **Import** — from ARM/Bicep templates, a public Git repository, or a live Azure
+  resource group (via Azure Resource Graph).
+- **Bring-your-own AI** — Microsoft Foundry or Azure OpenAI, with keyless Entra ID
+  auth ([ADR-0003](docs/adr/0003-ai-provider-byo-azure-openai.md),
+  [ADR-0011](docs/adr/0011-entra-id-keyless-azure-openai-auth.md)). AI is optional;
+  the canvas, validation, resiliency, cost, and IaC features work without it.
 
 ## Status
 
 Early development. See [docs/PROGRESS.md](docs/PROGRESS.md) for the live roadmap
 and [docs/adr/](docs/adr/README.md) for the architecture decision records.
 
+
 ## Architecture
+
+![alt text](azure-architecture-review-deployment-topology.png)
 
 A pnpm monorepo (see [ADR-0001](docs/adr/0001-monorepo-and-stack.md)):
 
-| Path              | What it is                                                        |
-| ----------------- | ----------------------------------------------------------------- |
-| `apps/web`        | React + Vite + TypeScript, Tailwind + shadcn/ui, React Flow canvas |
-| `apps/api`        | Fastify + TypeScript API (health, catalog, AI, IaC, pricing)      |
-| `packages/shared` | Zod diagram schema + Azure service catalog (single source of truth)|
-| `infra`           | Bicep for Azure Container Apps                                     |
+| Path                | What it is                                                          |
+| ------------------- | ------------------------------------------------------------------- |
+| `apps/web`          | React + Vite + TypeScript, Tailwind + shadcn/ui, React Flow canvas  |
+| `apps/api`          | Fastify + TypeScript API (catalog, AI generate/advise/review, validation, resiliency, cost, IaC, imports) |
+| `packages/shared`   | Zod diagram schema + Azure service catalog (single source of truth) |
+| `tools/catalog-sync`| Detects new Azure resource types (AVM + icons) and drafts catalog candidates ([ADR-0018](docs/adr/0018-automated-catalog-ingestion.md)) |
+| `infra`             | Bicep for Azure Container Apps                                       |
 
 The AI layer computes Well-Architected, resiliency, and cost analysis with
 deterministic functions in `packages/shared` and uses a single model call to
@@ -41,6 +76,10 @@ for a diagram of the prompt, AI, and deterministic calls.
 - **Docker** (optional, for containerized runs)
 
 ## Getting started
+
+For a step-by-step walkthrough — prerequisites, enabling AI, Docker, and
+troubleshooting — see the [Getting started guide](docs/getting-started.md).
+The short version:
 
 ```bash
 pnpm install
