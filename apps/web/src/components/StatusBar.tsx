@@ -1,6 +1,20 @@
 import { useReactFlow, useViewport } from '@xyflow/react';
-import { DollarSign, Grid3x3, Hand, LayoutGrid, Minus, PanelLeft, PanelRight, Plus, ShieldAlert } from 'lucide-react';
+import {
+  ChevronUp,
+  DollarSign,
+  Grid3x3,
+  Hand,
+  Layers3,
+  LayoutGrid,
+  Minus,
+  PanelLeft,
+  PanelRight,
+  PanelsTopLeft,
+  Plus,
+  ShieldAlert,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
+import { DropdownCheckboxItem, DropdownMenu } from '@/components/ui/DropdownMenu.js';
 import { cn } from '@/lib/utils.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
 import { useUiStore } from '@/store/uiStore.js';
@@ -36,28 +50,53 @@ export function StatusBar(): JSX.Element {
           </>
         )}
         <Divider />
-        <span className="hidden items-center gap-1.5 md:flex">
+        <span className="hidden items-center gap-1.5 whitespace-nowrap md:flex">
           <Hand size={12} aria-hidden />
           <kbd className="font-sans font-medium text-foreground">Ctrl + drag</kbd> to pan
         </span>
       </div>
 
       <div className="flex items-center gap-1">
-        <StatusToggle active={showPalette} onClick={togglePalette} title="Toggle services panel">
-          <PanelLeft size={13} /> Services
-        </StatusToggle>
-        <StatusToggle active={showProperties} onClick={toggleProperties} title="Toggle properties panel">
-          <PanelRight size={13} /> Properties
-        </StatusToggle>
-        <StatusToggle active={showGrid} onClick={toggleGrid} title="Toggle grid points">
-          <Grid3x3 size={13} /> Grid
-        </StatusToggle>
-        <StatusToggle active={slaOverlay} onClick={toggleSlaOverlay} title="Toggle SLA overlay">
-          <ShieldAlert size={13} /> SLA
-        </StatusToggle>
-        <StatusToggle active={costOverlay} onClick={toggleCostOverlay} title="Toggle cost overlay">
-          <DollarSign size={13} /> Cost
-        </StatusToggle>
+        <DropdownMenu
+          label="Sidebars"
+          side="top"
+          closeOnSelect={false}
+          trigger={
+            <StatusMenuTrigger title="Show or hide workspace sidebars" count={Number(showPalette) + Number(showProperties)}>
+              <PanelsTopLeft size={13} /> Sidebars
+            </StatusMenuTrigger>
+          }
+        >
+          <DropdownCheckboxItem checked={showPalette} onCheckedChange={togglePalette}>
+            <PanelLeft size={14} /> Services
+          </DropdownCheckboxItem>
+          <DropdownCheckboxItem checked={showProperties} onCheckedChange={toggleProperties}>
+            <PanelRight size={14} /> Properties
+          </DropdownCheckboxItem>
+        </DropdownMenu>
+        <DropdownMenu
+          label="Overlays"
+          side="top"
+          closeOnSelect={false}
+          trigger={
+            <StatusMenuTrigger
+              title="Show or hide canvas overlays"
+              count={Number(showGrid) + Number(slaOverlay) + Number(costOverlay)}
+            >
+              <Layers3 size={13} /> Overlays
+            </StatusMenuTrigger>
+          }
+        >
+          <DropdownCheckboxItem checked={showGrid} onCheckedChange={toggleGrid}>
+            <Grid3x3 size={14} /> Grid points
+          </DropdownCheckboxItem>
+          <DropdownCheckboxItem checked={slaOverlay} onCheckedChange={toggleSlaOverlay}>
+            <ShieldAlert size={14} /> SLA indicators
+          </DropdownCheckboxItem>
+          <DropdownCheckboxItem checked={costOverlay} onCheckedChange={toggleCostOverlay}>
+            <DollarSign size={14} /> Cost badges
+          </DropdownCheckboxItem>
+        </DropdownMenu>
         <Divider className="mx-1" />
         <ZoomControls />
       </div>
@@ -69,29 +108,24 @@ function Divider({ className }: { className?: string }): JSX.Element {
   return <span className={cn('h-3.5 w-px bg-border', className)} aria-hidden />;
 }
 
-function StatusToggle({
-  active,
-  onClick,
+function StatusMenuTrigger({
   title,
+  count,
   children,
 }: {
-  active: boolean;
-  onClick: () => void;
   title: string;
+  count: number;
   children: ReactNode;
 }): JSX.Element {
   return (
     <button
       type="button"
       title={title}
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        'inline-flex items-center gap-1 rounded px-1.5 py-1 transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        active ? 'text-foreground' : 'text-muted-foreground',
-      )}
+      className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {children}
+      <span className="min-w-3 text-center tabular-nums text-foreground">{count}</span>
+      <ChevronUp size={11} aria-hidden />
     </button>
   );
 }
