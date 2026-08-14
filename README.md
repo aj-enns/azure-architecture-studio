@@ -1,15 +1,21 @@
 # Azure Architecture Review
 
-An open-source, self-hostable **Azure architecture diagram builder** for your
-Architecture Review Board (ARB) process. Design Azure architectures on an
-interactive canvas, generate them from natural language or a screenshot, import
-them from IaC or live Azure, export Infrastructure as Code, estimate cost and
-throughput, model resiliency (SLA / RPO / RTO), and validate against
-Well-Architected principles — all running inside your own environment.
+> Design, review, and cost Azure architectures on an interactive canvas — self-hosted, open source, and AI-optional.
 
-> Inspired by the Azure Architecture Diagram Builder, rebuilt open-source with a
-> significantly upgraded UI and bring-your-own Azure OpenAI so enterprises can
-> self-host it for ARB reviews.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+Azure Architecture Review is a self-hostable diagram builder for your
+Architecture Review Board (ARB) process. Draw Azure architectures on an
+interactive canvas, generate them from natural language or a screenshot, or
+import them from Infrastructure as Code or a live subscription. Then validate the
+design against Well-Architected principles, model resiliency and cost, and export
+Bicep or Terraform — all inside your own environment.
+
+> Inspired by the Azure Architecture Diagram Builder, rebuilt open source with a
+> significantly upgraded UI and bring-your-own AI so teams can self-host it for
+> ARB reviews. **Status:** active early development — see the [roadmap](docs/PROGRESS.md).
+
+![Azure Architecture Review deployment topology rendered on the canvas](azure-architecture-review-deployment-topology.png)
 
 ## Features
 
@@ -25,61 +31,63 @@ Well-Architected principles — all running inside your own environment.
 - **Bring-your-own AI** — Microsoft Foundry or Azure OpenAI with keyless Entra ID auth. AI is optional; every other feature works without it.
 - **Export** — save diagrams as PNG, SVG, or JSON.
 
-## Status
+## Quick start
 
-Early development. See [docs/PROGRESS.md](docs/PROGRESS.md) for the live roadmap
-and [docs/adr/](docs/adr/README.md) for the architecture decision records.
+### Prerequisites
 
+- **Node.js** ≥ 20 (22 recommended)
+- **pnpm** ≥ 9 — `npm install -g pnpm@9`
+- **Docker** — optional, for the containerized run
+
+### Run locally
+
+```bash
+pnpm install
+cp .env.example .env   # optional — add AI credentials to enable AI features
+pnpm dev               # web on http://localhost:5173, API on http://localhost:8080
+```
+
+Open <http://localhost:5173> and drag a service onto the canvas to confirm it is
+running. For a full walkthrough — enabling AI, Docker, and troubleshooting — see
+the [Getting started guide](docs/getting-started.md).
+
+### Run with Docker
+
+```bash
+docker compose up --build   # app on http://localhost:8080
+```
+
+The web container reverse-proxies `/api` and `/healthz` to the API, so everything
+is served from a single origin.
+
+## Documentation
+
+| Guide | What it covers |
+| ----- | -------------- |
+| [Getting started](docs/getting-started.md) | Step-by-step install, running locally and in Docker, enabling AI, troubleshooting |
+| [Configuration](#configuration) | AI provider and environment variables |
+| [Deploy to Azure](#deploy-to-azure) | Bicep infrastructure and GitHub Actions CI/CD |
+| [Architecture decisions](docs/adr/README.md) | The "why" behind the key technical choices (ADRs) |
+| [Roadmap](docs/PROGRESS.md) | Current status and what's planned |
+| [Contributing](CONTRIBUTING.md) | Development workflow and ground rules |
 
 ## Architecture
 
-![alt text](azure-architecture-review-deployment-topology.png)
-
-A pnpm monorepo (see [ADR-0001](docs/adr/0001-monorepo-and-stack.md)):
+A pnpm monorepo ([ADR-0001](docs/adr/0001-monorepo-and-stack.md)):
 
 | Path                | What it is                                                          |
 | ------------------- | ------------------------------------------------------------------- |
 | `apps/web`          | React + Vite + TypeScript, Tailwind + shadcn/ui, React Flow canvas  |
 | `apps/api`          | Fastify + TypeScript API (catalog, AI generate/advise/review, validation, resiliency, cost, IaC, imports) |
 | `packages/shared`   | Zod diagram schema + Azure service catalog (single source of truth) |
-| `tools/catalog-sync`| Detects new Azure resource types (AVM + icons) and drafts catalog candidates ([ADR-0018](docs/adr/0018-automated-catalog-ingestion.md)) |
+| `tools/catalog-sync`| Detects new Azure resource types (AVM + icons) and drafts catalog candidates |
 | `infra`             | Bicep for Azure Container Apps                                       |
 
-The AI layer computes Well-Architected, resiliency, and cost analysis with
-deterministic functions in `packages/shared` and uses a single model call to
-synthesise the cross-pillar review — rather than separate per-pillar agents. See
-[ADR-0019](docs/adr/0019-single-synthesizer-over-multi-agent.md) for what was
-considered and why, and [docs/architecture-flow.md](docs/architecture-flow.md)
-for a diagram of the prompt, AI, and deterministic calls.
-
-## Prerequisites
-
-- **Node.js** ≥ 20 (22 recommended)
-- **pnpm** ≥ 9 — `npm install -g pnpm@9` (corepack also works where it can write
-  to the Node install directory)
-- **Docker** (optional, for containerized runs)
-
-## Getting started
-
-For a step-by-step walkthrough — prerequisites, enabling AI, Docker, and
-troubleshooting — see the [Getting started guide](docs/getting-started.md).
-The short version:
-
-```bash
-pnpm install
-cp .env.example .env   # optional: fill in Azure OpenAI to enable AI features
-pnpm dev               # runs web (5173) and api (8080) together
-```
-
-- Web: <http://localhost:5173>
-- API health: <http://localhost:8080/healthz>
-
-### Run with Docker
-
-```bash
-docker compose up --build
-# app on http://localhost:8080 (web reverse-proxies /api and /healthz to the API)
-```
+Well-Architected, resiliency, and cost analysis are computed by deterministic
+functions in `packages/shared`; a single model call then synthesises the
+cross-pillar review, rather than separate per-pillar agents. See
+[docs/architecture-flow.md](docs/architecture-flow.md) for a diagram of the
+prompt, AI, and deterministic calls.
 
 ## Configuration
 
@@ -172,8 +180,15 @@ az role assignment create --assignee <identity-client-id> \
 
 The app ships **open (unauthenticated) by default**
 ([ADR-0008](docs/adr/0008-app-auth-open-by-default.md)). Do **not** expose it
-publicly as-is — front it with Entra ID / your reverse proxy / Container Apps
+publicly as-is — front it with Entra ID, your reverse proxy, or Container Apps
 built-in auth for any non-trivial deployment.
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+development workflow, coding conventions, and how significant decisions are
+recorded as [ADRs](docs/adr/README.md). Before opening a pull request, make sure
+`pnpm build`, `pnpm test`, and `pnpm typecheck` pass.
 
 ## License
 
