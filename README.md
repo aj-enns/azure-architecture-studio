@@ -13,33 +13,17 @@ Well-Architected principles — all running inside your own environment.
 
 ## Features
 
-- **Interactive canvas** — drag-and-drop Azure services from a categorized
-  palette, group them (subscription / resource group / VNet / subnet), auto-layout
-  with Dagre, and edit properties. Export to PNG, SVG, or JSON.
-- **AI prompt-to-diagram** — generate or modify a diagram from natural language,
-  or transcribe one from a pasted screenshot ([ADR-0010](docs/adr/0010-ai-prompt-to-diagram.md)).
-- **Unified AI advisor** — an `Ask` / `Modify` assistant that answers architecture
-  questions from the current diagram and hands off explicit edits
-  ([ADR-0016](docs/adr/0016-unified-ai-advisor.md)).
-- **AI architecture review** — a cross-pillar Well-Architected review using the
-  `waf-architecture-review` methodology, optionally grounded in Microsoft Learn
-  ([ADR-0014](docs/adr/0014-in-app-ai-architecture-review.md)).
-- **Well-Architected validation** — a deterministic rule engine over the diagram
-  model, independent of any AI provider.
-- **Resiliency modelling** — composite SLA, RPO/RTO, and weakest-link analysis
-  with a canvas overlay and optional Learn-grounded SLA refresh
-  ([ADR-0012](docs/adr/0012-resiliency-sla-rpo-rto-modelling.md)).
-- **Cost & throughput** — per-service and total monthly estimates plus
-  bottleneck sizing against a load target
-  ([ADR-0017](docs/adr/0017-throughput-capacity-modelling.md)).
-- **Infrastructure as Code export** — deterministic Bicep (AVM-aware) and
-  Terraform generation, previewed and downloaded in-app.
-- **Import** — from ARM/Bicep templates, a public Git repository, or a live Azure
-  resource group (via Azure Resource Graph).
-- **Bring-your-own AI** — Microsoft Foundry or Azure OpenAI, with keyless Entra ID
-  auth ([ADR-0003](docs/adr/0003-ai-provider-byo-azure-openai.md),
-  [ADR-0011](docs/adr/0011-entra-id-keyless-azure-openai-auth.md)). AI is optional;
-  the canvas, validation, resiliency, cost, and IaC features work without it.
+- **Interactive canvas** — drag and drop Azure services from a categorized palette, group them by subscription, resource group, VNet, or subnet, auto-arrange the layout, and edit properties.
+- **AI prompt-to-diagram** — generate or modify a diagram from natural language, or transcribe one from a pasted screenshot.
+- **Unified AI advisor** — ask architecture questions about the current diagram and apply suggested edits.
+- **AI architecture review** — a cross-pillar Well-Architected review, optionally grounded in Microsoft Learn.
+- **Well-Architected validation** — a deterministic rule engine over the diagram model, with no AI required.
+- **Resiliency modelling** — composite SLA, RPO/RTO, and weakest-link analysis with a canvas overlay.
+- **Cost and throughput** — per-service and total monthly estimates plus bottleneck sizing against a load target.
+- **Infrastructure as Code export** — deterministic Bicep and Terraform generation, previewed and downloaded in-app.
+- **Import** — from ARM/Bicep templates, a public Git repository, or a live Azure resource group.
+- **Bring-your-own AI** — Microsoft Foundry or Azure OpenAI with keyless Entra ID auth. AI is optional; every other feature works without it.
+- **Export** — save diagrams as PNG, SVG, or JSON.
 
 ## Status
 
