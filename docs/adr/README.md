@@ -29,7 +29,7 @@ Each ADR follows [Michael Nygard's format](https://cognitect.com/blog/2011/11/15
 | [0005](0005-ui-stack-react-flow-shadcn.md) | React Flow + shadcn/ui + Tailwind for the UI | Accepted | 2026-08-06 |
 | [0006](0006-azure-icon-licensing.md) | Bundle official Microsoft Azure icons + disclose in Terms | Accepted | 2026-08-06 |
 | [0007](0007-persistence-local-only-mvp.md) | localStorage + JSON files for MVP persistence (no database) | Accepted | 2026-08-06 |
-| [0008](0008-app-auth-open-by-default.md) | App open by default; document Entra ID fronting (no built-in SSO) | Accepted | 2026-08-06 |
+| [0008](0008-app-auth-open-by-default.md) | App open by default; document Entra ID fronting (no built-in SSO) | Superseded by ADR-0020 | 2026-08-06 |
 | [0009](0009-web-reverse-proxy-topology.md) | Web container reverse-proxies the API (same-origin) | Accepted | 2026-08-06 |
 | [0010](0010-ai-prompt-to-diagram.md) | AI prompt-to-diagram via server-side structured output + layout | Accepted | 2026-08-06 |
 | [0011](0011-entra-id-keyless-azure-openai-auth.md) | Support API keys and keyless Entra ID auth for Azure OpenAI | Accepted | 2026-08-07 |
@@ -41,6 +41,7 @@ Each ADR follows [Michael Nygard's format](https://cognitect.com/blog/2011/11/15
 | [0017](0017-throughput-capacity-modelling.md) | Throughput capacity modelling — bottleneck sizing against a load target | Accepted | 2026-08-12 |
 | [0018](0018-automated-catalog-ingestion.md) | Automated Azure resource-type catalog ingestion (AVM + icons, PR for review) | Accepted | 2026-08-12 |
 | [0019](0019-single-synthesizer-over-multi-agent.md) | Single AI synthesizer over per-pillar (WAF / Resiliency / Cost) agents | Accepted | 2026-08-13 |
+| [0020](0020-entra-protected-azure-deployments.md) | Entra-protected Azure deployments | Accepted | 2026-09-09 |
 
 ## When to write an ADR
 

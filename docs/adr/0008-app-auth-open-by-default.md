@@ -1,6 +1,6 @@
 # ADR-0008: App open by default; document Entra ID fronting (no built-in SSO)
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0020
 - **Date:** 2026-08-06
 - **Deciders:** Project owner (CSA), Copilot
 - **Related:** ADR-0003, ADR-0004, ADR-0007
