@@ -135,7 +135,31 @@ Infrastructure is Bicep, targeting Azure Container Apps (ADR-0004):
 | File | What it provisions |
 | ---- | ------------------ |
 | [infra/registry.bicep](infra/registry.bicep) | Azure Container Registry + a user-assigned identity with `AcrPull` |
-| [infra/main.bicep](infra/main.bicep) | Log Analytics, Container Apps environment, internal API app, external web app |
+| [infra/main.bicep](infra/main.bicep) | Log Analytics, Container Apps environment, internal API app, Entra-protected external web app |
+
+Azure deployments require Microsoft Entra ID authentication by default. Create
+a dedicated, single-tenant web app registration with this redirect URI:
+
+```text
+https://<web-app-fqdn>/.auth/login/aad/callback
+```
+
+For GitHub Actions, configure:
+
+- **Variable:** `ENTRA_AUTH_CLIENT_ID` — the authentication app registration's
+  application (client) ID.
+- **Secret:** `ENTRA_AUTH_CLIENT_SECRET` — a current client secret for that app
+  registration.
+
+The workflow uses `AZURE_TENANT_ID` as the authentication tenant. Set **Assignment
+required** on the corresponding Entra enterprise application and assign the
+approved users or groups. This authorization control is customer configuration,
+not application code.
+
+For a manual deployment, pass `entraClientSecret` as a secure command-line
+parameter in addition to the tenant and client IDs in `infra/main.bicepparam`.
+Set `enableEntraAuth=false` only when a trusted upstream edge already
+authenticates every request.
 
 The web container reverse-proxies the internal API (ADR-0009); nginx's upstream is
 injected as `API_UPSTREAM` at container start (the internal app name in Azure,
@@ -178,10 +202,10 @@ az role assignment create --assignee <identity-client-id> \
 
 ## Security
 
-The app ships **open (unauthenticated) by default**
-([ADR-0008](docs/adr/0008-app-auth-open-by-default.md)). Do **not** expose it
-publicly as-is — front it with Entra ID, your reverse proxy, or Container Apps
-built-in auth for any non-trivial deployment.
+Local development and non-Azure hosting are unauthenticated by default and must
+not be exposed publicly without a trusted authentication proxy. Azure
+deployments enable Container Apps authentication with Microsoft Entra ID by
+default ([ADR-0020](docs/adr/0020-entra-protected-azure-deployments.md)).
 
 ## Contributing
 

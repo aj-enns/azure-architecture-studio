@@ -9,7 +9,9 @@ name: deploy
 #
 # Auth is keyless via OIDC (no stored service-principal secret). Configure once:
 #   Repo secrets:  AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
+#                  ENTRA_AUTH_CLIENT_SECRET
 #   Repo variables: AZURE_RESOURCE_GROUP, AZURE_LOCATION
+#                   ENTRA_AUTH_CLIENT_ID
 #                   AZURE_FOUNDRY_ENDPOINT, AZURE_FOUNDRY_MODEL   (optional, enable AI)
 #                   AZURE_FOUNDRY_RESOURCE_ID                     (optional, model discovery)
 #
@@ -114,6 +116,16 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Validate Entra authentication configuration
+        env:
+          ENTRA_AUTH_CLIENT_ID: ${{ vars.ENTRA_AUTH_CLIENT_ID }}
+          ENTRA_AUTH_CLIENT_SECRET: ${{ secrets.ENTRA_AUTH_CLIENT_SECRET }}
+        run: |
+          if [[ -z "$ENTRA_AUTH_CLIENT_ID" || -z "$ENTRA_AUTH_CLIENT_SECRET" ]]; then
+            echo "::error::Azure deployments require ENTRA_AUTH_CLIENT_ID and ENTRA_AUTH_CLIENT_SECRET."
+            exit 1
+          fi
+
       - name: Deploy app (Container Apps)
         id: app
         run: |
@@ -129,8 +141,13 @@ jobs:
               azureFoundryEndpoint="${{ vars.AZURE_FOUNDRY_ENDPOINT }}" \
               azureFoundryModel="${{ vars.AZURE_FOUNDRY_MODEL }}" \
               azureFoundryResourceId="${{ vars.AZURE_FOUNDRY_RESOURCE_ID }}" \
+              entraTenantId="${{ secrets.AZURE_TENANT_ID }}" \
+              entraClientId="${{ vars.ENTRA_AUTH_CLIENT_ID }}" \
+              entraClientSecret="${{ secrets.ENTRA_AUTH_CLIENT_SECRET }}" \
             --query properties.outputs -o json)
           echo "webFqdn=$(echo "$outputs" | jq -r .webFqdn.value)" >> "$GITHUB_OUTPUT"
 
       - name: Summary
-        run: echo "### Deployed → https://${{ steps.app.outputs.webFqdn }}" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "### Deployed → https://${{ steps.app.outputs.webFqdn }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Entra callback URI: \`https://${{ steps.app.outputs.webFqdn }}/.auth/login/aad/callback\`" >> "$GITHUB_STEP_SUMMARY"

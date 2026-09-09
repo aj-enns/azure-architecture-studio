@@ -36,6 +36,19 @@ param azureFoundryResourceId string = ''
 @description('Foundry model-inference API version.')
 param azureFoundryApiVersion string = '2024-05-01-preview'
 
+@description('Enable Microsoft Entra ID authentication on the public web app. Disable only when another trusted edge provides authentication.')
+param enableEntraAuth bool = true
+
+@description('Microsoft Entra tenant id used to authenticate web users.')
+param entraTenantId string = ''
+
+@description('Client id of the app registration used by Container Apps authentication.')
+param entraClientId string = ''
+
+@secure()
+@description('Client secret of the app registration used by Container Apps authentication.')
+param entraClientSecret string = ''
+
 var tags = {
   application: 'azure-architecture-review'
   managedBy: 'bicep'
@@ -47,6 +60,7 @@ var apiAppName = '${name}-api'
 var webAppName = '${name}-web'
 var apiImage = '${acrLoginServer}/aar-api:${imageTag}'
 var webImage = '${acrLoginServer}/aar-web:${imageTag}'
+var entraClientSecretName = 'entra-client-secret'
 
 // Registry reference shared by both apps; images are pulled with the identity.
 var registries = [
@@ -154,6 +168,14 @@ resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
         transport: 'http'
       }
       registries: registries
+      secrets: enableEntraAuth
+        ? [
+            {
+              name: entraClientSecretName
+              value: entraClientSecret
+            }
+          ]
+        : []
     }
     template: {
       containers: [
@@ -179,5 +201,46 @@ resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
   }
 }
 
+// Authentication runs in the Container Apps platform before requests reach
+// nginx. The browser receives a secure session cookie after Entra sign-in.
+resource webAuth 'Microsoft.App/containerApps/authConfigs@2024-03-01' = if (enableEntraAuth) {
+  name: 'current'
+  parent: webApp
+  properties: {
+    platform: {
+      enabled: true
+    }
+    globalValidation: {
+      unauthenticatedClientAction: 'RedirectToLoginPage'
+      redirectToProvider: 'azureActiveDirectory'
+    }
+    httpSettings: {
+      requireHttps: true
+    }
+    identityProviders: {
+      azureActiveDirectory: {
+        enabled: true
+        registration: {
+          clientId: entraClientId
+          clientSecretSettingName: entraClientSecretName
+          openIdIssuer: '${environment().authentication.loginEndpoint}${entraTenantId}/v2.0'
+        }
+        validation: {
+          allowedAudiences: [
+            entraClientId
+          ]
+        }
+      }
+    }
+    login: {
+      tokenStore: {
+        enabled: false
+      }
+    }
+  }
+}
+
 output webFqdn string = webApp.properties.configuration.ingress.fqdn
 output apiInternalName string = apiApp.name
+output entraAuthEnabled bool = enableEntraAuth
+output entraRedirectUri string = 'https://${webApp.properties.configuration.ingress.fqdn}/.auth/login/aad/callback'

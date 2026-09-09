@@ -18,6 +18,16 @@ param managedIdentityClientId = '<identity-client-id>'
 // Image tag pushed in step 2 (e.g. a git SHA).
 param imageTag = 'latest'
 
+// Azure deployments require Entra authentication by default. Register a
+// single-tenant web application with this callback URI:
+// https://<web-app-fqdn>/.auth/login/aad/callback
+// Pass entraClientSecret securely on the deployment command line rather than
+// storing it in this file. Set enableEntraAuth=false only when a trusted edge
+// already authenticates every request.
+param enableEntraAuth = true
+param entraTenantId = '<tenant-id>'
+param entraClientId = '<authentication-app-client-id>'
+
 // Bring-your-own Microsoft Foundry (keyless via the managed identity). Leave
 // blank to run without AI. Grant the identity roles on the Foundry resource
 // (see README > Deploy to Azure).
