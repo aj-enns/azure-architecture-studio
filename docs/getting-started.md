@@ -5,6 +5,10 @@ instance — first locally for development, then containerized. For a high-level
 tour of what the app does, see the [README](../README.md); for contributor
 workflow and ground rules, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
+For Azure hosting, follow [Install Azure infrastructure](install-infrastructure.md)
+and then [Deploy the application](deploy-application.md). Those guides cover
+Container Apps, Entra sign-in, and GitHub Actions deployment.
+
 ## Prerequisites
 
 | Tool        | Version           | Notes                                                              |

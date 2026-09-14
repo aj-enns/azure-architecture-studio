@@ -90,6 +90,8 @@ result — positions are optional because auto-layout owns final placement.
 | Guide | What it covers |
 | ----- | -------------- |
 | [Getting started](docs/getting-started.md) | Step-by-step install, running locally and in Docker, enabling AI, troubleshooting |
+| [Install Azure infrastructure](docs/install-infrastructure.md) | Subscription setup, registry, managed identity, Entra registration, and optional Foundry access |
+| [Deploy the application](docs/deploy-application.md) | Build images, deploy Container Apps, verify sign-in, and automate with GitHub Actions |
 | [Diagram your design](#diagram-your-design) | The recommended JSON-first way to capture an architecture |
 | [Configuration](#configuration) | AI provider and environment variables |
 | [Deploy to Azure](#deploy-to-azure) | Bicep infrastructure and GitHub Actions CI/CD |
@@ -137,7 +139,8 @@ Use the `AZURE_FOUNDRY_*` variables for a Microsoft Foundry resource. Use the
 `AZURE_OPENAI_*` variables for an Azure OpenAI-compatible endpoint. When both
 are supplied, the explicit Foundry configuration takes precedence.
 
-For keyless authentication, leave `AZURE_OPENAI_API_KEY` blank and authenticate
+For keyless authentication, leave the selected provider's API key
+(`AZURE_FOUNDRY_API_KEY` or `AZURE_OPENAI_API_KEY`) blank and authenticate
 the API host with `az login` locally, or a managed identity/workload identity in
 Azure. Grant that identity the **Cognitive Services OpenAI User** role on the
 Azure OpenAI resource. See [ADR-0011](docs/adr/0011-entra-id-keyless-azure-openai-auth.md).
@@ -156,88 +159,32 @@ configured `AZURE_FOUNDRY_MODEL` and the panel shows a warning. See
 
 ## Deploy to Azure
 
-Infrastructure is Bicep, targeting Azure Container Apps (ADR-0004):
+Follow these guides in order. Commands use PowerShell 7 and the existing Bicep
+templates; no local Docker installation is needed for Azure deployment.
 
-| File | What it provisions |
-| ---- | ------------------ |
-| [infra/registry.bicep](infra/registry.bicep) | Azure Container Registry + a user-assigned identity with `AcrPull` |
-| [infra/main.bicep](infra/main.bicep) | Log Analytics, Container Apps environment, internal API app, Entra-protected external web app |
+1. **[Install Azure infrastructure](docs/install-infrastructure.md)**: prepare
+   the subscription and resource group, provision ACR and the managed identity,
+   register the Entra sign-in application, and optionally grant Foundry access.
+2. **[Deploy the application](docs/deploy-application.md)**: build the web and
+   API images in ACR, deploy the remaining Container Apps infrastructure, finish
+   the callback configuration, and verify sign-in and API access.
 
-Azure deployments require Microsoft Entra ID authentication by default. Create
-a dedicated, single-tenant web app registration with this redirect URI:
+Azure deployments require Entra authentication by default. The public web app
+proxies an internal API. Set **Assignment required** on the sign-in enterprise
+application and assign approved users; users do not need their own Azure
+subscription. The application uses the host's managed identity and AI resources.
 
-```text
-https://<web-app-fqdn>/.auth/login/aad/callback
-```
-
-For GitHub Actions, configure:
-
-- **Variable:** `ENTRA_AUTH_CLIENT_ID` — the authentication app registration's
-  application (client) ID.
-- **Secret:** `ENTRA_AUTH_CLIENT_SECRET` — a current client secret for that app
-  registration.
-
-The workflow uses `AZURE_TENANT_ID` as the authentication tenant. Set **Assignment
-required** on the corresponding Entra enterprise application and assign the
-approved users or groups. This authorization control is customer configuration,
-not application code.
-
-For a manual deployment, pass `entraClientSecret` as a secure command-line
-parameter in addition to the tenant and client IDs in `infra/main.bicepparam`.
-Set `enableEntraAuth=false` only when a trusted upstream edge already
-authenticates every request.
-
-The web container reverse-proxies the internal API (ADR-0009); nginx's upstream is
-injected as `API_UPSTREAM` at container start (the internal app name in Azure,
-`http://api:8080` in Docker Compose).
+Your local `.env` is not loaded by Azure deployment. Supply AI settings through
+the documented Bicep parameters or GitHub Actions variables.
 
 ### CI/CD (GitHub Actions)
 
-[.github/workflows/deploy.yml](.github/workflows/deploy.yml) provisions the
-registry, builds both images with `az acr build` (tagged by commit SHA), then
-deploys the apps — keyless via **OIDC** (no stored service-principal secret).
-
-Configure once:
-
-- **Secrets:** `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
-- **Authentication:** variable `ENTRA_AUTH_CLIENT_ID` and secret
-  `ENTRA_AUTH_CLIENT_SECRET` for a dedicated single-tenant web app registration.
-- **Variables:** `AZURE_RESOURCE_GROUP`, `AZURE_LOCATION`, and optionally
-  `AZURE_FOUNDRY_ENDPOINT` / `AZURE_FOUNDRY_MODEL` (and `AZURE_FOUNDRY_RESOURCE_ID`
-  to enable review model discovery).
-- Grant the federated app registration **Owner** on the resource group (or
-  **Contributor** + **User Access Administrator** — the latter is needed to create
-  the `AcrPull` role assignment).
-
-Configure the dedicated web app registration with this redirect URI after the
-first deployment, replacing `<web-fqdn>` with the deployment output:
-
-```text
-https://<web-fqdn>/.auth/login/aad/callback
-```
-
-The deployment enables Azure Container Apps built-in authentication and accepts
-users only from `AZURE_TENANT_ID`. Keep the deployment identity (`AZURE_CLIENT_ID`)
-separate from the user-facing app registration (`ENTRA_AUTH_CLIENT_ID`).
-
-AI runs **keyless**: the app's user-assigned identity (`aar-id-*`) authenticates to
-Foundry via `DefaultAzureCredential` (ADR-0011). Grant it access on your Foundry
-resource once — either with [infra/foundry-roles.bicep](infra/foundry-roles.bicep)
-(deploy into the Foundry account's resource group):
-
-```bash
-az deployment group create -g <foundry-rg> -f infra/foundry-roles.bicep \
-  -p foundryAccountName=<account> principalId=<identity-principal-id>
-```
-
-or the equivalent CLI role assignments:
-
-```bash
-az role assignment create --assignee <identity-client-id> \
-  --role "Cognitive Services OpenAI User" --scope <foundry-resource-id>   # inference
-az role assignment create --assignee <identity-client-id> \
-  --role "Reader" --scope <foundry-resource-id>                          # model discovery
-```
+After the manual installation works, follow
+**[Automate with GitHub Actions](docs/deploy-application.md#automate-with-github-actions)**.
+It covers both required OIDC credentials (`main` branch and `production`
+environment), deployment permissions, repository secrets and variables, and
+release verification. The deployment identity is separate from the web sign-in
+registration; only the latter needs a client secret.
 
 ## Security
 
