@@ -4,7 +4,10 @@ import { AZURE_ICONS_DIR, ICON_OVERRIDES, PATHS } from './config.js';
 
 /** Loose normalization for fuzzy filename/name matching. */
 function normalize(s: string): string {
-  return s.toLowerCase().replace(/\.svg$/, '').replace(/[^a-z0-9]/g, '');
+  return s
+    .toLowerCase()
+    .replace(/\.svg$/, '')
+    .replace(/[^a-z0-9]/g, '');
 }
 
 interface IconIndex {
@@ -34,7 +37,8 @@ export function buildIconIndex(): IconIndex {
   if (AZURE_ICONS_DIR && existsSync(AZURE_ICONS_DIR)) {
     for (const slug of slugsIn(AZURE_ICONS_DIR)) {
       const key = normalize(slug);
-      if (!byName.has(key)) byName.set(key, { slug, sourcePath: resolve(AZURE_ICONS_DIR, `${slug}.svg`) });
+      if (!byName.has(key))
+        byName.set(key, { slug, sourcePath: resolve(AZURE_ICONS_DIR, `${slug}.svg`) });
     }
   }
   return { bundled, byName };

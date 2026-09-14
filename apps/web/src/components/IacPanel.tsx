@@ -7,7 +7,13 @@ import { downloadText } from '@/lib/export.js';
 import { cn } from '@/lib/utils.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
 
-export function IacPanel({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element | null {
+export function IacPanel({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}): JSX.Element | null {
   const diagram = useDiagramStore((state) => state.diagram);
   const deferredDiagram = useDeferredValue(diagram);
   const [target, setTarget] = useState<IacTarget>('bicep');
@@ -28,11 +34,12 @@ export function IacPanel({ open, onClose }: { open: boolean; onClose: () => void
         setSelectedPath((current) =>
           nextBundle.files.some((file) => file.path === current)
             ? current
-            : nextBundle.files[0]?.path ?? '',
+            : (nextBundle.files[0]?.path ?? ''),
         );
       })
       .catch((reason: unknown) => {
-        if (!cancelled) setError(reason instanceof Error ? reason.message : 'IaC generation failed.');
+        if (!cancelled)
+          setError(reason instanceof Error ? reason.message : 'IaC generation failed.');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -51,14 +58,23 @@ export function IacPanel({ open, onClose }: { open: boolean; onClose: () => void
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <FileCode2 size={16} className="text-primary" />
         <span className="text-sm font-semibold">Infrastructure as Code</span>
-        <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose} aria-label="Close IaC panel">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="ml-auto"
+          onClick={onClose}
+          aria-label="Close IaC panel"
+        >
           <X size={16} />
         </Button>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="space-y-3 border-b border-border p-3">
-          <div className="flex h-9 w-full rounded-md border border-border bg-muted p-1" aria-label="IaC target">
+          <div
+            className="flex h-9 w-full rounded-md border border-border bg-muted p-1"
+            aria-label="IaC target"
+          >
             {(['bicep', 'terraform'] as const).map((option) => (
               <button
                 key={option}
@@ -66,7 +82,9 @@ export function IacPanel({ open, onClose }: { open: boolean; onClose: () => void
                 onClick={() => setTarget(option)}
                 className={cn(
                   'h-7 min-w-0 flex-1 rounded text-center text-xs font-medium capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  target === option ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  target === option
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 {option}
@@ -76,9 +94,13 @@ export function IacPanel({ open, onClose }: { open: boolean; onClose: () => void
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             {loading ? (
-              <><RefreshCw size={14} className="animate-spin" /> Generating files...</>
+              <>
+                <RefreshCw size={14} className="animate-spin" /> Generating files...
+              </>
             ) : error ? (
-              <><AlertTriangle size={14} className="text-rose-500" /> {error}</>
+              <>
+                <AlertTriangle size={14} className="text-rose-500" /> {error}
+              </>
             ) : (
               <>
                 <CheckCircle2 size={14} className="text-emerald-500" />
@@ -90,7 +112,10 @@ export function IacPanel({ open, onClose }: { open: boolean; onClose: () => void
           {!!bundle?.diagnostics.length && (
             <div className="max-h-28 space-y-1 overflow-y-auto border-l-2 border-amber-500/60 pl-2">
               {bundle.diagnostics.map((diagnostic, index) => (
-                <p key={`${diagnostic.nodeId ?? 'diagram'}-${index}`} className="flex gap-1.5 text-[11px] text-muted-foreground">
+                <p
+                  key={`${diagnostic.nodeId ?? 'diagram'}-${index}`}
+                  className="flex gap-1.5 text-[11px] text-muted-foreground"
+                >
                   {diagnostic.severity === 'warning' ? (
                     <AlertTriangle size={12} className="mt-0.5 shrink-0 text-amber-500" />
                   ) : (
@@ -104,7 +129,10 @@ export function IacPanel({ open, onClose }: { open: boolean; onClose: () => void
         </div>
 
         <div className="flex min-h-0 flex-1">
-          <nav className="w-36 shrink-0 overflow-y-auto border-r border-border bg-muted/30 p-1.5" aria-label="Generated files">
+          <nav
+            className="w-36 shrink-0 overflow-y-auto border-r border-border bg-muted/30 p-1.5"
+            aria-label="Generated files"
+          >
             {bundle?.files.map((file) => (
               <button
                 key={file.path}
@@ -112,7 +140,9 @@ export function IacPanel({ open, onClose }: { open: boolean; onClose: () => void
                 onClick={() => setSelectedPath(file.path)}
                 className={cn(
                   'block w-full truncate rounded px-2 py-1.5 text-left font-mono text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  selectedPath === file.path ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
+                  selectedPath === file.path
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-accent',
                 )}
               >
                 {file.path}

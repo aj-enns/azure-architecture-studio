@@ -44,11 +44,16 @@ function loadPersisted(): PersistedUiState {
     if (!raw) return defaults;
     const parsed = JSON.parse(raw) as Partial<PersistedUiState>;
     return {
-      showProperties: typeof parsed.showProperties === 'boolean' ? parsed.showProperties : defaults.showProperties,
-      showPalette: typeof parsed.showPalette === 'boolean' ? parsed.showPalette : defaults.showPalette,
+      showProperties:
+        typeof parsed.showProperties === 'boolean'
+          ? parsed.showProperties
+          : defaults.showProperties,
+      showPalette:
+        typeof parsed.showPalette === 'boolean' ? parsed.showPalette : defaults.showPalette,
       showGrid: typeof parsed.showGrid === 'boolean' ? parsed.showGrid : defaults.showGrid,
       slaOverlay: typeof parsed.slaOverlay === 'boolean' ? parsed.slaOverlay : defaults.slaOverlay,
-      costOverlay: typeof parsed.costOverlay === 'boolean' ? parsed.costOverlay : defaults.costOverlay,
+      costOverlay:
+        typeof parsed.costOverlay === 'boolean' ? parsed.costOverlay : defaults.costOverlay,
       activePanel: PANEL_IDS.includes(parsed.activePanel as PanelId)
         ? (parsed.activePanel as PanelId)
         : defaults.activePanel,

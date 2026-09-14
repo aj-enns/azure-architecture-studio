@@ -45,7 +45,13 @@ function formatMinutes(minutes: number | null): string {
 }
 
 /** Composite SLA, RPO/RTO, and weakest-link review for the current design. */
-export function ResiliencyPanel({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element | null {
+export function ResiliencyPanel({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}): JSX.Element | null {
   const diagram = useDiagramStore((s) => s.diagram);
   const select = useDiagramStore((s) => s.select);
   const setResiliencyTarget = useDiagramStore((s) => s.setResiliencyTarget);
@@ -104,7 +110,9 @@ export function ResiliencyPanel({ open, onClose }: { open: boolean; onClose: () 
         `${report.downtimePerMonthMinutes} min/month downtime`,
       ],
     ];
-    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csv = rows
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
     downloadCsv(`${diagram.metadata.name}-resiliency`, csv);
   };
 
@@ -118,7 +126,13 @@ export function ResiliencyPanel({ open, onClose }: { open: boolean; onClose: () 
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <ShieldAlert size={16} className="text-primary" />
         <span className="text-sm font-semibold">Resiliency</span>
-        <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose} aria-label="Close resiliency panel">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="ml-auto"
+          onClick={onClose}
+          aria-label="Close resiliency panel"
+        >
           <X size={16} />
         </Button>
       </div>
@@ -132,18 +146,27 @@ export function ResiliencyPanel({ open, onClose }: { open: boolean; onClose: () 
                 {report.downtimePerMonthMinutes} min downtime/month
               </div>
             </div>
-            <div className={cn('text-3xl font-bold tabular-nums', slaColor(report.compositeSlaPercent))}>
+            <div
+              className={cn(
+                'text-3xl font-bold tabular-nums',
+                slaColor(report.compositeSlaPercent),
+              )}
+            >
               {report.compositeSlaPercent}%
             </div>
           </div>
           <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border pt-2 text-xs">
             <div>
               <div className="text-muted-foreground">Worst RTO</div>
-              <div className="font-medium tabular-nums">{formatMinutes(report.worstRtoMinutes)}</div>
+              <div className="font-medium tabular-nums">
+                {formatMinutes(report.worstRtoMinutes)}
+              </div>
             </div>
             <div>
               <div className="text-muted-foreground">Worst RPO</div>
-              <div className="font-medium tabular-nums">{formatMinutes(report.worstRpoMinutes)}</div>
+              <div className="font-medium tabular-nums">
+                {formatMinutes(report.worstRpoMinutes)}
+              </div>
             </div>
           </div>
         </div>
@@ -211,8 +234,8 @@ export function ResiliencyPanel({ open, onClose }: { open: boolean; onClose: () 
 
         {diagram.nodes.length === 0 && (
           <p className="text-xs text-muted-foreground">
-            Add or generate some services, then reopen this panel to see the composite availability of the
-            design and which component limits it.
+            Add or generate some services, then reopen this panel to see the composite availability
+            of the design and which component limits it.
           </p>
         )}
 
@@ -222,7 +245,9 @@ export function ResiliencyPanel({ open, onClose }: { open: boolean; onClose: () 
             onClick={() => selectNode([report.weakestLink!.nodeId])}
             className="rounded-md border border-rose-500/30 bg-rose-500/10 p-2.5 text-left hover:bg-rose-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <div className="text-[10px] font-medium uppercase text-rose-600 dark:text-rose-400">Weakest link</div>
+            <div className="text-[10px] font-medium uppercase text-rose-600 dark:text-rose-400">
+              Weakest link
+            </div>
             <div className="mt-0.5 truncate text-xs font-medium">{report.weakestLink.label}</div>
             <p className="mt-1 text-xs text-muted-foreground">
               {report.weakestLink.profile.slaPercent}% — {report.weakestLink.profile.basis}
@@ -246,7 +271,10 @@ export function ResiliencyPanel({ open, onClose }: { open: boolean; onClose: () 
                     <div className="flex items-center gap-2">
                       <span className="truncate text-xs font-medium">{n.label}</span>
                       <span
-                        className={cn('ml-auto text-xs font-semibold tabular-nums', slaColor(n.profile.slaPercent))}
+                        className={cn(
+                          'ml-auto text-xs font-semibold tabular-nums',
+                          slaColor(n.profile.slaPercent),
+                        )}
                       >
                         {n.profile.slaPercent}%
                       </span>
@@ -267,7 +295,9 @@ export function ResiliencyPanel({ open, onClose }: { open: boolean; onClose: () 
                       )}
                     </div>
                     {n.blocked && (
-                      <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">{n.blocked.message}</p>
+                      <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                        {n.blocked.message}
+                      </p>
                     )}
                   </button>
                 </li>
@@ -278,7 +308,9 @@ export function ResiliencyPanel({ open, onClose }: { open: boolean; onClose: () 
 
         {report.findings.length > 0 && (
           <div className="rounded-md border border-border">
-            <div className="border-b border-border px-2.5 py-1.5 text-xs font-semibold">Findings</div>
+            <div className="border-b border-border px-2.5 py-1.5 text-xs font-semibold">
+              Findings
+            </div>
             <ul className="divide-y divide-border">
               {report.findings.map((f: ResiliencyFinding) => (
                 <li key={f.id}>
@@ -311,7 +343,12 @@ export function ResiliencyPanel({ open, onClose }: { open: boolean; onClose: () 
 
         {diagram.nodes.length > 0 && (
           <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={() => void refreshFromLearn()} disabled={loading}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void refreshFromLearn()}
+              disabled={loading}
+            >
               {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
               {loading ? 'Checking…' : 'Refresh from Learn'}
             </Button>
@@ -332,12 +369,19 @@ export function ResiliencyPanel({ open, onClose }: { open: boolean; onClose: () 
 
         {grounded?.citations && grounded.citations.length > 0 && (
           <div className="rounded-md border border-border">
-            <div className="border-b border-border px-2.5 py-1.5 text-xs font-semibold">Microsoft Learn sources</div>
+            <div className="border-b border-border px-2.5 py-1.5 text-xs font-semibold">
+              Microsoft Learn sources
+            </div>
             <ul className="divide-y divide-border">
               {grounded.citations.map((c) => (
                 <li key={c.url || c.title} className="px-2.5 py-1.5">
                   {c.url ? (
-                    <a href={c.url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">
+                    <a
+                      href={c.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-primary underline"
+                    >
                       {c.title}
                     </a>
                   ) : (
@@ -350,9 +394,9 @@ export function ResiliencyPanel({ open, onClose }: { open: boolean; onClose: () 
         )}
 
         <p className="mt-auto pt-2 text-[11px] text-muted-foreground">
-          Representative planning figures, not a contractual SLA — published coverage is narrower than a
-          service as a whole. Baseline checked {SLA_BASELINE_VERIFIED_ON}; availability-zone regions checked{' '}
-          {AZ_REGIONS_VERIFIED_ON}. A {report.compositeSlaPercent}% composite allows{' '}
+          Representative planning figures, not a contractual SLA — published coverage is narrower
+          than a service as a whole. Baseline checked {SLA_BASELINE_VERIFIED_ON}; availability-zone
+          regions checked {AZ_REGIONS_VERIFIED_ON}. A {report.compositeSlaPercent}% composite allows{' '}
           {slaToDowntimeMinutes(report.compositeSlaPercent)} minutes of downtime a month.
         </p>
       </div>

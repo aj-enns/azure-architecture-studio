@@ -43,10 +43,17 @@ export function Palette(): JSX.Element {
   }, [query]);
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-card" aria-label="Service palette">
+    <aside
+      className="flex w-64 shrink-0 flex-col border-r border-border bg-card"
+      aria-label="Service palette"
+    >
       <div className="border-b border-border p-2">
         <div className="relative">
-          <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <Search
+            size={14}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
           <input
             type="search"
             value={query}
@@ -79,7 +86,12 @@ export function Palette(): JSX.Element {
                       title={s.description}
                       className="flex cursor-grab items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-sm hover:border-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
                     >
-                      <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded bg-muted', categoryColor[s.category])}>
+                      <span
+                        className={cn(
+                          'flex h-6 w-6 shrink-0 items-center justify-center rounded bg-muted',
+                          categoryColor[s.category],
+                        )}
+                      >
                         <ServiceIcon category={s.category} slug={s.icon} size={14} />
                       </span>
                       <span className="truncate">{s.name}</span>

@@ -21,6 +21,93 @@ describe('api', () => {
     await app.close();
   });
 
+  it('searches Microsoft Learn through the configured route dependency', async () => {
+    const config = loadConfig({} as NodeJS.ProcessEnv);
+    const app = await buildApp(config, {
+      docsSearch: async (query, endpoint) => [
+        { title: query, url: endpoint, excerpt: 'Use zone redundancy.' },
+      ],
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/docs-search',
+      payload: { query: 'App Service reliability' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().results).toEqual([
+      {
+        title: 'App Service reliability',
+        url: 'https://learn.microsoft.com/api/mcp',
+        excerpt: 'Use zone redundancy.',
+      },
+    ]);
+    await app.close();
+  });
+
+  it('imports a public GitHub repository through the route dependency', async () => {
+    const config = loadConfig({} as NodeJS.ProcessEnv);
+    const app = await buildApp(config, {
+      importRepo: async (url) => ({
+        version: 1,
+        metadata: { name: url },
+        nodes: [{ id: 'storage-1', serviceId: 'storage-account', position: { x: 0, y: 0 } }],
+        groups: [],
+        edges: [],
+      }),
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/import/repo',
+      payload: { githubUrl: 'https://github.com/Azure/azure-quickstart-templates' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().diagram.metadata.name).toBe(
+      'https://github.com/Azure/azure-quickstart-templates',
+    );
+    await app.close();
+  });
+
+  it('imports an Azure resource group through the route dependency', async () => {
+    const config = loadConfig({} as NodeJS.ProcessEnv);
+    const app = await buildApp(config, {
+      importAzure: async ({ resourceGroup }) => ({
+        version: 1,
+        metadata: { name: resourceGroup },
+        nodes: [{ id: 'app-1', serviceId: 'app-service', position: { x: 0, y: 0 } }],
+        groups: [],
+        edges: [],
+      }),
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/import/azure',
+      payload: {
+        subscriptionId: '00000000-0000-0000-0000-000000000000',
+        resourceGroup: 'hackathon-rg',
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().diagram.metadata.name).toBe('hackathon-rg');
+    await app.close();
+  });
+
+  it('rate limits API requests while leaving health probes available', async () => {
+    const config = loadConfig({
+      RATE_LIMIT_MAX: '1',
+      RATE_LIMIT_WINDOW_MS: '60000',
+    } as NodeJS.ProcessEnv);
+    const app = await buildApp(config);
+
+    expect((await app.inject({ method: 'GET', url: '/api/catalog' })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'GET', url: '/api/catalog' })).statusCode).toBe(429);
+    expect((await app.inject({ method: 'GET', url: '/healthz' })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'GET', url: '/healthz' })).statusCode).toBe(200);
+    await app.close();
+  });
+
   it('returns 503 from /api/generate when AI is unconfigured', async () => {
     const config = loadConfig({} as NodeJS.ProcessEnv);
     const app = await buildApp(config);
@@ -90,7 +177,14 @@ describe('api', () => {
     const app = await buildApp(config, {
       reviewModels: {
         getModels: async () => ({
-          models: [{ deploymentName: 'gpt-35-turbo', modelName: 'gpt-35-turbo', isDefault: true, supportsVision: false }],
+          models: [
+            {
+              deploymentName: 'gpt-35-turbo',
+              modelName: 'gpt-35-turbo',
+              isDefault: true,
+              supportsVision: false,
+            },
+          ],
           defaultDeployment: 'gpt-35-turbo',
         }),
       },
@@ -417,7 +511,14 @@ describe('api', () => {
     const app = await buildApp(config, {
       reviewModels: {
         getModels: async () => ({
-          models: [{ deploymentName: 'gpt-4o', modelName: 'gpt-4o', isDefault: true, supportsVision: true }],
+          models: [
+            {
+              deploymentName: 'gpt-4o',
+              modelName: 'gpt-4o',
+              isDefault: true,
+              supportsVision: true,
+            },
+          ],
           defaultDeployment: 'gpt-4o',
         }),
       },

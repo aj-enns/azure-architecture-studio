@@ -50,7 +50,10 @@ export function App(): JSX.Element {
         onOpenChange={setCommandOpen}
         onOpenRepositoryImport={() => setRepositoryImportOpen(true)}
       />
-      <RepositoryImportDialog open={repositoryImportOpen} onClose={() => setRepositoryImportOpen(false)} />
+      <RepositoryImportDialog
+        open={repositoryImportOpen}
+        onClose={() => setRepositoryImportOpen(false)}
+      />
     </div>
   );
 }

@@ -10,9 +10,12 @@
     {
       "label": "dev: shared",
       "type": "shell",
-      "command": "$env:Path = \"$env:APPDATA\\npm;$env:Path\"; pnpm --filter @aar/shared build; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; pnpm --filter @aar/shared dev",
+      "command": "pnpm --filter @aar/shared build; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; pnpm --filter @aar/shared dev",
       "options": {
-        "cwd": "${workspaceFolder}"
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "Path": "${env:APPDATA}\\npm;${env:Path}"
+        }
       },
       "isBackground": true,
       "problemMatcher": {
@@ -35,9 +38,12 @@
     {
       "label": "dev: api",
       "type": "shell",
-      "command": "$ErrorActionPreference = 'Stop'; $env:Path = \"$env:APPDATA\\npm;$env:Path\"; if (Test-Path .env) { Get-Content .env | ForEach-Object { if ($_ -match '^\\s*([^#][^=]+)=(.*)$') { $name = $matches[1].Trim(); $value = $matches[2].Trim(); [Environment]::SetEnvironmentVariable($name, $value, 'Process') } } }; pnpm --filter @aar/api dev",
+      "command": "$ErrorActionPreference = 'Stop'; if (Test-Path .env) { Get-Content .env | ForEach-Object { if ($_ -match '^\\s*([^#][^=]+)=(.*)$') { $name = $matches[1].Trim(); $value = $matches[2].Trim(); [Environment]::SetEnvironmentVariable($name, $value, 'Process') } } }; pnpm --filter @aar/api dev",
       "options": {
-        "cwd": "${workspaceFolder}"
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "Path": "${env:APPDATA}\\npm;${env:Path}"
+        }
       },
       "isBackground": true,
       "problemMatcher": {
@@ -60,9 +66,12 @@
     {
       "label": "dev: web",
       "type": "shell",
-      "command": "$ErrorActionPreference = 'Stop'; $env:Path = \"$env:APPDATA\\npm;$env:Path\"; if (Test-Path .env) { Get-Content .env | ForEach-Object { if ($_ -match '^\\s*([^#][^=]+)=(.*)$') { $name = $matches[1].Trim(); $value = $matches[2].Trim(); [Environment]::SetEnvironmentVariable($name, $value, 'Process') } } }; pnpm --filter @aar/web dev",
+      "command": "$ErrorActionPreference = 'Stop'; if (Test-Path .env) { Get-Content .env | ForEach-Object { if ($_ -match '^\\s*([^#][^=]+)=(.*)$') { $name = $matches[1].Trim(); $value = $matches[2].Trim(); [Environment]::SetEnvironmentVariable($name, $value, 'Process') } } }; pnpm --filter @aar/web dev",
       "options": {
-        "cwd": "${workspaceFolder}"
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "Path": "${env:APPDATA}\\npm;${env:Path}"
+        }
       },
       "isBackground": true,
       "problemMatcher": {

@@ -26,7 +26,13 @@ function scoreColor(score: number): string {
 }
 
 /** Deterministic Well-Architected Framework validation panel (no model call). */
-export function ValidationPanel({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element | null {
+export function ValidationPanel({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}): JSX.Element | null {
   const diagram = useDiagramStore((s) => s.diagram);
   const select = useDiagramStore((s) => s.select);
   const report = useMemo(() => validateArchitecture(diagram), [diagram]);
@@ -50,7 +56,13 @@ export function ValidationPanel({ open, onClose }: { open: boolean; onClose: () 
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <ShieldCheck size={16} className="text-primary" />
         <span className="text-sm font-semibold">Well-Architected review</span>
-        <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose} aria-label="Close validation panel">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="ml-auto"
+          onClick={onClose}
+          aria-label="Close validation panel"
+        >
           <X size={16} />
         </Button>
       </div>
@@ -70,8 +82,8 @@ export function ValidationPanel({ open, onClose }: { open: boolean; onClose: () 
 
         {diagram.nodes.length === 0 && (
           <p className="text-xs text-muted-foreground">
-            Add or generate some services, then reopen this panel to review the design against the five
-            Well-Architected Framework pillars.
+            Add or generate some services, then reopen this panel to review the design against the
+            five Well-Architected Framework pillars.
           </p>
         )}
 
@@ -79,7 +91,9 @@ export function ValidationPanel({ open, onClose }: { open: boolean; onClose: () 
           <div key={pillar} className="rounded-md border border-border">
             <div className="flex items-center justify-between border-b border-border px-2.5 py-1.5">
               <span className="text-xs font-semibold">{PILLAR_LABEL[pillar]}</span>
-              <span className={cn('text-xs font-semibold tabular-nums', scoreColor(score))}>{score}</span>
+              <span className={cn('text-xs font-semibold tabular-nums', scoreColor(score))}>
+                {score}
+              </span>
             </div>
             {findings.length === 0 ? (
               <p className="px-2.5 py-2 text-xs text-muted-foreground">No issues detected.</p>
@@ -93,7 +107,12 @@ export function ValidationPanel({ open, onClose }: { open: boolean; onClose: () 
                       className="w-full px-2.5 py-2 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <div className="flex items-center gap-2">
-                        <span className={cn('rounded border px-1.5 py-0.5 text-[10px] font-medium uppercase', SEVERITY_STYLE[f.severity])}>
+                        <span
+                          className={cn(
+                            'rounded border px-1.5 py-0.5 text-[10px] font-medium uppercase',
+                            SEVERITY_STYLE[f.severity],
+                          )}
+                        >
                           {f.severity}
                         </span>
                         <span className="truncate text-xs font-medium">{f.title}</span>

@@ -97,7 +97,13 @@ export function estimateNodeCost(serviceId: string, region = 'eastus2'): CostEst
 }
 
 export interface DiagramCost {
-  nodes: { id: string; serviceId: string; label: string; monthlyUsd: number; usageBased: boolean }[];
+  nodes: {
+    id: string;
+    serviceId: string;
+    label: string;
+    monthlyUsd: number;
+    usageBased: boolean;
+  }[];
   byCategory: { category: ServiceCategory; monthlyUsd: number }[];
   totalMonthlyUsd: number;
   /** True when any contributing service is usage-based (so the total is a floor). */

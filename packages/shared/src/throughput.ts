@@ -29,16 +29,96 @@ interface ThroughputModelEntry {
 
 /** Curated per-service throughput baseline keyed by catalog serviceId. */
 const SERVICE_THROUGHPUT: Record<string, ThroughputModelEntry> = {
-  'app-service-plan': { rpmPerUnit: 9000, scaleProperty: 'capacity', defaultUnits: 1, minUnits: 1, maxUnits: 30, perUnitMonthlyUsd: 120, basis: 'P1v3 instance' },
-  'container-apps': { rpmPerUnit: 6000, scaleProperty: 'maxReplicas', defaultUnits: 10, minUnits: 1, maxUnits: 300, perUnitMonthlyUsd: 10, basis: 'replica' },
-  aks: { rpmPerUnit: 12000, scaleProperty: 'nodeCount', defaultUnits: 3, minUnits: 1, maxUnits: 100, perUnitMonthlyUsd: 70, basis: 'D4s v5 node' },
-  vmss: { rpmPerUnit: 6000, scaleProperty: 'instances', defaultUnits: 2, minUnits: 1, maxUnits: 100, perUnitMonthlyUsd: 70, basis: 'D2s v5 instance' },
-  vm: { rpmPerUnit: 6000, scaleProperty: 'instances', defaultUnits: 1, minUnits: 1, maxUnits: 1, perUnitMonthlyUsd: 70, basis: 'D2s v5 (single instance)' },
-  'application-gateway': { rpmPerUnit: 3000, scaleProperty: 'capacity', defaultUnits: 2, minUnits: 2, maxUnits: 125, perUnitMonthlyUsd: 125, basis: 'WAF_v2 capacity unit' },
-  'api-management': { rpmPerUnit: 30000, scaleProperty: 'capacity', defaultUnits: 1, minUnits: 1, maxUnits: 12, perUnitMonthlyUsd: 700, basis: 'Standard v2 unit' },
-  'sql-database': { rpmPerUnit: 3000, scaleProperty: 'capacity', defaultUnits: 2, minUnits: 1, maxUnits: 80, perUnitMonthlyUsd: 130, basis: 'GP vCore' },
-  postgresql: { rpmPerUnit: 3000, scaleProperty: 'capacity', defaultUnits: 2, minUnits: 1, maxUnits: 96, perUnitMonthlyUsd: 130, basis: 'GP vCore' },
-  'event-hubs': { rpmPerUnit: 60000, scaleProperty: 'throughputUnits', defaultUnits: 1, minUnits: 1, maxUnits: 40, perUnitMonthlyUsd: 22, basis: 'throughput unit' },
+  'app-service-plan': {
+    rpmPerUnit: 9000,
+    scaleProperty: 'capacity',
+    defaultUnits: 1,
+    minUnits: 1,
+    maxUnits: 30,
+    perUnitMonthlyUsd: 120,
+    basis: 'P1v3 instance',
+  },
+  'container-apps': {
+    rpmPerUnit: 6000,
+    scaleProperty: 'maxReplicas',
+    defaultUnits: 10,
+    minUnits: 1,
+    maxUnits: 300,
+    perUnitMonthlyUsd: 10,
+    basis: 'replica',
+  },
+  aks: {
+    rpmPerUnit: 12000,
+    scaleProperty: 'nodeCount',
+    defaultUnits: 3,
+    minUnits: 1,
+    maxUnits: 100,
+    perUnitMonthlyUsd: 70,
+    basis: 'D4s v5 node',
+  },
+  vmss: {
+    rpmPerUnit: 6000,
+    scaleProperty: 'instances',
+    defaultUnits: 2,
+    minUnits: 1,
+    maxUnits: 100,
+    perUnitMonthlyUsd: 70,
+    basis: 'D2s v5 instance',
+  },
+  vm: {
+    rpmPerUnit: 6000,
+    scaleProperty: 'instances',
+    defaultUnits: 1,
+    minUnits: 1,
+    maxUnits: 1,
+    perUnitMonthlyUsd: 70,
+    basis: 'D2s v5 (single instance)',
+  },
+  'application-gateway': {
+    rpmPerUnit: 3000,
+    scaleProperty: 'capacity',
+    defaultUnits: 2,
+    minUnits: 2,
+    maxUnits: 125,
+    perUnitMonthlyUsd: 125,
+    basis: 'WAF_v2 capacity unit',
+  },
+  'api-management': {
+    rpmPerUnit: 30000,
+    scaleProperty: 'capacity',
+    defaultUnits: 1,
+    minUnits: 1,
+    maxUnits: 12,
+    perUnitMonthlyUsd: 700,
+    basis: 'Standard v2 unit',
+  },
+  'sql-database': {
+    rpmPerUnit: 3000,
+    scaleProperty: 'capacity',
+    defaultUnits: 2,
+    minUnits: 1,
+    maxUnits: 80,
+    perUnitMonthlyUsd: 130,
+    basis: 'GP vCore',
+  },
+  postgresql: {
+    rpmPerUnit: 3000,
+    scaleProperty: 'capacity',
+    defaultUnits: 2,
+    minUnits: 1,
+    maxUnits: 96,
+    perUnitMonthlyUsd: 130,
+    basis: 'GP vCore',
+  },
+  'event-hubs': {
+    rpmPerUnit: 60000,
+    scaleProperty: 'throughputUnits',
+    defaultUnits: 1,
+    minUnits: 1,
+    maxUnits: 40,
+    perUnitMonthlyUsd: 22,
+    basis: 'throughput unit',
+  },
 };
 
 /** Per-node throughput result: capability today and what it takes to hit target. */
@@ -81,7 +161,11 @@ function unitCount(node: DiagramNode, key: string, fallback: number): number {
   return typeof raw === 'number' && raw > 0 ? raw : fallback;
 }
 
-function estimateNode(node: DiagramNode, targetPerMinute: number | null, region: string): NodeThroughput | null {
+function estimateNode(
+  node: DiagramNode,
+  targetPerMinute: number | null,
+  region: string,
+): NodeThroughput | null {
   const model = SERVICE_THROUGHPUT[node.serviceId];
   if (!model) return null;
 
@@ -97,7 +181,9 @@ function estimateNode(node: DiagramNode, targetPerMinute: number | null, region:
   }
 
   const addedUnits = Math.max(0, recommendedUnits - currentUnits);
-  const addedMonthlyUsd = Math.round(addedUnits * model.perUnitMonthlyUsd * regionCostMultiplier(region));
+  const addedMonthlyUsd = Math.round(
+    addedUnits * model.perUnitMonthlyUsd * regionCostMultiplier(region),
+  );
 
   return {
     nodeId: node.id,
@@ -119,7 +205,9 @@ function estimateNode(node: DiagramNode, targetPerMinute: number | null, region:
 export function analyzeThroughput(diagram: Diagram): ThroughputReport {
   const region = diagram.metadata.region || 'eastus2';
   const target = diagram.metadata.throughput;
-  const targetPerMinute = target ? Math.round(target.usersPerMinute * target.requestsPerUser) : null;
+  const targetPerMinute = target
+    ? Math.round(target.usersPerMinute * target.requestsPerUser)
+    : null;
 
   const nodes = diagram.nodes
     .map((n) => estimateNode(n, targetPerMinute, region))
@@ -129,8 +217,16 @@ export function analyzeThroughput(diagram: Diagram): ThroughputReport {
   const bottleneck = nodes[0] ?? null;
   const capacityPerMinute = bottleneck ? bottleneck.requestsPerMinute : null;
   const meetsTarget =
-    targetPerMinute === null || (capacityPerMinute !== null && capacityPerMinute >= targetPerMinute);
+    targetPerMinute === null ||
+    (capacityPerMinute !== null && capacityPerMinute >= targetPerMinute);
   const totalAddedMonthlyUsd = nodes.reduce((sum, n) => sum + n.addedMonthlyUsd, 0);
 
-  return { nodes, bottleneck, capacityPerMinute, targetPerMinute, meetsTarget, totalAddedMonthlyUsd };
+  return {
+    nodes,
+    bottleneck,
+    capacityPerMinute,
+    targetPerMinute,
+    meetsTarget,
+    totalAddedMonthlyUsd,
+  };
 }

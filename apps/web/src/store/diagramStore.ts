@@ -43,7 +43,10 @@ interface DiagramState {
 
   // groups
   addGroup: (kind: GroupKind, position: { x: number; y: number }) => string;
-  updateGroup: (id: string, patch: Partial<Pick<DiagramGroup, 'label' | 'position' | 'size'>>) => void;
+  updateGroup: (
+    id: string,
+    patch: Partial<Pick<DiagramGroup, 'label' | 'position' | 'size'>>,
+  ) => void;
   removeGroup: (id: string) => void;
 
   // edges
@@ -112,7 +115,11 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       position,
       properties: { ...(def?.defaults ?? {}) } as NodeProperties,
     };
-    set((s) => ({ diagram: mutate(s.diagram, (d) => void d.nodes.push(node)), selection: { type: 'node', id }, revision: s.revision + 1 }));
+    set((s) => ({
+      diagram: mutate(s.diagram, (d) => void d.nodes.push(node)),
+      selection: { type: 'node', id },
+      revision: s.revision + 1,
+    }));
     return id;
   },
 
@@ -170,7 +177,11 @@ export const useDiagramStore = create<DiagramState>((set, get) => ({
       collapsed: false,
       properties: {},
     };
-    set((s) => ({ diagram: mutate(s.diagram, (d) => void d.groups.push(group)), selection: { type: 'group', id }, revision: s.revision + 1 }));
+    set((s) => ({
+      diagram: mutate(s.diagram, (d) => void d.groups.push(group)),
+      selection: { type: 'group', id },
+      revision: s.revision + 1,
+    }));
     return id;
   },
 

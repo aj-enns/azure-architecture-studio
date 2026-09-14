@@ -39,14 +39,20 @@ describe('removeGroup', () => {
     useDiagramStore.getState().addEdge(insideNodeId, nestedNodeId);
     useDiagramStore.getState().addEdge(insideNodeId, outsideNodeId);
     // An edge entirely outside the deleted group must be preserved.
-    const secondOutsideNodeId = useDiagramStore.getState().addNode('app-service', { x: 240, y: 240 });
+    const secondOutsideNodeId = useDiagramStore
+      .getState()
+      .addNode('app-service', { x: 240, y: 240 });
     useDiagramStore.getState().addEdge(outsideNodeId, secondOutsideNodeId);
 
     useDiagramStore.getState().removeGroup(rgId);
 
     const { diagram } = useDiagramStore.getState();
     expect(diagram.groups.map((g) => g.id)).toEqual([]);
-    expect(diagram.nodes.map((n) => n.id).sort()).toEqual([outsideNodeId, secondOutsideNodeId].sort());
-    expect(diagram.edges.map((e) => [e.source, e.target])).toEqual([[outsideNodeId, secondOutsideNodeId]]);
+    expect(diagram.nodes.map((n) => n.id).sort()).toEqual(
+      [outsideNodeId, secondOutsideNodeId].sort(),
+    );
+    expect(diagram.edges.map((e) => [e.source, e.target])).toEqual([
+      [outsideNodeId, secondOutsideNodeId],
+    ]);
   });
 });

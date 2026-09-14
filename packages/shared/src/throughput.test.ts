@@ -20,13 +20,19 @@ function diagramWith(
 
 describe('throughput', () => {
   it('scales capability with the unit count', () => {
-    const one = analyzeThroughput(diagramWith([{ serviceId: 'app-service-plan', properties: { capacity: 1 } }]));
-    const four = analyzeThroughput(diagramWith([{ serviceId: 'app-service-plan', properties: { capacity: 4 } }]));
+    const one = analyzeThroughput(
+      diagramWith([{ serviceId: 'app-service-plan', properties: { capacity: 1 } }]),
+    );
+    const four = analyzeThroughput(
+      diagramWith([{ serviceId: 'app-service-plan', properties: { capacity: 4 } }]),
+    );
     expect(four.nodes[0].requestsPerMinute).toBe(one.nodes[0].requestsPerMinute * 4);
   });
 
   it('ignores non-gating services', () => {
-    const report = analyzeThroughput(diagramWith([{ serviceId: 'key-vault' }, { serviceId: 'front-door' }]));
+    const report = analyzeThroughput(
+      diagramWith([{ serviceId: 'key-vault' }, { serviceId: 'front-door' }]),
+    );
     expect(report.nodes).toEqual([]);
     expect(report.bottleneck).toBeNull();
     expect(report.capacityPerMinute).toBeNull();
@@ -62,7 +68,9 @@ describe('throughput', () => {
     const gw = report.nodes[0];
     expect(gw.meetsTarget).toBe(false);
     expect(gw.recommendedUnits).toBeGreaterThan(gw.currentUnits);
-    expect(gw.recommendedUnits * gw.requestsPerMinute / gw.currentUnits).toBeGreaterThanOrEqual(30000);
+    expect((gw.recommendedUnits * gw.requestsPerMinute) / gw.currentUnits).toBeGreaterThanOrEqual(
+      30000,
+    );
     expect(gw.addedMonthlyUsd).toBeGreaterThan(0);
     expect(report.totalAddedMonthlyUsd).toBe(gw.addedMonthlyUsd);
   });

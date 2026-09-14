@@ -55,10 +55,15 @@ export function RepositoryImportDialog({
   const importFolder = async (fileList: FileList): Promise<void> => {
     const selected = Array.from(fileList);
     const repositoryName = selected[0]
-      ? ((selected[0] as File & { webkitRelativePath?: string }).webkitRelativePath || selected[0].name).split('/')[0]
+      ? (
+          (selected[0] as File & { webkitRelativePath?: string }).webkitRelativePath ||
+          selected[0].name
+        ).split('/')[0]
       : undefined;
     const candidates = selected.filter((file) =>
-      isScannableIacPath((file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name),
+      isScannableIacPath(
+        (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name,
+      ),
     );
     if (candidates.length === 0) {
       setError('No Bicep, Terraform, or ARM files were found in that folder.');
@@ -103,7 +108,9 @@ export function RepositoryImportDialog({
       >
         <header className="flex items-center gap-3 border-b border-border px-5 py-4">
           <Github size={20} className="text-primary" />
-          <h2 id="repository-import-title" className="text-base font-semibold">Import Git repository</h2>
+          <h2 id="repository-import-title" className="text-base font-semibold">
+            Import Git repository
+          </h2>
           <Button
             type="button"
             variant="ghost"
@@ -118,7 +125,11 @@ export function RepositoryImportDialog({
         </header>
 
         <div className="p-5">
-          <div className="mb-5 grid grid-cols-2 rounded-md border border-border bg-background p-1" role="tablist" aria-label="Repository source">
+          <div
+            className="mb-5 grid grid-cols-2 rounded-md border border-border bg-background p-1"
+            role="tablist"
+            aria-label="Repository source"
+          >
             <button
               type="button"
               role="tab"
@@ -126,7 +137,9 @@ export function RepositoryImportDialog({
               onClick={() => selectSource('url')}
               className={cn(
                 'flex h-9 items-center justify-center gap-2 rounded text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                source === 'url' ? 'bg-accent text-accent-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                source === 'url'
+                  ? 'bg-accent text-accent-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
               )}
             >
               <Link size={16} /> GitHub URL
@@ -138,7 +151,9 @@ export function RepositoryImportDialog({
               onClick={() => selectSource('folder')}
               className={cn(
                 'flex h-9 items-center justify-center gap-2 rounded text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                source === 'folder' ? 'bg-accent text-accent-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                source === 'folder'
+                  ? 'bg-accent text-accent-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
               )}
             >
               <FolderOpen size={16} /> Local folder
@@ -164,6 +179,9 @@ export function RepositoryImportDialog({
               <Button type="submit" className="mt-4 w-full" disabled={loading || !url.trim()}>
                 <Github size={16} /> {loading ? 'Importing…' : 'Import repository'}
               </Button>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Imported diagrams are a best-effort starting point — review and refine after import.
+              </p>
             </form>
           ) : (
             <div>
@@ -178,12 +196,17 @@ export function RepositoryImportDialog({
                 {loading ? 'Importing…' : 'Choose repository folder'}
               </Button>
               <p className="mt-3 text-center text-xs text-muted-foreground">
-                Bicep, Terraform, and ARM templates are imported.
+                Bicep, Terraform, and ARM templates are imported as a best-effort starting point —
+                review and refine after import.
               </p>
             </div>
           )}
 
-          {error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}
+          {error && (
+            <p role="alert" className="mt-4 text-sm text-destructive">
+              {error}
+            </p>
+          )}
         </div>
 
         <input

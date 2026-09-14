@@ -50,7 +50,6 @@ interface ArmDeployment {
   };
 }
 
-
 interface ArmDeploymentPage {
   value?: unknown;
   nextLink?: unknown;
@@ -84,7 +83,9 @@ function toReviewModel(deployment: ArmDeployment, defaultDeployment: string): Re
   return {
     deploymentName: deployment.name,
     ...(typeof properties.model?.name === 'string' ? { modelName: properties.model.name } : {}),
-    ...(typeof properties.model?.version === 'string' ? { modelVersion: properties.model.version } : {}),
+    ...(typeof properties.model?.version === 'string'
+      ? { modelVersion: properties.model.version }
+      : {}),
     isDefault: deployment.name === defaultDeployment,
     ...(typeof properties.model?.name === 'string'
       ? { supportsVision: isVisionCapableModelName(properties.model.name) }
@@ -124,7 +125,10 @@ export function createFoundryModelDiscovery(
 
   async function loadModels(): Promise<ReviewModelList> {
     if (config.provider !== 'foundry') {
-      return fallbackList(config, 'Live model discovery is available only for Microsoft Foundry endpoints.');
+      return fallbackList(
+        config,
+        'Live model discovery is available only for Microsoft Foundry endpoints.',
+      );
     }
     if (!config.resourceId) {
       return fallbackList(

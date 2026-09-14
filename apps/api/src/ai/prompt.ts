@@ -70,9 +70,7 @@ ${prompt}`;
 /** Compact, human-readable summary of a diagram used as model context. */
 export function summarizeDiagram(diagram: Diagram): string {
   if (diagram.nodes.length === 0) return 'empty';
-  const nodes = diagram.nodes
-    .map((n) => `${n.label || n.serviceId} [${n.serviceId}]`)
-    .join(', ');
+  const nodes = diagram.nodes.map((n) => `${n.label || n.serviceId} [${n.serviceId}]`).join(', ');
   const edges = diagram.edges
     .map((e) => {
       const from = diagram.nodes.find((n) => n.id === e.source)?.label ?? e.source;
@@ -141,8 +139,7 @@ ${catalog}`;
 
 /** User message for image-to-diagram, optionally with the user's guidance. */
 export function buildImageUserPrompt(guidance?: string): string {
-  const base =
-    'Transcribe the attached architecture diagram into the schema, following the rules.';
+  const base = 'Transcribe the attached architecture diagram into the schema, following the rules.';
   const trimmed = guidance?.trim();
   return trimmed ? `${base}\n\nAdditional guidance:\n${trimmed}` : base;
 }

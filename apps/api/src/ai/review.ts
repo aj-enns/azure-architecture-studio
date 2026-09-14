@@ -159,7 +159,8 @@ export async function reviewArchitecture(
   if (grounded) {
     grounding = await groundReview(learnConfig, diagram);
     if (grounding.citations.length === 0) {
-      groundingError = 'Could not retrieve Microsoft Learn references; the review uses the built-in analysis only.';
+      groundingError =
+        'Could not retrieve Microsoft Learn references; the review uses the built-in analysis only.';
     }
   }
 

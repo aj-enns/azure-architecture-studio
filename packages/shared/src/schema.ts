@@ -19,7 +19,10 @@ export const sizeSchema = z.object({
 export type Size = z.infer<typeof sizeSchema>;
 
 /** Free-form, string-keyed properties for a node (SKU, tier, region, etc.). */
-export const nodePropertiesSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]));
+export const nodePropertiesSchema = z.record(
+  z.string(),
+  z.union([z.string(), z.number(), z.boolean()]),
+);
 export type NodeProperties = z.infer<typeof nodePropertiesSchema>;
 
 /**
@@ -39,7 +42,13 @@ export const diagramNodeSchema = z.object({
 export type DiagramNode = z.infer<typeof diagramNodeSchema>;
 
 /** Container node type — used to draw subscriptions, resource groups, VNets, subnets. */
-export const groupKindSchema = z.enum(['subscription', 'resourceGroup', 'vnet', 'subnet', 'custom']);
+export const groupKindSchema = z.enum([
+  'subscription',
+  'resourceGroup',
+  'vnet',
+  'subnet',
+  'custom',
+]);
 export type GroupKind = z.infer<typeof groupKindSchema>;
 
 export const diagramGroupSchema = z.object({

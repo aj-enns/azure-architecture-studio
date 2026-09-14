@@ -15,6 +15,8 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(8080),
   HOST: z.string().default('0.0.0.0'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
 
   // Bring-your-own Microsoft Foundry model inference (optional).
   AZURE_FOUNDRY_ENDPOINT: z.string().url().optional().or(z.literal('')),
@@ -48,9 +50,7 @@ const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>;
 
 /** How the server authenticates to Azure OpenAI. */
-export type AzureOpenAIAuth =
-  | { kind: 'apiKey'; apiKey: string }
-  | { kind: 'entra' };
+export type AzureOpenAIAuth = { kind: 'apiKey'; apiKey: string } | { kind: 'entra' };
 
 export interface AzureOpenAIConfig {
   provider: 'foundry' | 'azureOpenAI';
@@ -66,6 +66,7 @@ export interface AppConfig {
   port: number;
   host: string;
   corsOrigin: string;
+  rateLimit: { max: number; timeWindowMs: number };
   /**
    * Present when Azure OpenAI endpoint + deployment are provided. Auth is by API
    * key when AZURE_OPENAI_API_KEY is set, otherwise keyless via Entra ID.
@@ -90,6 +91,10 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     port: env.PORT,
     host: env.HOST,
     corsOrigin: env.CORS_ORIGIN,
+    rateLimit: {
+      max: env.RATE_LIMIT_MAX,
+      timeWindowMs: env.RATE_LIMIT_WINDOW_MS,
+    },
     azureOpenAI: hasAi
       ? {
           provider: isFoundry ? 'foundry' : 'azureOpenAI',
@@ -99,9 +104,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
           ...(isFoundry && env.AZURE_FOUNDRY_RESOURCE_ID
             ? { resourceId: env.AZURE_FOUNDRY_RESOURCE_ID.replace(/\/$/, '') }
             : {}),
-          auth: apiKey
-            ? { kind: 'apiKey', apiKey }
-            : { kind: 'entra' },
+          auth: apiKey ? { kind: 'apiKey', apiKey } : { kind: 'entra' },
         }
       : null,
     learn: {

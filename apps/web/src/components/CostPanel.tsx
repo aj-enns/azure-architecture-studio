@@ -38,7 +38,13 @@ function rpm(n: number): string {
 }
 
 /** Deterministic monthly cost estimate panel (curated representative pricing). */
-export function CostPanel({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element | null {
+export function CostPanel({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}): JSX.Element | null {
   const diagram = useDiagramStore((s) => s.diagram);
   const select = useDiagramStore((s) => s.select);
   const setThroughputTarget = useDiagramStore((s) => s.setThroughputTarget);
@@ -57,7 +63,18 @@ export function CostPanel({ open, onClose }: { open: boolean; onClose: () => voi
 
   const exportCsv = (): void => {
     const rows = [
-      ['Service', 'Type', 'Category', 'Region', 'Monthly USD', 'Usage-based', 'Capacity/min', 'Meets target', 'Recommended scale', 'Added USD'],
+      [
+        'Service',
+        'Type',
+        'Category',
+        'Region',
+        'Monthly USD',
+        'Usage-based',
+        'Capacity/min',
+        'Meets target',
+        'Recommended scale',
+        'Added USD',
+      ],
       ...cost.nodes.map((n) => {
         const tp = tpByNode.get(n.id);
         return [
@@ -69,13 +86,28 @@ export function CostPanel({ open, onClose }: { open: boolean; onClose: () => voi
           n.usageBased ? 'yes' : 'no',
           tp ? String(tp.requestsPerMinute) : '',
           tp ? (tp.meetsTarget ? 'yes' : 'no') : '',
-          tp && tp.addedUnits > 0 ? `${tp.scaleProperty} ${tp.currentUnits}->${tp.recommendedUnits}` : '',
+          tp && tp.addedUnits > 0
+            ? `${tp.scaleProperty} ${tp.currentUnits}->${tp.recommendedUnits}`
+            : '',
           tp ? String(tp.addedMonthlyUsd) : '',
         ];
       }),
-      ['TOTAL', '', '', cost.region, String(cost.totalMonthlyUsd), '', throughput.capacityPerMinute === null ? '' : String(throughput.capacityPerMinute), throughput.meetsTarget ? 'yes' : 'no', '', String(throughput.totalAddedMonthlyUsd)],
+      [
+        'TOTAL',
+        '',
+        '',
+        cost.region,
+        String(cost.totalMonthlyUsd),
+        '',
+        throughput.capacityPerMinute === null ? '' : String(throughput.capacityPerMinute),
+        throughput.meetsTarget ? 'yes' : 'no',
+        '',
+        String(throughput.totalAddedMonthlyUsd),
+      ],
     ];
-    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csv = rows
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
     downloadCsv(`${diagram.metadata.name}-costs`, csv);
   };
 
@@ -84,7 +116,13 @@ export function CostPanel({ open, onClose }: { open: boolean; onClose: () => voi
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <DollarSign size={16} className="text-primary" />
         <span className="text-sm font-semibold">Monthly cost estimate</span>
-        <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose} aria-label="Close cost panel">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="ml-auto"
+          onClick={onClose}
+          aria-label="Close cost panel"
+        >
           <X size={16} />
         </Button>
       </div>
@@ -104,7 +142,9 @@ export function CostPanel({ open, onClose }: { open: boolean; onClose: () => voi
               <span className="text-muted-foreground">Projected to meet target</span>
               <span className="tabular-nums font-medium text-amber-600 dark:text-amber-400">
                 {usd(projectedTotal)}/mo
-                <span className="ml-1 font-normal text-muted-foreground">(+{usd(throughput.totalAddedMonthlyUsd)})</span>
+                <span className="ml-1 font-normal text-muted-foreground">
+                  (+{usd(throughput.totalAddedMonthlyUsd)})
+                </span>
               </span>
             </div>
           )}
@@ -142,7 +182,9 @@ export function CostPanel({ open, onClose }: { open: boolean; onClose: () => voi
                     min="0"
                     step="100"
                     value={target?.usersPerMinute ?? DEFAULT_THROUGHPUT_TARGET.usersPerMinute}
-                    onChange={(e) => patchTarget({ usersPerMinute: Math.max(0, Number(e.target.value)) })}
+                    onChange={(e) =>
+                      patchTarget({ usersPerMinute: Math.max(0, Number(e.target.value)) })
+                    }
                     className="mt-0.5 w-full rounded border border-border bg-background px-1.5 py-1 text-xs tabular-nums text-foreground"
                   />
                 </label>
@@ -153,7 +195,9 @@ export function CostPanel({ open, onClose }: { open: boolean; onClose: () => voi
                     min="1"
                     step="1"
                     value={target?.requestsPerUser ?? DEFAULT_THROUGHPUT_TARGET.requestsPerUser}
-                    onChange={(e) => patchTarget({ requestsPerUser: Math.max(1, Number(e.target.value)) })}
+                    onChange={(e) =>
+                      patchTarget({ requestsPerUser: Math.max(1, Number(e.target.value)) })
+                    }
                     className="mt-0.5 w-full rounded border border-border bg-background px-1.5 py-1 text-xs tabular-nums text-foreground"
                   />
                 </label>
@@ -162,13 +206,17 @@ export function CostPanel({ open, onClose }: { open: boolean; onClose: () => voi
                 <div>
                   <div className="text-muted-foreground">Capacity</div>
                   <div className="font-medium tabular-nums">
-                    {throughput.capacityPerMinute === null ? '—' : `${rpm(throughput.capacityPerMinute)}/min`}
+                    {throughput.capacityPerMinute === null
+                      ? '—'
+                      : `${rpm(throughput.capacityPerMinute)}/min`}
                   </div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Target</div>
                   <div className="font-medium tabular-nums">
-                    {throughput.targetPerMinute === null ? '—' : `${rpm(throughput.targetPerMinute)}/min`}
+                    {throughput.targetPerMinute === null
+                      ? '—'
+                      : `${rpm(throughput.targetPerMinute)}/min`}
                   </div>
                 </div>
               </div>
@@ -190,10 +238,15 @@ export function CostPanel({ open, onClose }: { open: boolean; onClose: () => voi
             </div>
 
             <div className="rounded-md border border-border">
-              <div className="border-b border-border px-2.5 py-1.5 text-xs font-semibold">By category</div>
+              <div className="border-b border-border px-2.5 py-1.5 text-xs font-semibold">
+                By category
+              </div>
               <ul className="divide-y divide-border">
                 {cost.byCategory.map(({ category, monthlyUsd }) => (
-                  <li key={category} className="flex items-center justify-between px-2.5 py-1.5 text-xs">
+                  <li
+                    key={category}
+                    className="flex items-center justify-between px-2.5 py-1.5 text-xs"
+                  >
                     <span>{CATEGORY_LABEL[category]}</span>
                     <span className="tabular-nums text-muted-foreground">{usd(monthlyUsd)}/mo</span>
                   </li>
@@ -202,7 +255,9 @@ export function CostPanel({ open, onClose }: { open: boolean; onClose: () => voi
             </div>
 
             <div className="rounded-md border border-border">
-              <div className="border-b border-border px-2.5 py-1.5 text-xs font-semibold">By service</div>
+              <div className="border-b border-border px-2.5 py-1.5 text-xs font-semibold">
+                By service
+              </div>
               <ul className="divide-y divide-border">
                 {cost.nodes.map((n) => {
                   const tp = tpByNode.get(n.id);
@@ -217,7 +272,12 @@ export function CostPanel({ open, onClose }: { open: boolean; onClose: () => voi
                         onClick={() => select({ type: 'node', id: n.id })}
                         className="flex w-full items-center justify-between gap-2 text-left"
                       >
-                        <span className={cn('truncate', under && 'font-medium text-rose-600 dark:text-rose-400')}>
+                        <span
+                          className={cn(
+                            'truncate',
+                            under && 'font-medium text-rose-600 dark:text-rose-400',
+                          )}
+                        >
                           {n.label}
                         </span>
                         <span className="shrink-0 tabular-nums text-muted-foreground">
@@ -227,7 +287,8 @@ export function CostPanel({ open, onClose }: { open: boolean; onClose: () => voi
                       </button>
                       {under && tp && (
                         <div className="mt-0.5 text-[11px] text-rose-600 dark:text-rose-400">
-                          {rpm(tp.requestsPerMinute)}/min · {tp.capReached
+                          {rpm(tp.requestsPerMinute)}/min ·{' '}
+                          {tp.capReached
                             ? `max ${tp.recommendedUnits} ${tp.scaleProperty} — cannot reach target`
                             : `scale ${tp.scaleProperty} ${tp.currentUnits}→${tp.recommendedUnits} (+${usd(tp.addedMonthlyUsd)}/mo)`}
                         </div>

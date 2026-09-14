@@ -24,13 +24,26 @@ export interface WafReport {
   overallScore: number;
 }
 
-export const WAF_PILLARS: WafPillar[] = ['security', 'reliability', 'performance', 'cost', 'operational'];
+export const WAF_PILLARS: WafPillar[] = [
+  'security',
+  'reliability',
+  'performance',
+  'cost',
+  'operational',
+];
 
 const SEVERITY_PENALTY: Record<WafSeverity, number> = { high: 30, medium: 15, low: 7 };
 
 // Service groupings the rules reason about.
 const DATA_SERVICES = ['sql-database', 'cosmos-db', 'postgresql', 'redis', 'storage-account'];
-const PUBLIC_ENTRY = ['app-service', 'functions', 'static-web-app', 'api-management', 'aks', 'container-apps'];
+const PUBLIC_ENTRY = [
+  'app-service',
+  'functions',
+  'static-web-app',
+  'api-management',
+  'aks',
+  'container-apps',
+];
 const WAF_FRONTS = ['application-gateway', 'front-door'];
 const IDENTITY_CAPABLE = ['app-service', 'functions', 'aks', 'container-apps', 'api-management'];
 
@@ -60,7 +73,8 @@ export function validateArchitecture(diagram: Diagram): WafReport {
       pillar: 'security',
       severity: 'medium',
       title: 'No Key Vault for secrets',
-      message: 'Data services are present but there is no Key Vault to hold connection strings, keys, or certificates.',
+      message:
+        'Data services are present but there is no Key Vault to hold connection strings, keys, or certificates.',
       fix: 'Add Key Vault and reference secrets from it.',
       serviceIds: present(DATA_SERVICES),
     });
@@ -71,7 +85,8 @@ export function validateArchitecture(diagram: Diagram): WafReport {
       pillar: 'security',
       severity: 'medium',
       title: 'No managed identity',
-      message: 'Compute services should authenticate to Azure resources with a managed identity rather than keys or secrets.',
+      message:
+        'Compute services should authenticate to Azure resources with a managed identity rather than keys or secrets.',
       fix: 'Add Managed Identity and grant it least-privilege roles.',
       serviceIds: present(IDENTITY_CAPABLE),
     });
@@ -123,7 +138,11 @@ export function validateArchitecture(diagram: Diagram): WafReport {
   }
 
   // ---- Performance -------------------------------------------------------
-  if (hasAny(['sql-database', 'postgresql', 'cosmos-db']) && !has('redis') && categories.has('web')) {
+  if (
+    hasAny(['sql-database', 'postgresql', 'cosmos-db']) &&
+    !has('redis') &&
+    categories.has('web')
+  ) {
     add({
       id: 'perf-cache',
       pillar: 'performance',
@@ -154,7 +173,8 @@ export function validateArchitecture(diagram: Diagram): WafReport {
       pillar: 'operational',
       severity: 'medium',
       title: 'No application monitoring',
-      message: 'There is no Application Insights resource to capture traces, metrics, and failures.',
+      message:
+        'There is no Application Insights resource to capture traces, metrics, and failures.',
       fix: 'Add Application Insights and instrument the workloads.',
     });
   }
@@ -172,8 +192,14 @@ export function validateArchitecture(diagram: Diagram): WafReport {
   return { findings, ...score(findings) };
 }
 
-function score(findings: WafFinding[]): { scoreByPillar: Record<WafPillar, number>; overallScore: number } {
-  const scoreByPillar = Object.fromEntries(WAF_PILLARS.map((p) => [p, 100])) as Record<WafPillar, number>;
+function score(findings: WafFinding[]): {
+  scoreByPillar: Record<WafPillar, number>;
+  overallScore: number;
+} {
+  const scoreByPillar = Object.fromEntries(WAF_PILLARS.map((p) => [p, 100])) as Record<
+    WafPillar,
+    number
+  >;
   for (const f of findings) {
     scoreByPillar[f.pillar] = Math.max(0, scoreByPillar[f.pillar] - SEVERITY_PENALTY[f.severity]);
   }

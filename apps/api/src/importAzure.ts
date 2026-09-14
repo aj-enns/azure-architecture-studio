@@ -45,7 +45,8 @@ export async function importFromResourceGraph(
 ): Promise<Diagram> {
   const fetchImpl = deps.fetch ?? fetch;
   const getToken =
-    deps.getManagementToken ?? getBearerTokenProvider(new DefaultAzureCredential(), MANAGEMENT_SCOPE);
+    deps.getManagementToken ??
+    getBearerTokenProvider(new DefaultAzureCredential(), MANAGEMENT_SCOPE);
 
   let token: string;
   try {
@@ -90,7 +91,9 @@ export async function importFromResourceGraph(
   const rows = Array.isArray(payload.data) ? (payload.data as GraphRow[]) : [];
 
   const resources: ImportResource[] = rows
-    .filter((row): row is GraphRow => typeof row?.type === 'string' && typeof row?.name === 'string')
+    .filter(
+      (row): row is GraphRow => typeof row?.type === 'string' && typeof row?.name === 'string',
+    )
     .map((row, index) => ({
       key: typeof row.id === 'string' ? row.id : `${row.type as string}#${index}`,
       type: row.type as string,
@@ -100,5 +103,7 @@ export async function importFromResourceGraph(
       ...(row.properties !== undefined ? { properties: row.properties } : {}),
     }));
 
-  return armResourcesToDiagram(resources, { name: params.name ?? `Azure: ${params.resourceGroup}` });
+  return armResourcesToDiagram(resources, {
+    name: params.name ?? `Azure: ${params.resourceGroup}`,
+  });
 }

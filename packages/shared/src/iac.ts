@@ -99,13 +99,15 @@ export function generateIacBundle(diagram: Diagram, target: IacTarget): IacBundl
   if (diagram.nodes.length === 0) {
     diagnostics.push({
       severity: 'warning',
-      message: 'The diagram contains no resources; the generated files only contain deployment scaffolding.',
+      message:
+        'The diagram contains no resources; the generated files only contain deployment scaffolding.',
     });
   }
 
-  const files = target === 'bicep'
-    ? generateBicepFiles(diagram, resources, diagnostics)
-    : generateTerraformFiles(diagram, resources, diagnostics);
+  const files =
+    target === 'bicep'
+      ? generateBicepFiles(diagram, resources, diagnostics)
+      : generateTerraformFiles(diagram, resources, diagnostics);
 
   return {
     target,
@@ -183,7 +185,8 @@ function validateDependencies(diagram: Diagram, node: DiagramNode): string | nul
     return 'App Service needs a connected App Service Plan before it can be generated safely.';
   }
   if (node.serviceId === 'application-gateway') {
-    if (!subnetForNode(diagram, node)) return 'Application Gateway must be placed in a subnet group.';
+    if (!subnetForNode(diagram, node))
+      return 'Application Gateway must be placed in a subnet group.';
     if (!findRelatedNode(diagram, node, 'app-service')) {
       return 'Application Gateway needs a connected App Service backend before it can be generated safely.';
     }
@@ -204,7 +207,8 @@ function findRelatedNode(
   serviceId?: string,
 ): DiagramNode | undefined {
   for (const edge of diagram.edges) {
-    const otherId = edge.source === node.id ? edge.target : edge.target === node.id ? edge.source : null;
+    const otherId =
+      edge.source === node.id ? edge.target : edge.target === node.id ? edge.source : null;
     if (!otherId) continue;
     const related = diagram.nodes.find((candidate) => candidate.id === otherId);
     if (related && (!serviceId || related.serviceId === serviceId)) return related;
@@ -212,7 +216,10 @@ function findRelatedNode(
   return undefined;
 }
 
-function findResource(resources: ResourceContext[], node?: DiagramNode): ResourceContext | undefined {
+function findResource(
+  resources: ResourceContext[],
+  node?: DiagramNode,
+): ResourceContext | undefined {
   return node ? resources.find((resource) => resource.node.id === node.id) : undefined;
 }
 
@@ -220,15 +227,23 @@ function subnetForNode(
   diagram: Diagram,
   node: DiagramNode,
 ): { subnet: DiagramGroup; vnet: DiagramGroup } | null {
-  let group = node.parentId ? diagram.groups.find((candidate) => candidate.id === node.parentId) : undefined;
+  let group = node.parentId
+    ? diagram.groups.find((candidate) => candidate.id === node.parentId)
+    : undefined;
   while (group && group.kind !== 'subnet') {
-    group = group.parentId ? diagram.groups.find((candidate) => candidate.id === group?.parentId) : undefined;
+    group = group.parentId
+      ? diagram.groups.find((candidate) => candidate.id === group?.parentId)
+      : undefined;
   }
   if (!group) return null;
   const subnet = group;
-  let parent = subnet.parentId ? diagram.groups.find((candidate) => candidate.id === subnet.parentId) : undefined;
+  let parent = subnet.parentId
+    ? diagram.groups.find((candidate) => candidate.id === subnet.parentId)
+    : undefined;
   while (parent && parent.kind !== 'vnet') {
-    parent = parent.parentId ? diagram.groups.find((candidate) => candidate.id === parent?.parentId) : undefined;
+    parent = parent.parentId
+      ? diagram.groups.find((candidate) => candidate.id === parent?.parentId)
+      : undefined;
   }
   return parent ? { subnet, vnet: parent } : null;
 }
@@ -250,7 +265,9 @@ function groupContainsNode(diagram: Diagram, group: DiagramGroup, serviceId: str
 }
 
 function topologySymbol(group: DiagramGroup): string {
-  return slugify(group.label || group.id).replace(/-/g, '_').replace(/^([0-9])/, 'network_$1');
+  return slugify(group.label || group.id)
+    .replace(/-/g, '_')
+    .replace(/^([0-9])/, 'network_$1');
 }
 
 function groupPropertyString(group: DiagramGroup, key: string, fallback: string): string {
@@ -271,54 +288,60 @@ function privateLinkGroupId(serviceId: string): string | null {
 }
 
 function renderBicepParameters(resources: ResourceContext[]): string {
-  return resources.flatMap((resource) => {
-    const lines = [`param ${resource.parameter} string = '${escapeBicep(resource.defaultName)}'`];
-    if (resource.node.serviceId === 'sql-database') {
-      lines.push(
-        `param ${camelCase(resource.symbol)}ServerName string = '${escapeBicep(`${resource.defaultName}-server`.slice(0, 63))}'`,
-        `param ${camelCase(resource.symbol)}AdministratorLogin string = 'sqladminuser'`,
-        `@secure()\nparam ${camelCase(resource.symbol)}AdministratorPassword string`,
-      );
-    }
-    if (resource.node.serviceId === 'application-gateway') {
-      lines.push(
-        `@secure()\nparam ${camelCase(resource.symbol)}SslCertificateData string`,
-        `@secure()\nparam ${camelCase(resource.symbol)}SslCertificatePassword string`,
-      );
-    }
-    if (resource.node.serviceId === 'postgresql') {
-      lines.push(
-        `param ${camelCase(resource.symbol)}AdministratorLogin string = 'pgadminuser'`,
-        `@secure()\nparam ${camelCase(resource.symbol)}AdministratorPassword string`,
-      );
-    }
-    if (resource.node.serviceId === 'api-management') {
-      lines.push(
-        `param ${camelCase(resource.symbol)}PublisherEmail string = 'admin@example.com'`,
-        `param ${camelCase(resource.symbol)}PublisherName string = 'Contoso'`,
-      );
-    }
-    return lines;
-  }).join('\n');
+  return resources
+    .flatMap((resource) => {
+      const lines = [`param ${resource.parameter} string = '${escapeBicep(resource.defaultName)}'`];
+      if (resource.node.serviceId === 'sql-database') {
+        lines.push(
+          `param ${camelCase(resource.symbol)}ServerName string = '${escapeBicep(`${resource.defaultName}-server`.slice(0, 63))}'`,
+          `param ${camelCase(resource.symbol)}AdministratorLogin string = 'sqladminuser'`,
+          `@secure()\nparam ${camelCase(resource.symbol)}AdministratorPassword string`,
+        );
+      }
+      if (resource.node.serviceId === 'application-gateway') {
+        lines.push(
+          `@secure()\nparam ${camelCase(resource.symbol)}SslCertificateData string`,
+          `@secure()\nparam ${camelCase(resource.symbol)}SslCertificatePassword string`,
+        );
+      }
+      if (resource.node.serviceId === 'postgresql') {
+        lines.push(
+          `param ${camelCase(resource.symbol)}AdministratorLogin string = 'pgadminuser'`,
+          `@secure()\nparam ${camelCase(resource.symbol)}AdministratorPassword string`,
+        );
+      }
+      if (resource.node.serviceId === 'api-management') {
+        lines.push(
+          `param ${camelCase(resource.symbol)}PublisherEmail string = 'admin@example.com'`,
+          `param ${camelCase(resource.symbol)}PublisherName string = 'Contoso'`,
+        );
+      }
+      return lines;
+    })
+    .join('\n');
 }
 
 function renderBicepNetworks(diagram: Diagram): string {
-  return diagram.groups.filter((group) => group.kind === 'vnet').map((vnet) => {
-    const subnets = subnetGroups(diagram, vnet).map((subnet, index) => {
-      const appDelegation = groupContainsNode(diagram, subnet, 'app-service')
-        ? `\n        delegations: [{\n          name: 'app-service-delegation'\n          properties: { serviceName: 'Microsoft.Web/serverFarms' }\n        }]`
-        : '';
-      const privateEndpointPolicy = groupContainsNode(diagram, subnet, 'private-endpoint')
-        ? `\n        privateEndpointNetworkPolicies: 'Disabled'`
-        : '';
-      return `    {
+  return diagram.groups
+    .filter((group) => group.kind === 'vnet')
+    .map((vnet) => {
+      const subnets = subnetGroups(diagram, vnet)
+        .map((subnet, index) => {
+          const appDelegation = groupContainsNode(diagram, subnet, 'app-service')
+            ? `\n        delegations: [{\n          name: 'app-service-delegation'\n          properties: { serviceName: 'Microsoft.Web/serverFarms' }\n        }]`
+            : '';
+          const privateEndpointPolicy = groupContainsNode(diagram, subnet, 'private-endpoint')
+            ? `\n        privateEndpointNetworkPolicies: 'Disabled'`
+            : '';
+          return `    {
       name: '${escapeBicep(subnet.label || subnet.id)}'
       properties: {
         addressPrefix: '${groupPropertyString(subnet, 'addressPrefix', `10.0.${index}.0/24`)}'${appDelegation}${privateEndpointPolicy}
       }
     }`;
-    }).join('\n');
-    return `// Group-derived network topology
+        })
+        .join('\n');
+      return `// Group-derived network topology
 resource ${topologySymbol(vnet)} 'Microsoft.Network/virtualNetworks@2024-05-01' = {
   name: '${escapeBicep(vnet.label || vnet.id)}'
   location: location
@@ -330,80 +353,87 @@ ${subnets}
     ]
   }
 }`;
-  }).join('\n\n');
+    })
+    .join('\n\n');
 }
 
 function renderTerraformNameVariables(resources: ResourceContext[]): string {
-  return resources.flatMap((resource) => {
-    const variables = [`variable "${resource.symbol}_name" {
+  return resources
+    .flatMap((resource) => {
+      const variables = [
+        `variable "${resource.symbol}_name" {
   type        = string
   description = "Azure resource name for ${resource.symbol}."
   default     = "${escapeHcl(resource.defaultName)}"
-}`];
-    if (resource.node.serviceId === 'sql-database') {
-      variables.push(
-        `variable "${resource.symbol}_server_name" {
+}`,
+      ];
+      if (resource.node.serviceId === 'sql-database') {
+        variables.push(
+          `variable "${resource.symbol}_server_name" {
   type    = string
   default = "${escapeHcl(`${resource.defaultName}-server`.slice(0, 63))}"
 }`,
-        `variable "${resource.symbol}_administrator_login" {
+          `variable "${resource.symbol}_administrator_login" {
   type    = string
   default = "sqladminuser"
 }`,
-        `variable "${resource.symbol}_administrator_password" {
+          `variable "${resource.symbol}_administrator_password" {
   type        = string
   sensitive   = true
   description = "Administrator password for the generated SQL logical server."
 }`,
-      );
-    }
-    if (resource.node.serviceId === 'application-gateway') {
-      variables.push(
-        `variable "${resource.symbol}_ssl_certificate_data" {
+        );
+      }
+      if (resource.node.serviceId === 'application-gateway') {
+        variables.push(
+          `variable "${resource.symbol}_ssl_certificate_data" {
   type        = string
   sensitive   = true
   description = "Base64-encoded PFX certificate for the HTTPS listener."
 }`,
-        `variable "${resource.symbol}_ssl_certificate_password" {
+          `variable "${resource.symbol}_ssl_certificate_password" {
   type        = string
   sensitive   = true
   description = "Password for the HTTPS listener PFX certificate."
 }`,
-      );
-    }
-    if (resource.node.serviceId === 'postgresql') {
-      variables.push(
-        `variable "${resource.symbol}_administrator_login" {
+        );
+      }
+      if (resource.node.serviceId === 'postgresql') {
+        variables.push(
+          `variable "${resource.symbol}_administrator_login" {
   type    = string
   default = "pgadminuser"
 }`,
-        `variable "${resource.symbol}_administrator_password" {
+          `variable "${resource.symbol}_administrator_password" {
   type        = string
   sensitive   = true
   description = "Administrator password for the PostgreSQL flexible server."
 }`,
-      );
-    }
-    if (resource.node.serviceId === 'api-management') {
-      variables.push(
-        `variable "${resource.symbol}_publisher_email" {
+        );
+      }
+      if (resource.node.serviceId === 'api-management') {
+        variables.push(
+          `variable "${resource.symbol}_publisher_email" {
   type    = string
   default = "admin@example.com"
 }`,
-        `variable "${resource.symbol}_publisher_name" {
+          `variable "${resource.symbol}_publisher_name" {
   type    = string
   default = "Contoso"
 }`,
-      );
-    }
-    return variables;
-  }).join('\n\n');
+        );
+      }
+      return variables;
+    })
+    .join('\n\n');
 }
 
 function renderTerraformNetworks(diagram: Diagram): string {
-  return diagram.groups.filter((group) => group.kind === 'vnet').flatMap((vnet) => {
-    const vnetSymbol = topologySymbol(vnet);
-    const network = `# Group-derived network topology
+  return diagram.groups
+    .filter((group) => group.kind === 'vnet')
+    .flatMap((vnet) => {
+      const vnetSymbol = topologySymbol(vnet);
+      const network = `# Group-derived network topology
 resource "azapi_resource" "${vnetSymbol}" {
   type      = "Microsoft.Network/virtualNetworks@2024-05-01"
   name      = "${escapeHcl(vnet.label || vnet.id)}"
@@ -414,15 +444,15 @@ resource "azapi_resource" "${vnetSymbol}" {
     properties = { addressSpace = { addressPrefixes = ["${groupPropertyString(vnet, 'addressSpace', '10.0.0.0/16')}"] } }
   }
 }`;
-    const subnets = subnetGroups(diagram, vnet).map((subnet, index) => {
-      const subnetSymbol = topologySymbol(subnet);
-      const appDelegation = groupContainsNode(diagram, subnet, 'app-service')
-        ? `\n      delegations = [{\n        name = "app-service-delegation"\n        properties = { serviceName = "Microsoft.Web/serverFarms" }\n      }]`
-        : '';
-      const privateEndpointPolicy = groupContainsNode(diagram, subnet, 'private-endpoint')
-        ? `\n      privateEndpointNetworkPolicies = "Disabled"`
-        : '';
-      return `resource "azapi_resource" "${subnetSymbol}" {
+      const subnets = subnetGroups(diagram, vnet).map((subnet, index) => {
+        const subnetSymbol = topologySymbol(subnet);
+        const appDelegation = groupContainsNode(diagram, subnet, 'app-service')
+          ? `\n      delegations = [{\n        name = "app-service-delegation"\n        properties = { serviceName = "Microsoft.Web/serverFarms" }\n      }]`
+          : '';
+        const privateEndpointPolicy = groupContainsNode(diagram, subnet, 'private-endpoint')
+          ? `\n      privateEndpointNetworkPolicies = "Disabled"`
+          : '';
+        return `resource "azapi_resource" "${subnetSymbol}" {
   type      = "Microsoft.Network/virtualNetworks/subnets@2024-05-01"
   name      = "${escapeHcl(subnet.label || subnet.id)}"
   parent_id = azapi_resource.${vnetSymbol}.id
@@ -432,9 +462,10 @@ resource "azapi_resource" "${vnetSymbol}" {
     }
   }
 }`;
-    });
-    return [network, ...subnets];
-  }).join('\n\n');
+      });
+      return [network, ...subnets];
+    })
+    .join('\n\n');
 }
 
 function generateBicepFiles(
@@ -444,7 +475,9 @@ function generateBicepFiles(
 ): IacFile[] {
   const parameters = renderBicepParameters(resources);
   const networks = renderBicepNetworks(diagram);
-  const declarations = resources.map((resource) => renderBicepResource(resource, resources, diagram)).join('\n\n');
+  const declarations = resources
+    .map((resource) => renderBicepResource(resource, resources, diagram))
+    .join('\n\n');
   const outputs = resources
     .map(({ symbol }) => `output ${camelCase(symbol)}ResourceId string = ${symbol}.id`)
     .join('\n');
@@ -467,11 +500,19 @@ ${outputs ? `\n${outputs}\n` : ''}`;
 
   return [
     { path: 'main.bicep', content: main, language: 'bicep' },
-    { path: 'README.md', content: generateReadme(diagram, 'bicep', resources, diagnostics), language: 'markdown' },
+    {
+      path: 'README.md',
+      content: generateReadme(diagram, 'bicep', resources, diagnostics),
+      language: 'markdown',
+    },
   ];
 }
 
-function renderBicepResource(context: ResourceContext, resources: ResourceContext[], diagram: Diagram): string {
+function renderBicepResource(
+  context: ResourceContext,
+  resources: ResourceContext[],
+  diagram: Diagram,
+): string {
   const { node, service, symbol, parameter } = context;
   const type = `${service.iac?.resourceType}@${API_VERSION[node.serviceId]}`;
   const avm = service.iac?.avmModule
@@ -533,9 +574,8 @@ function renderBicepResource(context: ResourceContext, resources: ResourceContex
   }
   sku: { name: 'PerGB2018' }
 }`;
-    case 'app-insights':
-      {
-        const workspace = resources.find((resource) => resource.node.serviceId === 'log-analytics');
+    case 'app-insights': {
+      const workspace = resources.find((resource) => resource.node.serviceId === 'log-analytics');
       return `${avm}resource ${symbol} '${type}' = {
   name: ${parameter}
   location: location
@@ -547,7 +587,7 @@ function renderBicepResource(context: ResourceContext, resources: ResourceContex
     IngestionMode: '${workspace ? 'LogAnalytics' : 'ApplicationInsights'}'
 ${workspace ? `    WorkspaceResourceId: ${workspace.symbol}.id\n` : ''}  }
 }`;
-      }
+    }
     case 'container-registry':
       return `${avm}resource ${symbol} '${type}' = {
   name: ${parameter}
@@ -592,11 +632,13 @@ ${workspace ? `    WorkspaceResourceId: ${workspace.symbol}.id\n` : ''}  }
       const plan = findResource(resources, findRelatedNode(diagram, node, 'app-service-plan'))!;
       const identity = findResource(resources, findRelatedNode(diagram, node, 'managed-identity'));
       const network = subnetForNode(diagram, node);
-      const identityBlock = identity ? `
+      const identityBlock = identity
+        ? `
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: { '\${${identity.symbol}.id}': {} }
-  }` : '';
+  }`
+        : '';
       const subnetLine = network
         ? `\n    virtualNetworkSubnetId: resourceId('Microsoft.Network/virtualNetworks/subnets', ${topologySymbol(network.vnet)}.name, '${escapeBicep(network.subnet.label || network.subnet.id)}')`
         : '';
@@ -668,7 +710,8 @@ resource ${symbol}_database 'Microsoft.Cache/redisEnterprise/databases@2024-10-0
       const targetNode = findRelatedNode(diagram, node)!;
       const target = findResource(resources, targetNode)!;
       const network = subnetForNode(diagram, node)!;
-      const targetSymbol = targetNode.serviceId === 'sql-database' ? `${target.symbol}_server` : target.symbol;
+      const targetSymbol =
+        targetNode.serviceId === 'sql-database' ? `${target.symbol}_server` : target.symbol;
       return `${avm}resource ${symbol} '${type}' = {
   name: ${parameter}
   location: location
@@ -953,7 +996,9 @@ variable "tags" {
 }
 ${nameVariables ? `\n${nameVariables}\n` : ''}`;
   const networks = renderTerraformNetworks(diagram);
-  const declarations = resources.map((resource) => renderTerraformResource(resource, resources, diagram)).join('\n\n');
+  const declarations = resources
+    .map((resource) => renderTerraformResource(resource, resources, diagram))
+    .join('\n\n');
   const main = `${generatedHeader('#', diagram)}
 data "azapi_client_config" "current" {}
 
@@ -964,9 +1009,11 @@ ${networks ? `\n${networks}\n` : ''}
 ${declarations ? `\n${declarations}\n` : ''}`;
   const outputs = `${generatedHeader('#', diagram)}
 ${resources
-  .map(({ symbol }) => `output "${symbol}_resource_id" {
+  .map(
+    ({ symbol }) => `output "${symbol}_resource_id" {
   value = azapi_resource.${symbol}.id
-}`)
+}`,
+  )
   .join('\n\n')}
 `;
 
@@ -975,11 +1022,19 @@ ${resources
     { path: 'variables.tf', content: variables, language: 'hcl' },
     { path: 'main.tf', content: main, language: 'hcl' },
     { path: 'outputs.tf', content: outputs, language: 'hcl' },
-    { path: 'README.md', content: generateReadme(diagram, 'terraform', resources, diagnostics), language: 'markdown' },
+    {
+      path: 'README.md',
+      content: generateReadme(diagram, 'terraform', resources, diagnostics),
+      language: 'markdown',
+    },
   ];
 }
 
-function renderTerraformResource(context: ResourceContext, resources: ResourceContext[], diagram: Diagram): string {
+function renderTerraformResource(
+  context: ResourceContext,
+  resources: ResourceContext[],
+  diagram: Diagram,
+): string {
   const { node, service, symbol } = context;
   if (node.serviceId === 'sql-database') {
     return `# ARM type: Microsoft.Sql/servers/databases
@@ -1200,7 +1255,11 @@ ${schemaValidationOverride}
 }`;
 }
 
-function terraformBody(context: ResourceContext, resources: ResourceContext[], diagram: Diagram): string {
+function terraformBody(
+  context: ResourceContext,
+  resources: ResourceContext[],
+  diagram: Diagram,
+): string {
   const { node } = context;
   switch (node.serviceId) {
     case 'storage-account':
@@ -1241,9 +1300,8 @@ function terraformBody(context: ResourceContext, resources: ResourceContext[], d
     }
     sku = { name = "PerGB2018" }
   }`;
-    case 'app-insights':
-      {
-        const workspace = resources.find((resource) => resource.node.serviceId === 'log-analytics');
+    case 'app-insights': {
+      const workspace = resources.find((resource) => resource.node.serviceId === 'log-analytics');
       return `{
     kind = "web"
     properties = {
@@ -1252,7 +1310,7 @@ function terraformBody(context: ResourceContext, resources: ResourceContext[], d
       IngestionMode     = "${workspace ? 'LogAnalytics' : 'ApplicationInsights'}"
 ${workspace ? `      WorkspaceResourceId = azapi_resource.${workspace.symbol}.id\n` : ''}    }
   }`;
-      }
+    }
     case 'container-registry':
       return `{
     sku = { name = "${propertyString(node, 'sku', 'Standard')}" }
@@ -1285,7 +1343,9 @@ ${workspace ? `      WorkspaceResourceId = azapi_resource.${workspace.symbol}.id
       const identityBody = identity
         ? `\n    identity = {\n      type = "UserAssigned"\n      userAssignedIdentities = { (azapi_resource.${identity.symbol}.id) = {} }\n    }`
         : '';
-      const subnetBody = network ? `\n      virtualNetworkSubnetId = azapi_resource.${topologySymbol(network.subnet)}.id` : '';
+      const subnetBody = network
+        ? `\n      virtualNetworkSubnetId = azapi_resource.${topologySymbol(network.subnet)}.id`
+        : '';
       return `{
     kind = "app,linux"${identityBody}
     properties = {
@@ -1303,7 +1363,8 @@ ${workspace ? `      WorkspaceResourceId = azapi_resource.${workspace.symbol}.id
       const targetNode = findRelatedNode(diagram, node)!;
       const target = findResource(resources, targetNode)!;
       const network = subnetForNode(diagram, node)!;
-      const targetSymbol = targetNode.serviceId === 'sql-database' ? `${target.symbol}_server` : target.symbol;
+      const targetSymbol =
+        targetNode.serviceId === 'sql-database' ? `${target.symbol}_server` : target.symbol;
       return `{
     properties = {
       subnet = { id = azapi_resource.${topologySymbol(network.subnet)}.id }
@@ -1400,11 +1461,16 @@ function generateReadme(
   resources: ResourceContext[],
   diagnostics: IacDiagnostic[],
 ): string {
-  const command = target === 'bicep'
-    ? 'az deployment group create --resource-group <resource-group> --template-file main.bicep'
-    : 'terraform init\nterraform plan -var="resource_group_name=<resource-group>"';
+  const command =
+    target === 'bicep'
+      ? 'az deployment group create --resource-group <resource-group> --template-file main.bicep'
+      : 'terraform init\nterraform plan -var="resource_group_name=<resource-group>"';
   const resourceLines = resources.length
-    ? resources.map(({ node, service }) => `- ${node.label || service.name} (${service.iac?.resourceType})`).join('\n')
+    ? resources
+        .map(
+          ({ node, service }) => `- ${node.label || service.name} (${service.iac?.resourceType})`,
+        )
+        .join('\n')
     : '- No deployable resources were generated.';
   const diagnosticLines = diagnostics.length
     ? diagnostics.map((item) => `- **${item.severity}:** ${item.message}`).join('\n')
@@ -1437,7 +1503,9 @@ function generatedHeader(prefix: string, diagram: Diagram): string {
 }
 
 function uniqueIdentifier(value: string, used: Set<string>): string {
-  const base = slugify(value).replace(/-/g, '_').replace(/^([0-9])/, 'resource_$1');
+  const base = slugify(value)
+    .replace(/-/g, '_')
+    .replace(/^([0-9])/, 'resource_$1');
   let candidate = base || 'resource';
   let suffix = 2;
   while (used.has(candidate)) candidate = `${base}_${suffix++}`;
@@ -1463,7 +1531,11 @@ function uniqueResourceName(diagramName: string, node: DiagramNode, used: Set<st
 }
 
 function slugify(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 function camelCase(value: string): string {

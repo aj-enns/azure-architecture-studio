@@ -47,8 +47,14 @@ const groundedJsonSchema = {
           serviceId: { type: 'string', description: 'MUST be one of the requested catalog ids.' },
           tier: { type: 'string', enum: [...tierEnum] },
           slaPercent: { type: 'number', description: 'Uptime percentage, e.g. 99.99.' },
-          rtoMinutes: { type: 'number', description: 'Recovery time in minutes, or -1 if unpublished.' },
-          rpoMinutes: { type: 'number', description: 'Recovery point in minutes, or -1 if unpublished.' },
+          rtoMinutes: {
+            type: 'number',
+            description: 'Recovery time in minutes, or -1 if unpublished.',
+          },
+          rpoMinutes: {
+            type: 'number',
+            description: 'Recovery point in minutes, or -1 if unpublished.',
+          },
           basis: { type: 'string', description: 'What the figure covers, and any caveat.' },
           sourceUrl: { type: 'string', description: 'Microsoft Learn URL the figure came from.' },
           confidence: { type: 'string', enum: ['published', 'derived', 'estimated'] },
@@ -91,10 +97,7 @@ function buildQuery(serviceId: string): string {
   return `${name} reliability SLA availability zones zone redundancy RTO RPO`;
 }
 
-function toSlaProfile(
-  raw: z.infer<typeof groundedProfileSchema>,
-  retrievedAt: string,
-): SlaProfile {
+function toSlaProfile(raw: z.infer<typeof groundedProfileSchema>, retrievedAt: string): SlaProfile {
   return {
     serviceId: raw.serviceId,
     tier: raw.tier as ResilienceTier,
@@ -134,7 +137,10 @@ export async function groundResiliency(
     .slice(0, MAX_SERVICES);
   if (serviceIds.length === 0) return { profiles: [], citations: [] };
 
-  const docsPerService = await searchLearnDocsCached(serviceIds.map(buildQuery), learnConfig.endpoint);
+  const docsPerService = await searchLearnDocsCached(
+    serviceIds.map(buildQuery),
+    learnConfig.endpoint,
+  );
   const citations = dedupeCitations(docsPerService.flat());
   if (citations.length === 0) return { profiles: [], citations: [] };
 

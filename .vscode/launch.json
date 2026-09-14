@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "Launch Azure Architecture Review",
-      "type": "chrome",
+      "type": "msedge",
       "request": "launch",
       "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}/apps/web/src",

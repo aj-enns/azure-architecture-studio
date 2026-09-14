@@ -35,8 +35,10 @@ const NAME_RE = /^[A-Za-z0-9._-]+$/;
 
 /** Only fetch .json that plausibly holds an ARM template (avoids package.json spam). */
 function looksLikeArmJson(path: string): boolean {
-  return /(azuredeploy|deploy\.json$|template\.json$|\.arm\.json$)/i.test(path) ||
-    /(^|\/)(arm|templates?)\//i.test(path);
+  return (
+    /(azuredeploy|deploy\.json$|template\.json$|\.arm\.json$)/i.test(path) ||
+    /(^|\/)(arm|templates?)\//i.test(path)
+  );
 }
 
 function isCandidatePath(path: string): boolean {
@@ -80,7 +82,10 @@ export function parseGitHubUrl(raw: string): ParsedRepo {
   return { owner, repo };
 }
 
-export async function importFromGitHub(url: string, deps: ImportRepoDependencies = {}): Promise<Diagram> {
+export async function importFromGitHub(
+  url: string,
+  deps: ImportRepoDependencies = {},
+): Promise<Diagram> {
   const fetchImpl = deps.fetch ?? fetch;
   const token = deps.token ?? process.env.GITHUB_TOKEN;
   const apiHeaders: Record<string, string> = {
@@ -93,7 +98,9 @@ export async function importFromGitHub(url: string, deps: ImportRepoDependencies
 
   let ref = refInput;
   if (!ref) {
-    const repoRes = await fetchImpl(`https://api.github.com/repos/${owner}/${repo}`, { headers: apiHeaders });
+    const repoRes = await fetchImpl(`https://api.github.com/repos/${owner}/${repo}`, {
+      headers: apiHeaders,
+    });
     if (!repoRes.ok) {
       throw new RepoImportError(
         `GitHub returned ${repoRes.status} for the repository.`,
@@ -117,8 +124,11 @@ export async function importFromGitHub(url: string, deps: ImportRepoDependencies
   const tree = (await treeRes.json()) as { tree?: unknown };
   const entries = Array.isArray(tree.tree) ? (tree.tree as GitHubTreeEntry[]) : [];
   const selected = entries
-    .filter((entry): entry is GitHubTreeEntry & { path: string } => entry.type === 'blob' && typeof entry.path === 'string')
-    .filter((entry) => (!subpath || entry.path === subpath || entry.path.startsWith(`${subpath}/`)))
+    .filter(
+      (entry): entry is GitHubTreeEntry & { path: string } =>
+        entry.type === 'blob' && typeof entry.path === 'string',
+    )
+    .filter((entry) => !subpath || entry.path === subpath || entry.path.startsWith(`${subpath}/`))
     .filter((entry) => isCandidatePath(entry.path))
     .filter((entry) => typeof entry.size !== 'number' || entry.size <= MAX_FILE_BYTES)
     .slice(0, MAX_FILES);
@@ -138,7 +148,10 @@ export async function importFromGitHub(url: string, deps: ImportRepoDependencies
   }
 
   if (files.length === 0) {
-    throw new RepoImportError('No Bicep, Terraform, or ARM files were found in that repository.', 404);
+    throw new RepoImportError(
+      'No Bicep, Terraform, or ARM files were found in that repository.',
+      404,
+    );
   }
 
   return scanRepoFiles(files, `${owner}/${repo}`);

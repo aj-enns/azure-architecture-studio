@@ -37,7 +37,9 @@ describe('pricing', () => {
   });
 
   it('sums a diagram and breaks down by category', () => {
-    const cost = estimateDiagramCost(diagramWith(['app-service-plan', 'sql-database', 'key-vault']));
+    const cost = estimateDiagramCost(
+      diagramWith(['app-service-plan', 'sql-database', 'key-vault']),
+    );
     expect(cost.totalMonthlyUsd).toBe(
       estimateNodeCost('app-service-plan').monthlyUsd +
         estimateNodeCost('sql-database').monthlyUsd +

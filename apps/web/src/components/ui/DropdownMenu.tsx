@@ -108,7 +108,9 @@ export function DropdownCheckboxItem({
       <span
         className={cn(
           'flex h-3.5 w-3.5 items-center justify-center rounded-sm border text-[10px] font-bold',
-          checked ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/50',
+          checked
+            ? 'border-primary bg-primary text-primary-foreground'
+            : 'border-muted-foreground/50',
         )}
         aria-hidden
       >

@@ -8,12 +8,19 @@ import {
 describe('learn grounding', () => {
   it('parses a JSON array of doc chunks', () => {
     const text = JSON.stringify([
-      { title: 'App Service baseline', contentUrl: 'https://learn.microsoft.com/x', content: 'Use zone redundancy.' },
+      {
+        title: 'App Service baseline',
+        contentUrl: 'https://learn.microsoft.com/x',
+        content: 'Use zone redundancy.',
+      },
       { title: 'Key Vault', url: 'https://learn.microsoft.com/y', content: 'Store secrets.' },
     ]);
     const docs = parseLearnSearchContent([text]);
     expect(docs).toHaveLength(2);
-    expect(docs[0]).toMatchObject({ title: 'App Service baseline', url: 'https://learn.microsoft.com/x' });
+    expect(docs[0]).toMatchObject({
+      title: 'App Service baseline',
+      url: 'https://learn.microsoft.com/x',
+    });
   });
 
   it('falls back to raw text when content is not JSON', () => {
@@ -42,7 +49,11 @@ describe('learn grounding', () => {
   });
 
   it('is a no-op when grounding is disabled', async () => {
-    const result = await getLearnGrounding({ enabled: false, endpoint: 'http://unused' }, 'a web app', []);
+    const result = await getLearnGrounding(
+      { enabled: false, endpoint: 'http://unused' },
+      'a web app',
+      [],
+    );
     expect(result).toBeNull();
   });
 

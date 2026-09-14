@@ -72,19 +72,36 @@ describe('IaC generation', () => {
 
     expect(bundle.files).toHaveLength(2);
     expect(bundle.diagnostics).toEqual([
-      expect.objectContaining({ severity: 'warning', message: expect.stringContaining('no resources') }),
+      expect.objectContaining({
+        severity: 'warning',
+        message: expect.stringContaining('no resources'),
+      }),
     ]);
   });
 
   it('links Application Insights to a generated Log Analytics workspace', () => {
     const diagram = emptyDiagram('Observability');
     diagram.nodes = [
-      { id: 'insights', serviceId: 'app-insights', label: 'Insights', position: { x: 0, y: 0 }, properties: {} },
-      { id: 'logs', serviceId: 'log-analytics', label: 'Logs', position: { x: 0, y: 100 }, properties: {} },
+      {
+        id: 'insights',
+        serviceId: 'app-insights',
+        label: 'Insights',
+        position: { x: 0, y: 0 },
+        properties: {},
+      },
+      {
+        id: 'logs',
+        serviceId: 'log-analytics',
+        label: 'Logs',
+        position: { x: 0, y: 100 },
+        properties: {},
+      },
     ];
 
     const bicep = generateIacBundle(diagram, 'bicep').files[0]?.content;
-    const terraform = generateIacBundle(diagram, 'terraform').files.find((file) => file.path === 'main.tf')?.content;
+    const terraform = generateIacBundle(diagram, 'terraform').files.find(
+      (file) => file.path === 'main.tf',
+    )?.content;
 
     expect(bicep).toContain('WorkspaceResourceId: logs.id');
     expect(terraform).toContain('WorkspaceResourceId = azapi_resource.logs.id');
@@ -93,25 +110,153 @@ describe('IaC generation', () => {
   it('composes the reference three-tier architecture in both targets', () => {
     const diagram = emptyDiagram('three-tier-web-app');
     diagram.groups = [
-      { id: 'rg', kind: 'resourceGroup', label: 'rg-webapp', position: { x: 0, y: 0 }, size: { width: 1000, height: 800 }, collapsed: false, properties: {} },
-      { id: 'vnet', kind: 'vnet', label: 'webapp-vnet', position: { x: 0, y: 0 }, size: { width: 700, height: 700 }, parentId: 'rg', collapsed: false, properties: { addressSpace: '10.0.0.0/16' } },
-      { id: 'agw-subnet', kind: 'subnet', label: 'agw-subnet', position: { x: 0, y: 0 }, size: { width: 200, height: 140 }, parentId: 'vnet', collapsed: false, properties: { addressPrefix: '10.0.0.0/24' } },
-      { id: 'app-subnet', kind: 'subnet', label: 'app-subnet', position: { x: 0, y: 0 }, size: { width: 200, height: 140 }, parentId: 'vnet', collapsed: false, properties: { addressPrefix: '10.0.1.0/24' } },
-      { id: 'pe-subnet', kind: 'subnet', label: 'pe-subnet', position: { x: 0, y: 0 }, size: { width: 200, height: 140 }, parentId: 'vnet', collapsed: false, properties: { addressPrefix: '10.0.2.0/24' } },
+      {
+        id: 'rg',
+        kind: 'resourceGroup',
+        label: 'rg-webapp',
+        position: { x: 0, y: 0 },
+        size: { width: 1000, height: 800 },
+        collapsed: false,
+        properties: {},
+      },
+      {
+        id: 'vnet',
+        kind: 'vnet',
+        label: 'webapp-vnet',
+        position: { x: 0, y: 0 },
+        size: { width: 700, height: 700 },
+        parentId: 'rg',
+        collapsed: false,
+        properties: { addressSpace: '10.0.0.0/16' },
+      },
+      {
+        id: 'agw-subnet',
+        kind: 'subnet',
+        label: 'agw-subnet',
+        position: { x: 0, y: 0 },
+        size: { width: 200, height: 140 },
+        parentId: 'vnet',
+        collapsed: false,
+        properties: { addressPrefix: '10.0.0.0/24' },
+      },
+      {
+        id: 'app-subnet',
+        kind: 'subnet',
+        label: 'app-subnet',
+        position: { x: 0, y: 0 },
+        size: { width: 200, height: 140 },
+        parentId: 'vnet',
+        collapsed: false,
+        properties: { addressPrefix: '10.0.1.0/24' },
+      },
+      {
+        id: 'pe-subnet',
+        kind: 'subnet',
+        label: 'pe-subnet',
+        position: { x: 0, y: 0 },
+        size: { width: 200, height: 140 },
+        parentId: 'vnet',
+        collapsed: false,
+        properties: { addressPrefix: '10.0.2.0/24' },
+      },
     ];
     diagram.nodes = [
-      { id: 'gateway', serviceId: 'application-gateway', label: 'app-gateway-waf', position: { x: 0, y: 0 }, parentId: 'agw-subnet', properties: { sku: 'WAF_v2', capacity: 2 } },
-      { id: 'plan', serviceId: 'app-service-plan', label: 'appservice-plan', position: { x: 0, y: 0 }, parentId: 'rg', properties: { sku: 'P1v3', os: 'Linux' } },
-      { id: 'app', serviceId: 'app-service', label: 'web-app', position: { x: 0, y: 0 }, parentId: 'app-subnet', properties: { os: 'Linux' } },
-      { id: 'sql', serviceId: 'sql-database', label: 'primary-sql', position: { x: 0, y: 0 }, parentId: 'rg', properties: { tier: 'GeneralPurpose', compute: 'Serverless' } },
-      { id: 'redis', serviceId: 'redis', label: 'redis-cache', position: { x: 0, y: 0 }, parentId: 'rg', properties: { sku: 'Balanced_B1' } },
-      { id: 'pe-sql', serviceId: 'private-endpoint', label: 'pe-sql', position: { x: 0, y: 0 }, parentId: 'pe-subnet', properties: {} },
-      { id: 'pe-redis', serviceId: 'private-endpoint', label: 'pe-redis', position: { x: 0, y: 0 }, parentId: 'pe-subnet', properties: {} },
-      { id: 'vault', serviceId: 'key-vault', label: 'key-vault', position: { x: 0, y: 0 }, parentId: 'rg', properties: {} },
-      { id: 'identity', serviceId: 'managed-identity', label: 'web-managed-identity', position: { x: 0, y: 0 }, parentId: 'rg', properties: {} },
-      { id: 'entra', serviceId: 'entra-id', label: 'entra-tenant', position: { x: 0, y: 0 }, parentId: 'rg', properties: {} },
-      { id: 'insights', serviceId: 'app-insights', label: 'app-insights', position: { x: 0, y: 0 }, parentId: 'rg', properties: {} },
-      { id: 'logs', serviceId: 'log-analytics', label: 'log-analytics', position: { x: 0, y: 0 }, parentId: 'rg', properties: {} },
+      {
+        id: 'gateway',
+        serviceId: 'application-gateway',
+        label: 'app-gateway-waf',
+        position: { x: 0, y: 0 },
+        parentId: 'agw-subnet',
+        properties: { sku: 'WAF_v2', capacity: 2 },
+      },
+      {
+        id: 'plan',
+        serviceId: 'app-service-plan',
+        label: 'appservice-plan',
+        position: { x: 0, y: 0 },
+        parentId: 'rg',
+        properties: { sku: 'P1v3', os: 'Linux' },
+      },
+      {
+        id: 'app',
+        serviceId: 'app-service',
+        label: 'web-app',
+        position: { x: 0, y: 0 },
+        parentId: 'app-subnet',
+        properties: { os: 'Linux' },
+      },
+      {
+        id: 'sql',
+        serviceId: 'sql-database',
+        label: 'primary-sql',
+        position: { x: 0, y: 0 },
+        parentId: 'rg',
+        properties: { tier: 'GeneralPurpose', compute: 'Serverless' },
+      },
+      {
+        id: 'redis',
+        serviceId: 'redis',
+        label: 'redis-cache',
+        position: { x: 0, y: 0 },
+        parentId: 'rg',
+        properties: { sku: 'Balanced_B1' },
+      },
+      {
+        id: 'pe-sql',
+        serviceId: 'private-endpoint',
+        label: 'pe-sql',
+        position: { x: 0, y: 0 },
+        parentId: 'pe-subnet',
+        properties: {},
+      },
+      {
+        id: 'pe-redis',
+        serviceId: 'private-endpoint',
+        label: 'pe-redis',
+        position: { x: 0, y: 0 },
+        parentId: 'pe-subnet',
+        properties: {},
+      },
+      {
+        id: 'vault',
+        serviceId: 'key-vault',
+        label: 'key-vault',
+        position: { x: 0, y: 0 },
+        parentId: 'rg',
+        properties: {},
+      },
+      {
+        id: 'identity',
+        serviceId: 'managed-identity',
+        label: 'web-managed-identity',
+        position: { x: 0, y: 0 },
+        parentId: 'rg',
+        properties: {},
+      },
+      {
+        id: 'entra',
+        serviceId: 'entra-id',
+        label: 'entra-tenant',
+        position: { x: 0, y: 0 },
+        parentId: 'rg',
+        properties: {},
+      },
+      {
+        id: 'insights',
+        serviceId: 'app-insights',
+        label: 'app-insights',
+        position: { x: 0, y: 0 },
+        parentId: 'rg',
+        properties: {},
+      },
+      {
+        id: 'logs',
+        serviceId: 'log-analytics',
+        label: 'log-analytics',
+        position: { x: 0, y: 0 },
+        parentId: 'rg',
+        properties: {},
+      },
     ];
     diagram.edges = [
       { id: 'gateway-app', source: 'gateway', target: 'app', label: 'HTTPS traffic' },
@@ -137,9 +282,13 @@ describe('IaC generation', () => {
     expect(bicep).toContain('virtualNetworkSubnetId: resourceId(');
     expect(bicep).toContain('@secure()\nparam primarySqlAdministratorPassword string');
     expect(bicep).toContain("resource primary_sql_server 'Microsoft.Sql/servers@2023-08-01'");
-    expect(bicep).toContain("resource redis_cache_database 'Microsoft.Cache/redisEnterprise/databases@2024-10-01'");
+    expect(bicep).toContain(
+      "resource redis_cache_database 'Microsoft.Cache/redisEnterprise/databases@2024-10-01'",
+    );
     expect(bicep).toContain('privateLinkServiceConnections:');
-    expect(bicep).toContain("resource app_gateway_waf 'Microsoft.Network/applicationGateways@2024-05-01'");
+    expect(bicep).toContain(
+      "resource app_gateway_waf 'Microsoft.Network/applicationGateways@2024-05-01'",
+    );
 
     expect(terraformBundle.generatedResourceCount).toBe(11);
     expect(terraform).toContain('resource "azapi_resource" "webapp_vnet"');
@@ -187,7 +336,7 @@ describe('IaC generation', () => {
     expect(bicepMain).toContain("'Microsoft.ContainerService/managedClusters@2024-09-01'");
     expect(bicepMain).toContain("'Microsoft.App/managedEnvironments@2024-03-01'");
     expect(bicepMain).toContain("'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01'");
-    expect(bicepMain).toContain("@secure()\nparam postgresqlAdministratorPassword string");
+    expect(bicepMain).toContain('@secure()\nparam postgresqlAdministratorPassword string');
     expect(bicepMain).toContain("'Microsoft.CognitiveServices/accounts@2024-10-01'");
     expect(bicepMain).toContain("location: 'global'");
 
