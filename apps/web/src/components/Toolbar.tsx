@@ -105,7 +105,10 @@ export function Toolbar({
       >
         <DropdownItem
           onSelect={() => {
-            if (window.confirm('Start a new diagram? Unsaved changes are kept in your browser only.')) reset();
+            if (
+              window.confirm('Start a new diagram? Unsaved changes are kept in your browser only.')
+            )
+              reset();
           }}
         >
           <FilePlus2 size={16} /> New diagram
@@ -190,7 +193,13 @@ export function Toolbar({
           <Command size={16} />
         </Button>
 
-        <Button variant="ghost" size="icon" onClick={toggleTheme} title="Toggle theme" aria-label="Toggle theme">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          title="Toggle theme"
+          aria-label="Toggle theme"
+        >
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </Button>
       </div>

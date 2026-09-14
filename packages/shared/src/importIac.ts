@@ -160,7 +160,7 @@ export function parseBicepResources(content: string): ImportResource[] {
 
   const symbols = new Set(decls.map((d) => d.symbol));
 
-  return decls.map((decl, i) => {
+  return decls.map((decl) => {
     const body = content.slice(decl.bodyStart, findBicepBlockEnd(content, decl.bodyStart));
     const resourceName = bicepTopLevelProperty(body, 'name');
     const kind = bicepTopLevelProperty(body, 'kind');

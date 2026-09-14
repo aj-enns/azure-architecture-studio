@@ -17,9 +17,13 @@ type HealthState = 'checking' | 'configured' | 'unconfigured' | 'api-unavailable
 
 /** Compact styling for the rendered review, since no typography plugin is used. */
 const MD: Components = {
-  h2: ({ children }) => <h2 className="mt-4 border-b border-border pb-1 text-sm font-semibold">{children}</h2>,
+  h2: ({ children }) => (
+    <h2 className="mt-4 border-b border-border pb-1 text-sm font-semibold">{children}</h2>
+  ),
   h3: ({ children }) => <h3 className="mt-3 text-xs font-semibold">{children}</h3>,
-  p: ({ children }) => <p className="mt-2 text-xs leading-relaxed text-foreground/90">{children}</p>,
+  p: ({ children }) => (
+    <p className="mt-2 text-xs leading-relaxed text-foreground/90">{children}</p>
+  ),
   ul: ({ children }) => <ul className="mt-1 list-disc space-y-1 pl-4 text-xs">{children}</ul>,
   ol: ({ children }) => <ol className="mt-1 list-decimal space-y-1 pl-4 text-xs">{children}</ol>,
   li: ({ children }) => <li className="text-foreground/90">{children}</li>,
@@ -33,14 +37,24 @@ const MD: Components = {
       <table className="w-full border-collapse text-[11px]">{children}</table>
     </div>
   ),
-  th: ({ children }) => <th className="border border-border px-1.5 py-1 text-left font-semibold">{children}</th>,
+  th: ({ children }) => (
+    <th className="border border-border px-1.5 py-1 text-left font-semibold">{children}</th>
+  ),
   td: ({ children }) => <td className="border border-border px-1.5 py-1 align-top">{children}</td>,
-  code: ({ children }) => <code className="rounded bg-muted px-1 py-0.5 text-[11px]">{children}</code>,
+  code: ({ children }) => (
+    <code className="rounded bg-muted px-1 py-0.5 text-[11px]">{children}</code>
+  ),
   em: ({ children }) => <em className="text-muted-foreground">{children}</em>,
 };
 
 /** AI architecture review panel (the waf-architecture-review methodology). */
-export function ReviewPanel({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element | null {
+export function ReviewPanel({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}): JSX.Element | null {
   const diagram = useDiagramStore((s) => s.diagram);
   const [grounded, setGrounded] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -122,7 +136,13 @@ export function ReviewPanel({ open, onClose }: { open: boolean; onClose: () => v
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <ClipboardCheck size={16} className="text-primary" />
         <span className="text-sm font-semibold">Architecture review</span>
-        <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose} aria-label="Close review panel">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="ml-auto"
+          onClick={onClose}
+          aria-label="Close review panel"
+        >
           <X size={16} />
         </Button>
       </div>
@@ -130,26 +150,32 @@ export function ReviewPanel({ open, onClose }: { open: boolean; onClose: () => v
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         {healthState === 'api-unavailable' && (
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
-            The API is not reachable at <code>/healthz</code>. Start or restart the API server, then reopen this
-            panel.
+            The API is not reachable at <code>/healthz</code>. Start or restart the API server, then
+            reopen this panel.
           </div>
         )}
 
         {healthState === 'unconfigured' && (
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
             AI review is not configured. Set <code>AZURE_FOUNDRY_ENDPOINT</code> and{' '}
-            <code>AZURE_FOUNDRY_MODEL</code> on the API, then provide <code>AZURE_FOUNDRY_API_KEY</code> or leave
-            it blank to use Entra ID. Restart the API after changing its environment.
+            <code>AZURE_FOUNDRY_MODEL</code> on the API, then provide{' '}
+            <code>AZURE_FOUNDRY_API_KEY</code> or leave it blank to use Entra ID. Restart the API
+            after changing its environment.
           </div>
         )}
 
         <p className="text-xs text-muted-foreground">
-          A senior-architect review across the five Well-Architected pillars with a resiliency and DR deep dive,
-          grounded in the built-in WAF, SLA, and cost analysis.
+          A senior-architect review across the five Well-Architected pillars with a resiliency and
+          DR deep dive, grounded in the built-in WAF, SLA, and cost analysis.
         </p>
 
         <label className="flex items-center gap-1.5 text-xs">
-          <input type="checkbox" checked={grounded} onChange={(e) => setGrounded(e.target.checked)} disabled={loading} />
+          <input
+            type="checkbox"
+            checked={grounded}
+            onChange={(e) => setGrounded(e.target.checked)}
+            disabled={loading}
+          />
           Ground with Microsoft Learn
         </label>
 
@@ -163,7 +189,9 @@ export function ReviewPanel({ open, onClose }: { open: boolean; onClose: () => v
               className="h-9 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             >
               {modelsLoading && <option value="">Loading models...</option>}
-              {!modelsLoading && models.length === 0 && <option value="">Configured default</option>}
+              {!modelsLoading && models.length === 0 && (
+                <option value="">Configured default</option>
+              )}
               {models.map((model) => (
                 <option key={model.deploymentName} value={model.deploymentName}>
                   {model.deploymentName}
@@ -192,7 +220,9 @@ export function ReviewPanel({ open, onClose }: { open: boolean; onClose: () => v
         </Button>
 
         {empty && (
-          <p className="text-xs text-muted-foreground">Add or generate some services first, then run the review.</p>
+          <p className="text-xs text-muted-foreground">
+            Add or generate some services first, then run the review.
+          </p>
         )}
 
         {error && (

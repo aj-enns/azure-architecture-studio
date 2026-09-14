@@ -1,4 +1,5 @@
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import { z } from 'zod';
 import {
@@ -25,10 +26,7 @@ import { getLearnGrounding, searchLearnDocs } from './ai/learnGrounding.js';
 import { groundResiliency } from './ai/resiliency.js';
 import { reviewArchitecture } from './ai/review.js';
 import { adviseArchitecture } from './ai/advisor.js';
-import {
-  createFoundryModelDiscovery,
-  type ReviewModelList,
-} from './ai/foundryModels.js';
+import { createFoundryModelDiscovery, type ReviewModelList } from './ai/foundryModels.js';
 import { specToDiagram } from './ai/spec.js';
 import { AzureImportError, importFromResourceGraph } from './importAzure.js';
 import { importFromGitHub, RepoImportError } from './importRepo.js';
@@ -42,7 +40,12 @@ const resiliencyRequestSchema = z.object({
 });
 
 /** Foundry deployment selected from GET /api/review/models. */
-const modelSchema = z.string().min(1).max(128).regex(/^[A-Za-z0-9._-]+$/).optional();
+const modelSchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .regex(/^[A-Za-z0-9._-]+$/)
+  .optional();
 
 const reviewRequestSchema = z.object({
   diagram: diagramSchema,
@@ -93,6 +96,9 @@ const generateImageRequestSchema = z.object({
  */
 export interface AppDependencies {
   reviewModels?: { getModels: () => Promise<ReviewModelList> };
+  docsSearch?: typeof searchLearnDocs;
+  importAzure?: typeof importFromResourceGraph;
+  importRepo?: typeof importFromGitHub;
 }
 
 export async function buildApp(
@@ -108,9 +114,14 @@ export async function buildApp(
   await app.register(cors, {
     origin: config.corsOrigin === '*' ? true : config.corsOrigin.split(','),
   });
+  await app.register(rateLimit, {
+    global: true,
+    max: config.rateLimit.max,
+    timeWindow: config.rateLimit.timeWindowMs,
+  });
 
   const reviewModels = config.azureOpenAI
-    ? dependencies.reviewModels ?? createFoundryModelDiscovery(config.azureOpenAI)
+    ? (dependencies.reviewModels ?? createFoundryModelDiscovery(config.azureOpenAI))
     : null;
 
   /**
@@ -139,7 +150,7 @@ export async function buildApp(
   }
 
   // Liveness/readiness probe used by Container Apps and docker-compose.
-  app.get('/healthz', async () => ({
+  app.get('/healthz', { config: { rateLimit: false } }, async () => ({
     status: 'ok',
     aiConfigured: config.azureOpenAI !== null,
   }));
@@ -169,7 +180,10 @@ export async function buildApp(
       });
     }
     if (!config.learn.enabled) return reply.send({ results: [] });
-    const results = await searchLearnDocs(body.data.query, config.learn.endpoint);
+    const results = await (dependencies.docsSearch ?? searchLearnDocs)(
+      body.data.query,
+      config.learn.endpoint,
+    );
     return reply.send({ results });
   });
 
@@ -205,9 +219,7 @@ export async function buildApp(
     const body = z
       .object({
         subscriptionId: z.string().uuid(),
-        resourceGroup: z
-          .string()
-          .regex(/^[A-Za-z0-9._()-]{1,90}$/, 'Invalid resource group name.'),
+        resourceGroup: z.string().regex(/^[A-Za-z0-9._()-]{1,90}$/, 'Invalid resource group name.'),
         name: z.string().max(200).optional(),
       })
       .safeParse(request.body);
@@ -218,7 +230,7 @@ export async function buildApp(
       });
     }
     try {
-      const diagram = await importFromResourceGraph(body.data);
+      const diagram = await (dependencies.importAzure ?? importFromResourceGraph)(body.data);
       if (diagram.nodes.length === 0) {
         return reply.code(404).send({
           error: 'empty_resource_group',
@@ -264,7 +276,7 @@ export async function buildApp(
     }
     try {
       const diagram = body.data.githubUrl
-        ? await importFromGitHub(body.data.githubUrl)
+        ? await (dependencies.importRepo ?? importFromGitHub)(body.data.githubUrl)
         : scanRepoFiles(body.data.files!, body.data.name ?? 'Imported repository');
       if (diagram.nodes.length === 0) {
         return reply.code(400).send({
@@ -278,13 +290,17 @@ export async function buildApp(
         return reply.code(err.status).send({ error: 'repo_import_error', message: err.message });
       }
       request.log.error(err);
-      return reply.code(500).send({ error: 'internal_error', message: 'Repository import failed.' });
+      return reply
+        .code(500)
+        .send({ error: 'internal_error', message: 'Repository import failed.' });
     }
   });
 
   // Deterministic Well-Architected Framework validation (no model call).
   app.post('/api/validate', async (request, reply) => {
-    const parsed = diagramSchema.safeParse((request.body as { diagram?: unknown })?.diagram ?? request.body);
+    const parsed = diagramSchema.safeParse(
+      (request.body as { diagram?: unknown })?.diagram ?? request.body,
+    );
     if (!parsed.success) {
       return reply.code(400).send({
         error: 'invalid_request',
@@ -296,7 +312,9 @@ export async function buildApp(
 
   // Deterministic monthly cost estimate (representative pricing, no model call).
   app.post('/api/cost', async (request, reply) => {
-    const parsed = diagramSchema.safeParse((request.body as { diagram?: unknown })?.diagram ?? request.body);
+    const parsed = diagramSchema.safeParse(
+      (request.body as { diagram?: unknown })?.diagram ?? request.body,
+    );
     if (!parsed.success) {
       return reply.code(400).send({
         error: 'invalid_request',
@@ -346,7 +364,9 @@ export async function buildApp(
       return reply.send({
         report: analyzeResiliency(diagram, { target }),
         groundingError:
-          err instanceof AiGenerationError ? err.message : 'Could not refresh figures from Microsoft Learn.',
+          err instanceof AiGenerationError
+            ? err.message
+            : 'Could not refresh figures from Microsoft Learn.',
       });
     }
   });
@@ -443,10 +463,12 @@ export async function buildApp(
 
   // Deterministic IaC generation from catalog metadata (no model call).
   app.post('/api/iac', async (request, reply) => {
-    const parsed = z.object({
-      diagram: diagramSchema,
-      target: z.enum(['bicep', 'terraform']),
-    }).safeParse(request.body);
+    const parsed = z
+      .object({
+        diagram: diagramSchema,
+        target: z.enum(['bicep', 'terraform']),
+      })
+      .safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({
         error: 'invalid_request',
@@ -482,10 +504,7 @@ export async function buildApp(
     const learn = await getLearnGrounding(config.learn, prompt, architectures);
     const grounding = learn ? `${kbGrounding}\n\n${learn.text}` : kbGrounding;
     const systemPrompt = buildSystemPrompt(grounding, mode);
-    const userPrompt = buildUserPrompt(
-      prompt,
-      current ? summarizeDiagram(current) : undefined,
-    );
+    const userPrompt = buildUserPrompt(prompt, current ? summarizeDiagram(current) : undefined);
 
     try {
       const aiConfig = await resolveAiConfig(parsed.data.model, reply);

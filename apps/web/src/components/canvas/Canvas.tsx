@@ -3,7 +3,6 @@ import {
   BackgroundVariant,
   MiniMap,
   ReactFlow,
-  addEdge as rfAddEdge,
   applyNodeChanges,
   MarkerType,
   useKeyPress,

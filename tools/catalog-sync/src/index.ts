@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import { coreServiceCatalog, type ServiceDefinition } from '@aar/shared';
 import { PATHS, PINS, categoryForResourceType, type Pin } from './config.js';
 import { buildIconIndex, resolveIcon } from './icons.js';
-import { fetchAvmModules, fetchPopularity, resolveResourceType, type RawModule } from './sources.js';
+import { fetchAvmModules, fetchPopularity, resolveResourceType } from './sources.js';
 
 interface Candidate {
   def: ServiceDefinition;
@@ -12,7 +12,10 @@ interface Candidate {
 }
 
 function titleCase(kebab: string): string {
-  return kebab.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return kebab
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
 }
 
 function pinToCandidate(pin: Pin, icon: string): Candidate {
@@ -35,7 +38,9 @@ async function main(): Promise<void> {
   const iconIndex = buildIconIndex();
   const taken = new Set(coreServiceCatalog.map((s) => s.id));
   const takenTypes = new Set(
-    coreServiceCatalog.map((s) => s.iac?.resourceType?.toLowerCase()).filter((t): t is string => Boolean(t)),
+    coreServiceCatalog
+      .map((s) => s.iac?.resourceType?.toLowerCase())
+      .filter((t): t is string => Boolean(t)),
   );
   const candidates: Candidate[] = [];
   const dropped: string[] = [];
@@ -43,7 +48,11 @@ async function main(): Promise<void> {
   // Pins are always attempted first.
   for (const pin of PINS) {
     if (taken.has(pin.id) || takenTypes.has(pin.resourceType.toLowerCase())) continue;
-    const icon = resolveIcon(iconIndex, { resourceType: pin.resourceType, name: pin.name, preferred: pin.icon });
+    const icon = resolveIcon(iconIndex, {
+      resourceType: pin.resourceType,
+      name: pin.name,
+      preferred: pin.icon,
+    });
     if (!icon) {
       dropped.push(`${pin.name} (pinned — no icon on disk: ${pin.icon})`);
       continue;
@@ -92,7 +101,9 @@ async function main(): Promise<void> {
     if (typeof score === 'number') c.def.popularityScore = score;
   }
   candidates.sort(
-    (a, b) => (b.def.popularityScore ?? 0) - (a.def.popularityScore ?? 0) || a.def.name.localeCompare(b.def.name),
+    (a, b) =>
+      (b.def.popularityScore ?? 0) - (a.def.popularityScore ?? 0) ||
+      a.def.name.localeCompare(b.def.name),
   );
 
   writeGenerated(candidates.map((c) => c.def));
@@ -116,7 +127,9 @@ function printSummary(candidates: Candidate[], dropped: string[]): void {
   console.log(`\nGenerated ${candidates.length} draft candidate(s):`);
   for (const c of candidates) {
     const score = c.def.popularityScore ?? '—';
-    console.log(`  ${c.pinned ? '📌' : '  '} ${c.def.id.padEnd(28)} ${c.def.category.padEnd(11)} pop=${score}`);
+    console.log(
+      `  ${c.pinned ? '📌' : '  '} ${c.def.id.padEnd(28)} ${c.def.category.padEnd(11)} pop=${score}`,
+    );
   }
   if (dropped.length) {
     console.log(`\nSkipped ${dropped.length} (no icon / already present):`);

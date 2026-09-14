@@ -1,0 +1,39 @@
+name: Bug report
+description: Report a reproducible problem in Azure Architecture Review.
+title: '[bug] '
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open...
+        2. Select...
+        3. Observe...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: Commit SHA, branch, or release
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser, operating system, Node.js version, and deployment method.
+  - type: checkboxes
+    id: sensitive-data
+    attributes:
+      label: Data safety
+      options:
+        - label: I removed credentials, customer data, and private architecture details.
+          required: true

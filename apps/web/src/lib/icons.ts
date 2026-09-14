@@ -58,7 +58,10 @@ const azureIconUrls = import.meta.glob<string>('../assets/azure-icons/*.svg', {
 
 const iconUrlBySlug: Record<string, string> = {};
 for (const [path, url] of Object.entries(azureIconUrls)) {
-  const slug = path.split('/').pop()?.replace(/\.svg$/, '');
+  const slug = path
+    .split('/')
+    .pop()
+    ?.replace(/\.svg$/, '');
   if (slug) iconUrlBySlug[slug] = url;
 }
 

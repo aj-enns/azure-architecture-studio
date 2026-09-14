@@ -27,9 +27,17 @@ export const referenceArchitectures: ReferenceArchitecture[] = [
     name: 'Basic web application (App Service)',
     summary:
       'A single-region App Service web app with a managed database, secrets in Key Vault, and monitoring.',
-    services: ['app-service', 'app-service-plan', 'sql-database', 'key-vault', 'managed-identity', 'app-insights'],
+    services: [
+      'app-service',
+      'app-service-plan',
+      'sql-database',
+      'key-vault',
+      'managed-identity',
+      'app-insights',
+    ],
     keywords: ['web app', 'website', 'app service', 'basic', 'simple', 'api', 'backend', 'crud'],
-    docsUrl: 'https://learn.microsoft.com/azure/architecture/web-apps/app-service/architectures/basic-web-app',
+    docsUrl:
+      'https://learn.microsoft.com/azure/architecture/web-apps/app-service/architectures/basic-web-app',
   },
   {
     id: 'baseline-zone-redundant-web-app',
@@ -49,17 +57,44 @@ export const referenceArchitectures: ReferenceArchitecture[] = [
       'app-insights',
       'log-analytics',
     ],
-    keywords: ['production', 'baseline', 'highly available', 'zone redundant', 'waf', 'secure web app', 'enterprise', 'resilient'],
-    docsUrl: 'https://learn.microsoft.com/azure/architecture/web-apps/app-service/architectures/baseline-zone-redundant',
+    keywords: [
+      'production',
+      'baseline',
+      'highly available',
+      'zone redundant',
+      'waf',
+      'secure web app',
+      'enterprise',
+      'resilient',
+    ],
+    docsUrl:
+      'https://learn.microsoft.com/azure/architecture/web-apps/app-service/architectures/baseline-zone-redundant',
   },
   {
     id: 'serverless-web-app',
     name: 'Serverless web application',
     summary:
       'Static front end on Static Web Apps with Azure Functions APIs and a Cosmos DB back end, fronted by API Management.',
-    services: ['static-web-app', 'functions', 'cosmos-db', 'api-management', 'app-insights', 'managed-identity'],
-    keywords: ['serverless', 'static web app', 'spa', 'jamstack', 'functions', 'cosmos', 'low cost', 'scale to zero'],
-    docsUrl: 'https://learn.microsoft.com/azure/architecture/web-apps/serverless/architectures/web-app',
+    services: [
+      'static-web-app',
+      'functions',
+      'cosmos-db',
+      'api-management',
+      'app-insights',
+      'managed-identity',
+    ],
+    keywords: [
+      'serverless',
+      'static web app',
+      'spa',
+      'jamstack',
+      'functions',
+      'cosmos',
+      'low cost',
+      'scale to zero',
+    ],
+    docsUrl:
+      'https://learn.microsoft.com/azure/architecture/web-apps/serverless/architectures/web-app',
   },
   {
     id: 'serverless-event-processing',
@@ -67,17 +102,48 @@ export const referenceArchitectures: ReferenceArchitecture[] = [
     summary:
       'Ingest a stream with Event Hubs, process with Azure Functions, and persist to Cosmos DB — an event-driven pipeline.',
     services: ['event-hubs', 'functions', 'cosmos-db', 'storage-account', 'app-insights'],
-    keywords: ['event', 'event-driven', 'stream', 'streaming', 'ingest', 'pipeline', 'telemetry', 'iot', 'real-time', 'event hubs', 'kafka'],
-    docsUrl: 'https://learn.microsoft.com/azure/architecture/reference-architectures/serverless/event-processing',
+    keywords: [
+      'event',
+      'event-driven',
+      'stream',
+      'streaming',
+      'ingest',
+      'pipeline',
+      'telemetry',
+      'iot',
+      'real-time',
+      'event hubs',
+      'kafka',
+    ],
+    docsUrl:
+      'https://learn.microsoft.com/azure/architecture/reference-architectures/serverless/event-processing',
   },
   {
     id: 'web-queue-worker',
     name: 'Web-Queue-Worker (async messaging)',
     summary:
       'A web front end that offloads long-running work to a worker via a Service Bus queue, decoupling request handling from processing.',
-    services: ['app-service', 'service-bus', 'functions', 'sql-database', 'key-vault', 'app-insights'],
-    keywords: ['queue', 'worker', 'async', 'asynchronous', 'message', 'service bus', 'background job', 'decouple', 'competing consumers'],
-    docsUrl: 'https://learn.microsoft.com/azure/architecture/guide/architecture-styles/web-queue-worker',
+    services: [
+      'app-service',
+      'service-bus',
+      'functions',
+      'sql-database',
+      'key-vault',
+      'app-insights',
+    ],
+    keywords: [
+      'queue',
+      'worker',
+      'async',
+      'asynchronous',
+      'message',
+      'service bus',
+      'background job',
+      'decouple',
+      'competing consumers',
+    ],
+    docsUrl:
+      'https://learn.microsoft.com/azure/architecture/guide/architecture-styles/web-queue-worker',
   },
   {
     id: 'baseline-aks',
@@ -95,26 +161,70 @@ export const referenceArchitectures: ReferenceArchitecture[] = [
       'log-analytics',
       'app-insights',
     ],
-    keywords: ['kubernetes', 'aks', 'cluster', 'containers', 'baseline', 'ingress', 'production kubernetes'],
-    docsUrl: 'https://learn.microsoft.com/azure/architecture/reference-architectures/containers/aks/baseline-aks',
+    keywords: [
+      'kubernetes',
+      'aks',
+      'cluster',
+      'containers',
+      'baseline',
+      'ingress',
+      'production kubernetes',
+    ],
+    docsUrl:
+      'https://learn.microsoft.com/azure/architecture/reference-architectures/containers/aks/baseline-aks',
   },
   {
     id: 'aks-microservices',
     name: 'Microservices on AKS',
     summary:
       'Microservices hosted on AKS with API Management gateway, Service Bus for async messaging, Cosmos DB, and ACR.',
-    services: ['aks', 'container-registry', 'api-management', 'application-gateway', 'service-bus', 'cosmos-db', 'key-vault', 'log-analytics'],
-    keywords: ['microservices', 'micro-services', 'kubernetes', 'aks', 'api gateway', 'service mesh', 'domain services'],
-    docsUrl: 'https://learn.microsoft.com/azure/architecture/reference-architectures/containers/aks-microservices/aks-microservices',
+    services: [
+      'aks',
+      'container-registry',
+      'api-management',
+      'application-gateway',
+      'service-bus',
+      'cosmos-db',
+      'key-vault',
+      'log-analytics',
+    ],
+    keywords: [
+      'microservices',
+      'micro-services',
+      'kubernetes',
+      'aks',
+      'api gateway',
+      'service mesh',
+      'domain services',
+    ],
+    docsUrl:
+      'https://learn.microsoft.com/azure/architecture/reference-architectures/containers/aks-microservices/aks-microservices',
   },
   {
     id: 'container-apps-microservices',
     name: 'Microservices with Azure Container Apps',
     summary:
       'Serverless microservices on Azure Container Apps with ACR, Service Bus, Cosmos DB, and API Management — scale-to-zero without managing Kubernetes.',
-    services: ['container-apps', 'container-registry', 'service-bus', 'cosmos-db', 'api-management', 'key-vault', 'log-analytics', 'app-insights'],
-    keywords: ['container apps', 'aca', 'serverless containers', 'microservices', 'scale to zero', 'dapr'],
-    docsUrl: 'https://learn.microsoft.com/azure/architecture/example-scenario/serverless/microservices-with-container-apps',
+    services: [
+      'container-apps',
+      'container-registry',
+      'service-bus',
+      'cosmos-db',
+      'api-management',
+      'key-vault',
+      'log-analytics',
+      'app-insights',
+    ],
+    keywords: [
+      'container apps',
+      'aca',
+      'serverless containers',
+      'microservices',
+      'scale to zero',
+      'dapr',
+    ],
+    docsUrl:
+      'https://learn.microsoft.com/azure/architecture/example-scenario/serverless/microservices-with-container-apps',
   },
   {
     id: 'baseline-openai-chat',
@@ -132,17 +242,50 @@ export const referenceArchitectures: ReferenceArchitecture[] = [
       'vnet',
       'app-insights',
     ],
-    keywords: ['openai', 'gpt', 'llm', 'chat', 'chatbot', 'rag', 'retrieval', 'ai search', 'copilot', 'generative ai', 'embeddings', 'foundry'],
-    docsUrl: 'https://learn.microsoft.com/azure/architecture/ai-ml/architecture/baseline-openai-e2e-chat',
+    keywords: [
+      'openai',
+      'gpt',
+      'llm',
+      'chat',
+      'chatbot',
+      'rag',
+      'retrieval',
+      'ai search',
+      'copilot',
+      'generative ai',
+      'embeddings',
+      'foundry',
+    ],
+    docsUrl:
+      'https://learn.microsoft.com/azure/architecture/ai-ml/architecture/baseline-openai-e2e-chat',
   },
   {
     id: 'n-tier-vms',
     name: 'N-tier application on virtual machines',
     summary:
       'Classic N-tier app: load-balanced web/app tiers on VM scale sets behind Application Gateway, with a SQL database, in a VNet.',
-    services: ['vmss', 'vm', 'load-balancer', 'application-gateway', 'sql-database', 'vnet', 'key-vault'],
-    keywords: ['n-tier', 'three tier', '3-tier', 'virtual machine', 'vm', 'iaas', 'lift and shift', 'migrate', 'legacy'],
-    docsUrl: 'https://learn.microsoft.com/azure/architecture/reference-architectures/n-tier/n-tier-sql-server',
+    services: [
+      'vmss',
+      'vm',
+      'load-balancer',
+      'application-gateway',
+      'sql-database',
+      'vnet',
+      'key-vault',
+    ],
+    keywords: [
+      'n-tier',
+      'three tier',
+      '3-tier',
+      'virtual machine',
+      'vm',
+      'iaas',
+      'lift and shift',
+      'migrate',
+      'legacy',
+    ],
+    docsUrl:
+      'https://learn.microsoft.com/azure/architecture/reference-architectures/n-tier/n-tier-sql-server',
   },
   {
     id: 'hub-spoke',
@@ -150,7 +293,15 @@ export const referenceArchitectures: ReferenceArchitecture[] = [
     summary:
       'Centralized hub VNet with shared services (gateway, firewall, private DNS) peered to isolated spoke VNets for workloads.',
     services: ['vnet', 'application-gateway', 'load-balancer', 'private-endpoint'],
-    keywords: ['hub spoke', 'hub-and-spoke', 'network topology', 'vnet peering', 'landing zone', 'connectivity', 'segmentation'],
+    keywords: [
+      'hub spoke',
+      'hub-and-spoke',
+      'network topology',
+      'vnet peering',
+      'landing zone',
+      'connectivity',
+      'segmentation',
+    ],
     docsUrl: 'https://learn.microsoft.com/azure/architecture/networking/architecture/hub-spoke',
   },
   {
@@ -159,8 +310,19 @@ export const referenceArchitectures: ReferenceArchitecture[] = [
     summary:
       'High-volume telemetry ingested via Event Hubs into Azure Data Explorer for interactive, near-real-time analytics.',
     services: ['event-hubs', 'data-explorer', 'functions', 'storage-account'],
-    keywords: ['analytics', 'real-time analytics', 'time series', 'telemetry', 'logs', 'kusto', 'data explorer', 'dashboards', 'observability'],
-    docsUrl: 'https://learn.microsoft.com/azure/architecture/solution-ideas/articles/big-data-azure-data-explorer',
+    keywords: [
+      'analytics',
+      'real-time analytics',
+      'time series',
+      'telemetry',
+      'logs',
+      'kusto',
+      'data explorer',
+      'dashboards',
+      'observability',
+    ],
+    docsUrl:
+      'https://learn.microsoft.com/azure/architecture/solution-ideas/articles/big-data-azure-data-explorer',
   },
 ];
 
@@ -179,8 +341,30 @@ export function validateReferenceArchitectures(): string[] {
 }
 
 const STOPWORDS = new Set([
-  'a', 'an', 'the', 'and', 'or', 'with', 'for', 'to', 'of', 'in', 'on', 'my', 'our',
-  'app', 'application', 'azure', 'using', 'use', 'that', 'this', 'build', 'create', 'need', 'want',
+  'a',
+  'an',
+  'the',
+  'and',
+  'or',
+  'with',
+  'for',
+  'to',
+  'of',
+  'in',
+  'on',
+  'my',
+  'our',
+  'app',
+  'application',
+  'azure',
+  'using',
+  'use',
+  'that',
+  'this',
+  'build',
+  'create',
+  'need',
+  'want',
 ]);
 
 function tokenize(text: string): string[] {
@@ -225,7 +409,9 @@ export function retrieveArchitectures(prompt: string, k = 3): ReferenceArchitect
   // No signal in the prompt — fall back to the two most common starting points
   // so generation is still grounded in a recommended pattern.
   if (hits.length === 0) {
-    return referenceArchitectures.filter((ra) => ra.id === 'basic-web-app' || ra.id === 'serverless-web-app');
+    return referenceArchitectures.filter(
+      (ra) => ra.id === 'basic-web-app' || ra.id === 'serverless-web-app',
+    );
   }
   return hits;
 }

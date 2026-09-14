@@ -16,7 +16,11 @@ workflow and ground rules, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 AI features are **optional** and bring-your-own — the canvas, validation,
 resiliency, cost, and IaC export all work without them. See
-[Enable AI features](#enable-ai-features-optional) below.
+[Enable AI features](#4-enable-ai-features-optional) below.
+
+The API accepts 120 requests per client per minute by default. Override
+`RATE_LIMIT_MAX` and `RATE_LIMIT_WINDOW_MS` in `.env` when needed for local load
+testing.
 
 ## 1. Clone and install
 
@@ -47,7 +51,22 @@ Open <http://localhost:5173> and you should see the canvas with the service
 palette on the left. Drag a service onto the canvas to confirm everything is
 wired up.
 
-## 3. Enable AI features (optional)
+## 3. Capture your architecture
+
+**Recommended:** the most robust and reproducible way to capture an existing
+design is to define it as a **diagram JSON file** and import it via
+**File → Import JSON** — the model is schema-validated and laid out by the same
+engine the app uses, so it is deterministic and reviewable in a pull request.
+Copy [docs/examples/solution-deployment-topology.json](examples/solution-deployment-topology.json)
+as a starting point, edit the `nodes`, `groups`, and `edges`, and import the
+result. See [Diagram your design](../README.md#diagram-your-design) for details.
+
+Other ways to get started — the AI prompt, a pasted screenshot, and importing
+from ARM/Bicep, a Git repository, or a live Azure resource group — are great for
+exploration, but treat their output as a **best-effort draft** to review and
+refine.
+
+## 4. Enable AI features (optional)
 
 AI generation, the advisor, and the AI review need a **Microsoft Foundry** or
 **Azure OpenAI** endpoint. Copy the example env file and fill in your values:
@@ -70,7 +89,7 @@ is in [ADR-0011](adr/0011-entra-id-keyless-azure-openai-auth.md).
 If AI is left unconfigured, AI-backed endpoints return `503` and the AI panels
 show a hint — every other feature keeps working.
 
-## 4. Run with Docker (optional)
+## 5. Run with Docker (optional)
 
 To run the production-style container image (web reverse-proxies the API):
 

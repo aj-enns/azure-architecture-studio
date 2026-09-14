@@ -112,14 +112,19 @@ async function mcpCall(
   const res = await fetch(endpoint, {
     method: 'POST',
     headers,
-    body: JSON.stringify(id === null ? { jsonrpc: '2.0', method, params } : { jsonrpc: '2.0', id, method, params }),
+    body: JSON.stringify(
+      id === null ? { jsonrpc: '2.0', method, params } : { jsonrpc: '2.0', id, method, params },
+    ),
     signal,
   });
   const newSession = res.headers.get('mcp-session-id') ?? sessionId;
   // Notifications return 202 with no body.
   if (res.status === 202) return { bodies: [], sessionId: newSession };
   const body = await res.text();
-  return { bodies: parseJsonRpcBodies(res.headers.get('content-type') ?? '', body), sessionId: newSession };
+  return {
+    bodies: parseJsonRpcBodies(res.headers.get('content-type') ?? '', body),
+    sessionId: newSession,
+  };
 }
 
 /** Performs the MCP handshake and returns the session id to reuse for tool calls. */

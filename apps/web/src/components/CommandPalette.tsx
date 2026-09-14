@@ -1,10 +1,6 @@
 import { Command } from 'cmdk';
 import { useEffect } from 'react';
-import {
-  azureServiceCatalog,
-  type Diagram,
-  type GroupKind,
-} from '@aar/shared';
+import { azureServiceCatalog, type Diagram, type GroupKind } from '@aar/shared';
 import { importArmTemplate, importFromAzure } from '@/lib/api.js';
 import { downloadJson, exportPng, exportSvg } from '@/lib/export.js';
 import { useTheme } from '@/lib/theme.js';
@@ -29,7 +25,9 @@ const panels: { id: PanelId; label: string }[] = [
 ];
 
 /** Prompts for a JSON file via a transient input, then imports it. */
-async function pickAndImport(importJson: (json: string) => { ok: true } | { ok: false; error: string }): Promise<void> {
+async function pickAndImport(
+  importJson: (json: string) => { ok: true } | { ok: false; error: string },
+): Promise<void> {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'application/json,.json';
@@ -137,9 +135,14 @@ export function CommandPalette({
           className="w-full border-b border-border bg-transparent px-4 py-3 text-sm outline-none"
         />
         <Command.List className="max-h-80 overflow-y-auto p-2">
-          <Command.Empty className="px-3 py-6 text-center text-sm text-muted-foreground">No results.</Command.Empty>
+          <Command.Empty className="px-3 py-6 text-center text-sm text-muted-foreground">
+            No results.
+          </Command.Empty>
 
-          <Command.Group heading="Panels" className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
+          <Command.Group
+            heading="Panels"
+            className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1"
+          >
             {panels.map((p) => (
               <Item key={p.id} onSelect={() => run(() => togglePanel(p.id))}>
                 {p.label}
@@ -147,30 +150,48 @@ export function CommandPalette({
             ))}
           </Command.Group>
 
-          <Command.Group heading="Diagram" className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
+          <Command.Group
+            heading="Diagram"
+            className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1"
+          >
             <Item onSelect={() => run(relayout)}>Auto-layout</Item>
             <Item
               onSelect={() =>
                 run(() => {
-                  if (window.confirm('Start a new diagram? Unsaved changes are kept in your browser only.')) reset();
+                  if (
+                    window.confirm(
+                      'Start a new diagram? Unsaved changes are kept in your browser only.',
+                    )
+                  )
+                    reset();
                 })
               }
             >
               New diagram
             </Item>
             <Item onSelect={() => run(() => void pickAndImport(importJson))}>Import JSON…</Item>
-            <Item onSelect={() => run(() => void pickAndImportArm(load))}>Import ARM/Bicep template (JSON)…</Item>
+            <Item onSelect={() => run(() => void pickAndImportArm(load))}>
+              Import ARM/Bicep template (JSON)…
+            </Item>
             <Item onSelect={() => run(onOpenRepositoryImport)}>Import Git repository…</Item>
-            <Item onSelect={() => run(() => void importAzureResourceGroup(load))}>Import from Azure (resource group)…</Item>
+            <Item onSelect={() => run(() => void importAzureResourceGroup(load))}>
+              Import from Azure (resource group)…
+            </Item>
           </Command.Group>
 
-          <Command.Group heading="Export" className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
+          <Command.Group
+            heading="Export"
+            className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1"
+          >
             <Item onSelect={() => run(() => void exportPng(name))}>Export as PNG</Item>
             <Item onSelect={() => run(() => void exportSvg(name))}>Export as SVG</Item>
             <Item onSelect={() => run(() => downloadJson(name, exportJson()))}>Export as JSON</Item>
           </Command.Group>
 
-          <Command.Group heading="View" className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
+          <Command.Group
+            heading="View"
+            className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1"
+          >
             <Item onSelect={() => run(togglePalette)}>Toggle Services panel</Item>
             <Item onSelect={() => run(toggleProperties)}>Toggle Properties panel</Item>
             <Item onSelect={() => run(toggleGrid)}>Toggle Grid points</Item>
@@ -179,7 +200,10 @@ export function CommandPalette({
             <Item onSelect={() => run(toggleTheme)}>Toggle theme</Item>
           </Command.Group>
 
-          <Command.Group heading="Add group" className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
+          <Command.Group
+            heading="Add group"
+            className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1"
+          >
             {groupKinds.map((g) => (
               <Item key={g.kind} onSelect={() => run(() => addGroup(g.kind, center()))}>
                 {g.label}
@@ -187,9 +211,16 @@ export function CommandPalette({
             ))}
           </Command.Group>
 
-          <Command.Group heading="Add service" className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
+          <Command.Group
+            heading="Add service"
+            className="text-xs text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1"
+          >
             {azureServiceCatalog.map((s) => (
-              <Item key={s.id} value={`${s.name} ${s.description}`} onSelect={() => run(() => addNode(s.id, center()))}>
+              <Item
+                key={s.id}
+                value={`${s.name} ${s.description}`}
+                onSelect={() => run(() => addNode(s.id, center()))}
+              >
                 {s.name}
               </Item>
             ))}
@@ -200,7 +231,15 @@ export function CommandPalette({
   );
 }
 
-function Item({ children, value, onSelect }: { children: React.ReactNode; value?: string; onSelect: () => void }): JSX.Element {
+function Item({
+  children,
+  value,
+  onSelect,
+}: {
+  children: React.ReactNode;
+  value?: string;
+  onSelect: () => void;
+}): JSX.Element {
   return (
     <Command.Item
       value={value}

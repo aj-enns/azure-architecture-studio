@@ -21,13 +21,28 @@ function jsonResponse(body: unknown): Response {
 
 describe('vision capability detection', () => {
   it('recognizes vision-capable model families', () => {
-    for (const name of ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4-turbo', 'gpt-5', 'o1', 'o4-mini']) {
+    for (const name of [
+      'gpt-4o',
+      'gpt-4o-mini',
+      'gpt-4.1',
+      'gpt-4-turbo',
+      'gpt-5',
+      'o1',
+      'o4-mini',
+    ]) {
       expect(isVisionCapableModelName(name)).toBe(true);
     }
   });
 
   it('rejects text-only models', () => {
-    for (const name of ['gpt-35-turbo', 'gpt-4', 'o1-mini', 'o3-mini', 'text-embedding-3-large', '']) {
+    for (const name of [
+      'gpt-35-turbo',
+      'gpt-4',
+      'o1-mini',
+      'o3-mini',
+      'text-embedding-3-large',
+      '',
+    ]) {
       expect(isVisionCapableModelName(name)).toBe(false);
     }
   });
@@ -37,37 +52,41 @@ describe('Foundry model discovery', () => {
   it('paginates and returns only succeeded chat deployments with JSON support', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(jsonResponse({
-        value: [
-          {
-            name: 'gpt-review',
-            properties: {
-              provisioningState: 'Succeeded',
-              capabilities: { chatCompletion: 'true', jsonObjectResponse: 'true' },
-              model: { name: 'gpt-4.1', version: '2025-04-14' },
+      .mockResolvedValueOnce(
+        jsonResponse({
+          value: [
+            {
+              name: 'gpt-review',
+              properties: {
+                provisioningState: 'Succeeded',
+                capabilities: { chatCompletion: 'true', jsonObjectResponse: 'true' },
+                model: { name: 'gpt-4.1', version: '2025-04-14' },
+              },
             },
-          },
-          {
-            name: 'embedding',
-            properties: {
-              provisioningState: 'Succeeded',
-              capabilities: { embeddings: 'true' },
+            {
+              name: 'embedding',
+              properties: {
+                provisioningState: 'Succeeded',
+                capabilities: { embeddings: 'true' },
+              },
             },
-          },
-        ],
-        nextLink: 'https://management.azure.com/next-page',
-      }))
-      .mockResolvedValueOnce(jsonResponse({
-        value: [
-          {
-            name: 'still-creating',
-            properties: {
-              provisioningState: 'Creating',
-              capabilities: { chatCompletion: 'true', jsonObjectResponse: 'true' },
+          ],
+          nextLink: 'https://management.azure.com/next-page',
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          value: [
+            {
+              name: 'still-creating',
+              properties: {
+                provisioningState: 'Creating',
+                capabilities: { chatCompletion: 'true', jsonObjectResponse: 'true' },
+              },
             },
-          },
-        ],
-      }));
+          ],
+        }),
+      );
     const getManagementToken = vi.fn().mockResolvedValue('arm-token');
     const discovery = createFoundryModelDiscovery(config, {
       fetch: fetchMock,
@@ -91,25 +110,25 @@ describe('Foundry model discovery', () => {
       expect.stringContaining(`${config.resourceId}/deployments?api-version=2024-10-01`),
       { headers: { Authorization: 'Bearer arm-token' } },
     );
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      'https://management.azure.com/next-page',
-      { headers: { Authorization: 'Bearer arm-token' } },
-    );
+    expect(fetchMock).toHaveBeenNthCalledWith(2, 'https://management.azure.com/next-page', {
+      headers: { Authorization: 'Bearer arm-token' },
+    });
   });
 
   it('caches successful discovery results', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({
-      value: [
-        {
-          name: 'gpt-review',
-          properties: {
-            provisioningState: 'Succeeded',
-            capabilities: { chatCompletion: true, jsonSchemaResponse: true },
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({
+        value: [
+          {
+            name: 'gpt-review',
+            properties: {
+              provisioningState: 'Succeeded',
+              capabilities: { chatCompletion: true, jsonSchemaResponse: true },
+            },
           },
-        },
-      ],
-    }));
+        ],
+      }),
+    );
     const discovery = createFoundryModelDiscovery(config, {
       fetch: fetchMock,
       getManagementToken: async () => 'token',

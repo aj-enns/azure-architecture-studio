@@ -56,7 +56,14 @@
     @apply bg-background text-foreground;
     margin: 0;
     font-family:
-      ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      Helvetica,
+      Arial,
+      sans-serif;
   }
 
   html,
@@ -79,8 +86,7 @@
     stroke: hsl(var(--primary)) !important;
     stroke-width: 3.5 !important;
     stroke-dasharray: 10 6;
-    filter: drop-shadow(0 0 5px hsl(var(--primary)))
-      drop-shadow(0 0 9px hsl(var(--primary) / 0.55));
+    filter: drop-shadow(0 0 5px hsl(var(--primary))) drop-shadow(0 0 9px hsl(var(--primary) / 0.55));
     animation: aar-edge-flow 0.55s linear infinite;
   }
 }

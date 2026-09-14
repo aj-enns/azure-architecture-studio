@@ -27,6 +27,8 @@ Useful scripts (run from the repo root):
 - Validate all untrusted input (imported files, AI output) with the shared Zod
   schema at the boundary.
 - Keep secrets server-side only. Never ship Azure OpenAI keys to the browser.
+- Never include customer data or private architecture details in fixtures,
+  screenshots, issues, or pull requests.
 
 ## Architecture decisions
 
@@ -44,4 +46,8 @@ Bundled Microsoft Azure icons are governed by Microsoft's terms — see
 
 - Keep changes focused; one concern per PR.
 - Add/adjust tests for behavior changes.
-- Ensure `pnpm build`, `pnpm test`, and `pnpm typecheck` pass before opening a PR.
+- Ensure `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and
+  `pnpm build` pass before opening a PR.
+
+Report suspected vulnerabilities privately using the process in
+[SECURITY.md](SECURITY.md), not through a public issue.

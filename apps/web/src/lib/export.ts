@@ -34,7 +34,13 @@ function getViewport(): HTMLElement | null {
 }
 
 function slugify(name: string): string {
-  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'diagram';
+  return (
+    name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'diagram'
+  );
 }
 
 /** Background color matched to the current theme so exports look correct. */

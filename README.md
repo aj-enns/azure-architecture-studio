@@ -27,7 +27,7 @@ Bicep or Terraform — all inside your own environment.
 - **Resiliency modelling** — composite SLA, RPO/RTO, and weakest-link analysis with a canvas overlay.
 - **Cost and throughput** — per-service and total monthly estimates plus bottleneck sizing against a load target.
 - **Infrastructure as Code export** — deterministic Bicep and Terraform generation, previewed and downloaded in-app.
-- **Import** — from ARM/Bicep templates, a public Git repository, or a live Azure resource group.
+- **Import** — from ARM/Bicep templates, a public Git repository, or a live Azure resource group, as a best-effort starting point to review and refine.
 - **Bring-your-own AI** — Microsoft Foundry or Azure OpenAI with keyless Entra ID auth. AI is optional; every other feature works without it.
 - **Export** — save diagrams as PNG, SVG, or JSON.
 
@@ -60,11 +60,37 @@ docker compose up --build   # app on http://localhost:8080
 The web container reverse-proxies `/api` and `/healthz` to the API, so everything
 is served from a single origin.
 
+## Diagram your design
+
+> **Recommended:** the most robust and reproducible way to capture an existing
+> architecture is to define it as a **diagram JSON file** and import it — rather
+> than dragging services by hand or generating from a prompt.
+
+The diagram model is a schema-validated JSON document
+([ADR-0002](docs/adr/0002-diagram-schema-shared-source-of-truth.md)), so a design
+authored this way is deterministic, reviewable in a pull request, and laid out by
+the same engine the app uses. AI generation and the canvas are great for
+exploration; JSON is the reliable source of truth.
+
+This repository ships a worked example that builds its own deployment topology
+from code and infrastructure facts:
+
+```bash
+pnpm diagram:solution   # writes docs/examples/solution-deployment-topology.json
+```
+
+To visualize it, open the app and choose **File → Import JSON**, then select the
+generated file. To capture **your** architecture, copy
+[docs/examples/solution-deployment-topology.json](docs/examples/solution-deployment-topology.json)
+as a starting point, edit the `nodes`, `groups`, and `edges`, and import the
+result — positions are optional because auto-layout owns final placement.
+
 ## Documentation
 
 | Guide | What it covers |
 | ----- | -------------- |
 | [Getting started](docs/getting-started.md) | Step-by-step install, running locally and in Docker, enabling AI, troubleshooting |
+| [Diagram your design](#diagram-your-design) | The recommended JSON-first way to capture an architecture |
 | [Configuration](#configuration) | AI provider and environment variables |
 | [Deploy to Azure](#deploy-to-azure) | Bicep infrastructure and GitHub Actions CI/CD |
 | [Architecture decisions](docs/adr/README.md) | The "why" behind the key technical choices (ADRs) |
@@ -174,12 +200,25 @@ deploys the apps — keyless via **OIDC** (no stored service-principal secret).
 Configure once:
 
 - **Secrets:** `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
+- **Authentication:** variable `ENTRA_AUTH_CLIENT_ID` and secret
+  `ENTRA_AUTH_CLIENT_SECRET` for a dedicated single-tenant web app registration.
 - **Variables:** `AZURE_RESOURCE_GROUP`, `AZURE_LOCATION`, and optionally
   `AZURE_FOUNDRY_ENDPOINT` / `AZURE_FOUNDRY_MODEL` (and `AZURE_FOUNDRY_RESOURCE_ID`
   to enable review model discovery).
 - Grant the federated app registration **Owner** on the resource group (or
   **Contributor** + **User Access Administrator** — the latter is needed to create
   the `AcrPull` role assignment).
+
+Configure the dedicated web app registration with this redirect URI after the
+first deployment, replacing `<web-fqdn>` with the deployment output:
+
+```text
+https://<web-fqdn>/.auth/login/aad/callback
+```
+
+The deployment enables Azure Container Apps built-in authentication and accepts
+users only from `AZURE_TENANT_ID`. Keep the deployment identity (`AZURE_CLIENT_ID`)
+separate from the user-facing app registration (`ENTRA_AUTH_CLIENT_ID`).
 
 AI runs **keyless**: the app's user-assigned identity (`aar-id-*`) authenticates to
 Foundry via `DefaultAzureCredential` (ADR-0011). Grant it access on your Foundry
@@ -206,6 +245,8 @@ Local development and non-Azure hosting are unauthenticated by default and must
 not be exposed publicly without a trusted authentication proxy. Azure
 deployments enable Container Apps authentication with Microsoft Entra ID by
 default ([ADR-0020](docs/adr/0020-entra-protected-azure-deployments.md)).
+The API also applies request rate limits by default. See
+[SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## Contributing
 

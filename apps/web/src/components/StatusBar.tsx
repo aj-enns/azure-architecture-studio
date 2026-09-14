@@ -62,7 +62,10 @@ export function StatusBar(): JSX.Element {
           side="top"
           closeOnSelect={false}
           trigger={
-            <StatusMenuTrigger title="Show or hide workspace sidebars" count={Number(showPalette) + Number(showProperties)}>
+            <StatusMenuTrigger
+              title="Show or hide workspace sidebars"
+              count={Number(showPalette) + Number(showProperties)}
+            >
               <PanelsTopLeft size={13} /> Sidebars
             </StatusMenuTrigger>
           }
