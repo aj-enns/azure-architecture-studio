@@ -234,7 +234,10 @@ export function AdvisorChat({
             value={input}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
-              if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') void submit(input);
+              if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                event.preventDefault();
+                void submit(input);
+              }
             }}
             disabled={loading || healthState !== 'configured'}
           />
@@ -243,7 +246,7 @@ export function AdvisorChat({
             onClick={() => void submit(input)}
             disabled={loading || !input.trim() || healthState !== 'configured'}
             aria-label="Send architecture question"
-            title="Send (Ctrl/Cmd+Enter)"
+            title="Send (Enter)"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
           </Button>
