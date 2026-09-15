@@ -60,6 +60,11 @@ describe('api', () => {
     await app.close();
   });
 
+  it('accepts Azure-style boolean casing for IaC imports', () => {
+    expect(loadConfig({ IAC_IMPORT_ENABLED: 'True' }).iacImportEnabled).toBe(true);
+    expect(loadConfig({ IAC_IMPORT_ENABLED: 'False' }).iacImportEnabled).toBe(false);
+  });
+
   it('serves the service catalog', async () => {
     const config = loadConfig({} as NodeJS.ProcessEnv);
     const app = await buildApp(config);

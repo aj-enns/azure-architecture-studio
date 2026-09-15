@@ -138,7 +138,7 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
           // on the Foundry resource (see README).
           env: [
             { name: 'PORT', value: '8080' }
-            { name: 'IAC_IMPORT_ENABLED', value: string(iacImportEnabled) }
+            { name: 'IAC_IMPORT_ENABLED', value: iacImportEnabled ? 'true' : 'false' }
             { name: 'CORS_ORIGIN', value: 'https://${webAppName}.${containerEnv.properties.defaultDomain}' }
             { name: 'AZURE_CLIENT_ID', value: managedIdentityClientId }
             { name: 'AZURE_FOUNDRY_ENDPOINT', value: azureFoundryEndpoint }
