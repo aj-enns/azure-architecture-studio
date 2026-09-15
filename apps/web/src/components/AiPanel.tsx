@@ -383,7 +383,7 @@ export function AiPanel({
 
         {error && (
           <div
-            className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive"
+            className="rounded-md border border-red-300 bg-red-50 p-3 text-xs text-foreground dark:border-red-800 dark:bg-red-950/30"
             role="alert"
             aria-live="assertive"
           >

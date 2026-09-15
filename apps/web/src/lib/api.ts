@@ -62,6 +62,11 @@ export async function generateDiagram(
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new Error('AI generation was cancelled.');
     }
+    if (error instanceof TypeError) {
+      throw new Error(
+        'The connection to the API was interrupted. Try again; if this continues, check the Azure API and web proxy.',
+      );
+    }
     throw new Error(error instanceof Error ? error.message : 'Could not reach the API.');
   } finally {
     clearTimeout(timeout);
