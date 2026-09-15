@@ -154,7 +154,7 @@ export function Toolbar({
           variant={activePanel === 'ai' ? 'default' : 'secondary'}
           size="sm"
           onClick={() => togglePanel('ai')}
-          title="Ask or modify with AI"
+          title="Build or ask with AI"
         >
           <Sparkles size={16} /> AI assistant
         </Button>

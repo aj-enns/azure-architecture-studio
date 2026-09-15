@@ -56,13 +56,13 @@ export function AdvisorChat({
   healthState,
   diagram,
   model,
-  onModify,
+  onBuild,
 }: {
   active: boolean;
   healthState: HealthState;
   diagram: Diagram;
   model?: string;
-  onModify: (prompt: string) => void;
+  onBuild: (prompt: string) => void;
 }): JSX.Element {
   const [input, setInput] = useState('');
   const [turns, setTurns] = useState<ChatTurn[]>([]);
@@ -206,7 +206,7 @@ export function AdvisorChat({
                     variant="outline"
                     size="sm"
                     className="mt-3 w-full"
-                    onClick={() => onModify(turn.diagramPrompt!)}
+                    onClick={() => onBuild(turn.diagramPrompt!)}
                   >
                     Modify diagram <ArrowRight size={14} />
                   </Button>

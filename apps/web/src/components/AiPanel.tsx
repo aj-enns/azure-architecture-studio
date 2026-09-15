@@ -21,7 +21,7 @@ const EXAMPLES = [
 ];
 
 type DiagramMode = 'new' | 'revise';
-type AssistantMode = 'ask' | 'modify';
+type AssistantMode = 'build' | 'ask';
 type HealthState = 'checking' | 'configured' | 'unconfigured' | 'api-unavailable';
 
 /** Unified architecture advisor and explicit prompt-to-diagram editor. */
@@ -32,7 +32,7 @@ export function AiPanel({
   open: boolean;
   onClose: () => void;
 }): JSX.Element | null {
-  const [assistantMode, setAssistantMode] = useState<AssistantMode>('ask');
+  const [assistantMode, setAssistantMode] = useState<AssistantMode>('build');
   const [prompt, setPrompt] = useState('');
   const [mode, setMode] = useState<DiagramMode>('new');
   const [design, setDesign] = useState<DesignMode>('bestPractice');
@@ -67,7 +67,7 @@ export function AiPanel({
   }, [open]);
 
   useEffect(() => {
-    if (open && assistantMode === 'modify') textareaRef.current?.focus();
+    if (open && assistantMode === 'build') textareaRef.current?.focus();
   }, [open, assistantMode]);
 
   useEffect(() => {
@@ -136,13 +136,13 @@ export function AiPanel({
     }
   };
 
-  const handOffToModify = (diagramPrompt: string): void => {
+  const handOffToBuild = (diagramPrompt: string): void => {
     setPrompt(diagramPrompt);
     setMode(diagram.nodes.length > 0 ? 'revise' : 'new');
     setImage(null);
     setImageName(null);
     setError(null);
-    setAssistantMode('modify');
+    setAssistantMode('build');
   };
 
   return (
@@ -167,18 +167,18 @@ export function AiPanel({
 
       <div className="grid grid-cols-2 gap-1 border-b border-border bg-muted/50 p-1.5">
         <Button
+          variant={assistantMode === 'build' ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => setAssistantMode('build')}
+        >
+          <PencilLine size={15} /> Build
+        </Button>
+        <Button
           variant={assistantMode === 'ask' ? 'secondary' : 'ghost'}
           size="sm"
           onClick={() => setAssistantMode('ask')}
         >
           <MessageCircle size={15} /> Ask
-        </Button>
-        <Button
-          variant={assistantMode === 'modify' ? 'secondary' : 'ghost'}
-          size="sm"
-          onClick={() => setAssistantMode('modify')}
-        >
-          <PencilLine size={15} /> Modify
         </Button>
       </div>
 
@@ -242,12 +242,12 @@ export function AiPanel({
         healthState={healthState}
         diagram={diagram}
         model={selectedModel || undefined}
-        onModify={handOffToModify}
+        onBuild={handOffToBuild}
       />
 
       <div
         className={
-          assistantMode === 'modify'
+          assistantMode === 'build'
             ? 'flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3'
             : 'hidden'
         }
