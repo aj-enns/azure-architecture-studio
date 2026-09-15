@@ -140,8 +140,10 @@ host's identity and AI access, not each visitor's Azure credentials.
 Skip this step to run without AI. An existing account must have a compatible
 chat-completion model deployment. The model value is the **deployment name**.
 
-The application identity needs **Cognitive Services OpenAI User** for inference
-and **Reader** for model discovery on the Foundry account. An administrator with
+The application identity needs **Cognitive Services User** for Foundry `/models`
+inference and **Reader** for model discovery on the Foundry account. The template
+also retains **Cognitive Services OpenAI User** for Azure OpenAI endpoint access;
+that role alone does not grant Foundry `/models` inference. An administrator with
 deployment and role-assignment permissions in that account's resource group can
 run the following. A different subscription is supported within the same tenant.
 

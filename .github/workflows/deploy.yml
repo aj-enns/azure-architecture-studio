@@ -21,7 +21,7 @@ name: deploy
 # Owner covers both if you prefer a single assignment.
 #
 # Keyless Foundry: grant the app's user-assigned identity (aar-id-*) the
-# "Cognitive Services OpenAI User" (inference) and "Reader" (discovery) roles on
+# "Cognitive Services User" (Foundry inference) and "Reader" (discovery) roles on
 # your Foundry resource. See README (Deploy to Azure).
 
 on:

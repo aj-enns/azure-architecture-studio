@@ -126,7 +126,7 @@ All three should pass on a clean clone. The full script list is in
 | `pnpm: command not found` | Install pnpm: `npm install -g pnpm@9`, or enable Corepack with `corepack enable`. |
 | Port 5173 or 8080 already in use | Stop the other process, or change `PORT` / `VITE_API_BASE_URL` in `.env`. The web dev server uses `strictPort`, so it fails fast rather than picking a new port. |
 | AI panels show a 503 / "not configured" hint | Expected when no AI endpoint is set. Fill in `.env` and restart `pnpm dev`. |
-| Keyless AI returns an auth error | Run `az login`, and confirm your identity has **Cognitive Services OpenAI User** on the resource ([ADR-0011](adr/0011-entra-id-keyless-azure-openai-auth.md)). |
+| Keyless AI returns an auth error | Run `az login`, and confirm your identity has **Cognitive Services User** for Foundry `/models` inference, or **Cognitive Services OpenAI User** for Azure OpenAI endpoints. In Azure, grant the role to the API's managed identity instead of the signed-in visitor. |
 | `docker compose up` can't reach the API | The web container waits for the API health check; give it a few seconds on first build. |
 
 ## Next steps

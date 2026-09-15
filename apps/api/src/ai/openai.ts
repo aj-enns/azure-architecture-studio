@@ -4,6 +4,7 @@ import type { AzureOpenAIConfig } from '../config.js';
 
 /** OAuth scope for data-plane access to Azure OpenAI / Cognitive Services. */
 const COGNITIVE_SERVICES_SCOPE = 'https://cognitiveservices.azure.com/.default';
+const FOUNDRY_SCOPE = 'https://ai.azure.com/.default';
 
 /** Raised when Azure OpenAI returns an error or an unparseable response. */
 export class AiGenerationError extends Error {
@@ -25,26 +26,33 @@ interface ChatCompletionResponse {
  * ambient identity (az login, VS Code, environment vars, or managed identity in
  * Azure); getBearerTokenProvider caches and refreshes the token for us.
  */
-let tokenProvider: (() => Promise<string>) | null = null;
-function getTokenProvider(): () => Promise<string> {
+const tokenProviders = new Map<string, () => Promise<string>>();
+function getTokenProvider(scope: string): () => Promise<string> {
+  let tokenProvider = tokenProviders.get(scope);
   if (!tokenProvider) {
-    tokenProvider = getBearerTokenProvider(new DefaultAzureCredential(), COGNITIVE_SERVICES_SCOPE);
+    tokenProvider = getBearerTokenProvider(new DefaultAzureCredential(), scope);
+    tokenProviders.set(scope, tokenProvider);
   }
   return tokenProvider;
 }
 
 /** Builds the auth header for the request based on the configured auth mode (ADR-0011). */
-async function buildAuthHeaders(config: AzureOpenAIConfig): Promise<Record<string, string>> {
+async function buildAuthHeaders(
+  config: AzureOpenAIConfig,
+  isFoundryModelsEndpoint: boolean,
+): Promise<Record<string, string>> {
   if (config.auth.kind === 'apiKey') {
     return { 'api-key': config.auth.apiKey };
   }
   try {
-    const token = await getTokenProvider()();
+    const token = await getTokenProvider(
+      isFoundryModelsEndpoint ? FOUNDRY_SCOPE : COGNITIVE_SERVICES_SCOPE,
+    )();
     return { Authorization: `Bearer ${token}` };
   } catch (err) {
     throw new AiGenerationError(
       `Failed to acquire a Microsoft Entra ID token. Ensure the host is signed in ` +
-        `(az login) or has a managed identity with the "Cognitive Services OpenAI User" ` +
+        `(az login) or has a managed identity with the "${isFoundryModelsEndpoint ? 'Cognitive Services User' : 'Cognitive Services OpenAI User'}" ` +
         `role. Details: ${err instanceof Error ? err.message : 'unknown error'}`,
       401,
     );
@@ -70,7 +78,7 @@ export async function generateJson(
     ? `${endpoint.endsWith('/models') ? endpoint : `${endpoint}/models`}/chat/completions?api-version=${config.apiVersion}`
     : `${endpoint}/openai/deployments/${config.deployment}/chat/completions?api-version=${config.apiVersion}`;
 
-  const authHeaders = await buildAuthHeaders(config);
+  const authHeaders = await buildAuthHeaders(config, isFoundryModelsEndpoint);
   const requestController = new AbortController();
   const timeout = setTimeout(() => requestController.abort(), 120_000);
   const requestSignal = signal
@@ -128,7 +136,7 @@ export async function generateJson(
     if (response.status === 401 || response.status === 403) {
       const authHint =
         config.auth.kind === 'entra'
-          ? 'Verify the Entra identity is signed in and has the "Cognitive Services OpenAI User" role on the resource.'
+          ? `Verify the API host's Entra identity has the "${isFoundryModelsEndpoint ? 'Cognitive Services User' : 'Cognitive Services OpenAI User'}" role on the resource. Signing in to the web app does not grant the API inference access.`
           : 'Verify the Azure OpenAI API key is valid and has not expired.';
       throw new AiGenerationError(
         `Azure OpenAI authorization failed (${response.status}). ${authHint}`,

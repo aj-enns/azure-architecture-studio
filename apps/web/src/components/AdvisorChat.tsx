@@ -166,7 +166,7 @@ export function AdvisorChat({
             {turn.role === 'user' ? (
               turn.content
             ) : turn.failedQuestion ? (
-              <div className="space-y-2 text-xs text-destructive" role="alert">
+              <div className="space-y-2 text-xs leading-relaxed text-foreground" role="alert">
                 <p>{turn.content}</p>
                 <Button variant="outline" size="sm" onClick={() => retry(turn)} disabled={loading}>
                   <RotateCcw size={14} /> Retry
