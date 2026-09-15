@@ -201,6 +201,29 @@ jobs:
             --query properties.outputs -o json)
           echo "webFqdn=$(echo "$outputs" | jq -r .webFqdn.value)" >> "$GITHUB_OUTPUT"
 
+          for app in "$NAME-api" "$NAME-web"; do
+            expectedImage="${{ needs.provision.outputs.acrLoginServer }}/$app:${{ github.sha }}"
+            for attempt in {1..36}; do
+              state=$(az containerapp show \
+                --resource-group "$AZURE_RESOURCE_GROUP" \
+                --name "$app" \
+                --output json)
+              latestRevision=$(echo "$state" | jq -r .properties.latestRevisionName)
+              readyRevision=$(echo "$state" | jq -r .properties.latestReadyRevisionName)
+              runningStatus=$(echo "$state" | jq -r .properties.runningStatus)
+              deployedImage=$(echo "$state" | jq -r .properties.template.containers[0].image)
+              if [[ "$latestRevision" == "$readyRevision" && "$runningStatus" == "Running" && "$deployedImage" == "$expectedImage" ]]; then
+                echo "$app is ready on $latestRevision with $deployedImage"
+                break
+              fi
+              if [[ "$attempt" -eq 36 ]]; then
+                echo "::error::$app did not activate the expected image. latest=$latestRevision ready=$readyRevision status=$runningStatus image=$deployedImage expected=$expectedImage"
+                exit 1
+              fi
+              sleep 5
+            done
+          done
+
       - name: Summary
         run: |
           echo "### Deployed → https://${{ steps.app.outputs.webFqdn }}" >> "$GITHUB_STEP_SUMMARY"

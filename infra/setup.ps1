@@ -13,7 +13,8 @@
       2. Creates the resource group (if missing).
       3. Deploys infra/registry.bicep (ACR + pull identity).
       4. Creates or reuses the Entra web sign-in app registration, its service
-         principal, a client secret, ID-token issuance, and assignment-required.
+            principal, a client secret, ID-token issuance, assignment-required, and
+            tenant-wide consent for the expected sign-in scopes.
       5. Builds both container images in ACR.
       6. Deploys infra/main.bicep with Entra authentication enabled.
       7. Patches the app registration's Easy Auth redirect URI to the deployed
@@ -32,6 +33,13 @@
 
 .EXAMPLE
     ./infra/setup.ps1 -SubscriptionId <sub-id> `
+        -AssignGroups '<security-group-object-id>'
+
+    Deploys without AI and assigns an existing Entra security group as the
+    recommended ongoing access boundary.
+
+.EXAMPLE
+    ./infra/setup.ps1 -SubscriptionId <sub-id> `
         -FoundryEndpoint 'https://acct.services.ai.azure.com/' `
         -FoundryModel 'gpt-4o' `
         -FoundryResourceId '/subscriptions/.../accounts/acct' `
@@ -41,9 +49,9 @@
 
 .NOTES
     Requires: PowerShell 7, Azure CLI, and permission to create resource groups,
-    role assignments, and an Entra app registration (Application Developer or
-    equivalent). Run from the repository root or any location - paths resolve
-    relative to this script.
+    role assignments, an Entra app registration, tenant-wide consent, and
+    Enterprise Application assignments. Run from the repository root or any
+    location - paths resolve relative to this script.
 #>
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '',
     Justification = 'Interactive setup script reports progress to the host.')]
@@ -64,6 +72,8 @@ param(
     [securestring]$EntraClientSecret,
     # UPNs or object ids to assign to the enterprise application.
     [string[]]$AssignUsers,
+    # Object ids or display names of security groups to assign (recommended).
+    [string[]]$AssignGroups,
 
     # --- Optional AI (Microsoft Foundry) ------------------------------------
     [string]$FoundryEndpoint,
@@ -96,6 +106,38 @@ function Assert-LastExit {
     param([string]$What)
     if ($LASTEXITCODE -ne 0) {
         throw "$What failed (az exit code $LASTEXITCODE). Review the error above."
+    }
+}
+
+function Invoke-AzRestJson {
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet('POST', 'PATCH', 'PUT')]
+        [string]$Method,
+
+        [Parameter(Mandatory)]
+        [string]$Uri,
+
+        [Parameter(Mandatory)]
+        [hashtable]$Body,
+
+        [Parameter(Mandatory)]
+        [string]$What
+    )
+
+    $jsonPath = [System.IO.Path]::GetTempFileName()
+    try {
+        $json = $Body | ConvertTo-Json -Depth 10 -Compress
+        [System.IO.File]::WriteAllText(
+            $jsonPath,
+            $json,
+            [System.Text.UTF8Encoding]::new($false))
+        az rest --method $Method --uri $Uri `
+            --headers 'Content-Type=application/json' `
+            --body "@$jsonPath" --output none
+        Assert-LastExit $What
+    } finally {
+        Remove-Item $jsonPath -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -195,11 +237,79 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($spObjectId)) {
 # Idempotent hardening: ID tokens on, assignment required on.
 az ad app update --id $EntraClientId --enable-id-token-issuance true
 Assert-LastExit 'Enable ID token issuance'
-az rest --method PATCH `
-    --uri "https://graph.microsoft.com/v1.0/servicePrincipals/$spObjectId" `
-    --headers 'Content-Type=application/json' `
-    --body '{"appRoleAssignmentRequired": true}' --output none
-Assert-LastExit 'Set assignment-required'
+Invoke-AzRestJson -Method PATCH `
+    -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$spObjectId" `
+    -Body @{ appRoleAssignmentRequired = $true } `
+    -What 'Set assignment-required'
+
+# Assignment-required prevents users from granting their own consent. Grant only
+# the known sign-in scopes on behalf of the tenant; assignments still control
+# which users and groups can sign in.
+$graphAppId = '00000003-0000-0000-c000-000000000000'
+$graphSp = az ad sp show --id $graphAppId --output json | ConvertFrom-Json
+Assert-LastExit 'Look up Microsoft Graph service principal'
+$graphSpObjectId = $graphSp.id
+$consentScopes = @('openid', 'profile', 'email')
+$allowedConsentScopes = @($consentScopes + 'User.Read')
+$requiredResourceAccess = @(az ad app show --id $EntraClientId `
+        --query requiredResourceAccess --output json | ConvertFrom-Json)
+Assert-LastExit 'Read web sign-in application permissions'
+$unexpectedPermissions = [System.Collections.Generic.List[string]]::new()
+foreach ($resourceAccess in $requiredResourceAccess) {
+    foreach ($permissionAccess in @($resourceAccess.resourceAccess)) {
+        $resolvedScopes = @($graphSp.oauth2PermissionScopes | Where-Object {
+                $_.id -eq $permissionAccess.id
+            })
+        if ($resourceAccess.resourceAppId -ne $graphAppId -or
+            $permissionAccess.type -ne 'Scope' -or
+            $resolvedScopes.Count -ne 1 -or
+            $resolvedScopes[0].value -notin $allowedConsentScopes) {
+            $unexpectedPermissions.Add(
+                "$($resourceAccess.resourceAppId)/$($permissionAccess.type)/$($permissionAccess.id)")
+            continue
+        }
+        if ($resolvedScopes[0].value -notin $consentScopes) {
+            $consentScopes += $resolvedScopes[0].value
+        }
+    }
+}
+if ($unexpectedPermissions.Count -gt 0) {
+    throw "The web sign-in registration requests unexpected API permissions: $($unexpectedPermissions -join ', '). Use a dedicated registration or have an administrator review it before granting consent."
+}
+$permissionGrants = az rest --method GET `
+    --uri "https://graph.microsoft.com/v1.0/oauth2PermissionGrants?`$filter=clientId%20eq%20'$spObjectId'" `
+    --query value --output json | ConvertFrom-Json
+Assert-LastExit 'Read delegated permission grants'
+$tenantGrant = @($permissionGrants | Where-Object {
+        $_.consentType -eq 'AllPrincipals' -and $_.resourceId -eq $graphSpObjectId
+    } | Select-Object -First 1)
+
+if ($tenantGrant.Count -eq 0) {
+    Invoke-AzRestJson -Method POST `
+        -Uri 'https://graph.microsoft.com/v1.0/oauth2PermissionGrants' `
+        -Body @{
+            clientId     = $spObjectId
+            consentType  = 'AllPrincipals'
+            principalId  = $null
+            resourceId   = $graphSpObjectId
+            scope        = $consentScopes -join ' '
+        } `
+        -What 'Grant tenant-wide Easy Auth consent'
+    Write-Host 'Granted tenant-wide consent for Easy Auth sign-in scopes.'
+} else {
+    $grantedScopes = @($tenantGrant[0].scope -split '\s+' | Where-Object { $_ })
+    $missingScopes = @($consentScopes | Where-Object { $_ -notin $grantedScopes })
+    if ($missingScopes.Count -gt 0) {
+        $updatedScopes = @($grantedScopes + $missingScopes | Select-Object -Unique) -join ' '
+        Invoke-AzRestJson -Method PATCH `
+            -Uri "https://graph.microsoft.com/v1.0/oauth2PermissionGrants/$($tenantGrant[0].id)" `
+            -Body @{ scope = $updatedScopes } `
+            -What 'Update tenant-wide Easy Auth consent'
+        Write-Host 'Updated tenant-wide consent for Easy Auth sign-in scopes.'
+    } else {
+        Write-Host 'Tenant-wide Easy Auth consent already configured.'
+    }
+}
 
 # Assign the current user (and any -AssignUsers) so sign-in works immediately.
 $assignTargets = [System.Collections.Generic.List[string]]::new()
@@ -213,20 +323,39 @@ foreach ($user in @($AssignUsers)) {
     if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($objectId)) {
         $assignTargets.Add($objectId)
     } else {
-        Write-Warning "Could not resolve user '$user'; assign them manually."
+        throw "Could not resolve user '$user'. For a guest, use its object id or #EXT# user principal name."
     }
 }
+foreach ($group in @($AssignGroups)) {
+    if ([string]::IsNullOrWhiteSpace($group)) { continue }
+    $groupDetails = az ad group show --group $group `
+        --query '{id:id,displayName:displayName,securityEnabled:securityEnabled}' `
+        --output json 2>$null | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($groupDetails.id)) {
+        throw "Could not resolve group '$group'. Prefer its Entra object id."
+    }
+    if (-not $groupDetails.securityEnabled) {
+        throw "Group '$($groupDetails.displayName)' is not security-enabled. Use an Entra security group."
+    }
+    $assignTargets.Add($groupDetails.id)
+}
+$appAssignments = az rest --method GET `
+    --uri "https://graph.microsoft.com/v1.0/servicePrincipals/$spObjectId/appRoleAssignedTo" `
+    --query value --output json | ConvertFrom-Json
+Assert-LastExit 'Read enterprise application assignments'
 foreach ($principalId in ($assignTargets | Select-Object -Unique)) {
-    $body = @{
-        principalId = $principalId
-        resourceId  = $spObjectId
-        appRoleId   = '00000000-0000-0000-0000-000000000000'
-    } | ConvertTo-Json -Compress
-    az rest --method POST `
-        --uri "https://graph.microsoft.com/v1.0/servicePrincipals/$spObjectId/appRoleAssignedTo" `
-        --headers 'Content-Type=application/json' `
-        --body $body --output none 2>$null
-    # A 409/400 means the assignment already exists - safe to ignore.
+    if (@($appAssignments | Where-Object { $_.principalId -eq $principalId }).Count -gt 0) {
+        Write-Host "Enterprise application assignment already exists for $principalId."
+        continue
+    }
+    Invoke-AzRestJson -Method POST `
+        -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$spObjectId/appRoleAssignedTo" `
+        -Body @{
+            principalId = $principalId
+            resourceId  = $spObjectId
+            appRoleId   = '00000000-0000-0000-0000-000000000000'
+        } `
+        -What "Assign enterprise application access to $principalId"
 }
 
 # Obtain a client secret: reuse the supplied one, otherwise generate + append.

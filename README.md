@@ -257,8 +257,11 @@ templates; no local Docker installation is needed for Azure deployment.
 
 Azure deployments require Entra authentication by default. The public web app
 proxies an internal API. Set **Assignment required** on the sign-in enterprise
-application and assign approved users; users do not need their own Azure
-subscription. The application uses the host's managed identity and AI resources.
+application and assign a dedicated security group; manage approved users through
+direct membership in that group. Users do not need their own Azure subscription.
+Adding a user or guest to the tenant does not assign application access. Follow
+[Manage user access](docs/manage-user-access.md) to onboard or remove users. The
+application uses the host's managed identity and AI resources.
 
 Your local `.env` is not loaded by Azure deployment. Supply AI settings through
 the documented Bicep parameters or GitHub Actions variables.

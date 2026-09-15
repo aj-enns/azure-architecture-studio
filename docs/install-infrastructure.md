@@ -13,13 +13,21 @@ For a local-only installation, use [Getting started](getting-started.md).
 into a single idempotent run: it registers providers, creates the resource group,
 deploys the registry and app, creates and configures the Entra "Easy Auth"
 sign-in registration (client secret, ID tokens, assignment-required, your user
-assignment), builds both images, and — after deployment — registers the redirect
-URI automatically. No portal clicks.
+assignment, and tenant-wide sign-in consent), builds both images, and — after
+deployment — registers the redirect URI automatically. No portal clicks.
 
 ```powershell
 git clone https://github.com/aj-enns/azure-architecture-review.git
 Set-Location azure-architecture-review
 ./infra/setup.ps1 -SubscriptionId '<your-subscription-id>'
+```
+
+To assign an existing security group as the recommended application access
+boundary during setup:
+
+```powershell
+./infra/setup.ps1 -SubscriptionId '<your-subscription-id>' `
+  -AssignGroups '<security-group-object-id>'
 ```
 
 Add AI in the same run by passing the Foundry parameters:
@@ -66,8 +74,9 @@ Azure resources incur charges, including when nobody is using the app.
 - **Contributor** plus **User Access Administrator** on the target resource group
   to deploy resources and create role assignments. **Owner** also covers both.
 - Permission to create an Entra app registration, manage its enterprise
-  application, and assign users, or help from your tenant administrator. Azure
-  subscription roles do not automatically grant these directory permissions.
+  application, grant tenant-wide consent, and assign users or groups, or help
+  from your tenant administrator. Azure subscription roles do not automatically
+  grant these directory permissions.
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli),
   [PowerShell 7](https://learn.microsoft.com/powershell/scripting/install/installing-powershell),
   and Git.
@@ -158,10 +167,21 @@ identity and not the optional GitHub deployment identity.
 5. Open the corresponding **Enterprise application** (the **Managed application
    in local directory** link on the registration overview). Under **Properties**,
    set **Assignment required?** to **Yes**, then save.
-6. Under **Users and groups**, assign yourself and the approved users. Group
-   assignment requires appropriate Entra licensing; direct user assignments can
-   be used where group assignment is unavailable. External collaborators must
-   first be invited as guests into this tenant and then assigned access.
+6. Under **Users and groups**, assign a dedicated security group and manage
+  approved users through direct membership in that group. This is the
+  recommended approach. Group assignment requires appropriate Entra licensing;
+  use direct user assignments for bootstrap access or where group assignment is
+  unavailable. External collaborators must first be invited as guests into this
+  tenant and then added to the group or assigned directly.
+7. Under **Security > Permissions**, select **Grant admin consent for
+  &lt;tenant&gt;** and approve only the expected sign-in permissions. This is a
+  one-time tenant setup requirement. Application assignment controls who can
+  sign in; admin consent allows those assigned identities to complete sign-in.
+
+Adding an identity to the tenant and assigning it to the application are
+separate operations. For post-deployment onboarding, guest handling, access
+removal, admin consent, and sign-in troubleshooting, follow
+[Manage user access](manage-user-access.md).
 
 Part 2 adds the **Web** callback URI and enables **ID tokens (used for implicit
 and hybrid flows)**, as required by the
@@ -218,6 +238,7 @@ Before continuing, confirm:
 - The `aar-registry` deployment succeeded and has all five outputs.
 - The sign-in app registration exists and you have its client ID and secret value.
 - Assignment is required and at least your test user is assigned.
+- Tenant-wide admin consent is granted for the expected sign-in scopes.
 - If using AI, the application identity has the required Foundry access.
 
 Continue with **[Deploy the application](deploy-application.md)**. It creates the

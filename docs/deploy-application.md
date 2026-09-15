@@ -414,7 +414,8 @@ expiry and redeploy using its new value (update the GitHub secret for automation
 | `AADSTS70021` / no matching federated credential | Check branch versus environment subject, owner/repo, tenant, and audience |
 | `AADSTS50011` / redirect mismatch | Register the exact HTTPS callback on the correct web registration |
 | Sign-in token or client-secret error | Check ID tokens setting, tenant/client ID, and secret value and expiry |
-| An approved user cannot sign in | Check enterprise application assignment, guest acceptance, consent, and Conditional Access |
+| `AADSTS50105` or an approved user cannot sign in | Follow [Manage user access](manage-user-access.md); tenant membership and Enterprise Application assignment are separate requirements |
+| **Need admin approval** after assignment | Grant tenant-wide consent for the expected sign-in scopes on the Enterprise Application; assignment and consent are separate gates |
 | Web loads but API returns redirects, 502, or 504 | Inspect nginx upstream and forwarded Host routing to internal Container Apps ingress; verify HTTP/HTTPS behavior before widening access |
 | AI is unavailable or returns 401/403 | Check deployed Foundry parameters, runtime identity roles, model availability, and account network restrictions; local `.env` is irrelevant |
 
