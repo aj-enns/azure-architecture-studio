@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ShieldCheck, X } from 'lucide-react';
 import { validateArchitecture, WAF_PILLARS, type WafPillar, type WafSeverity } from '@aar/shared';
 import { Button } from '@/components/ui/Button.js';
+import { PrivacyNotice } from './PrivacyNotice.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
 import { cn } from '@/lib/utils.js';
 
@@ -68,6 +69,7 @@ export function ValidationPanel({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+        <PrivacyNotice action="local" />
         <div className="flex items-center justify-between rounded-md border border-border bg-background p-3">
           <div>
             <div className="text-xs text-muted-foreground">Overall score</div>

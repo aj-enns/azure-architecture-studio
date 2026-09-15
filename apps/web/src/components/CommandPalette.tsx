@@ -6,6 +6,7 @@ import { downloadJson, exportPng, exportSvg } from '@/lib/export.js';
 import { useTheme } from '@/lib/theme.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
 import { useUiStore, type PanelId } from '@/store/uiStore.js';
+import { usePrivacyStore } from '@/lib/privacy.js';
 
 const groupKinds: { kind: GroupKind; label: string }[] = [
   { kind: 'subscription', label: 'Subscription' },
@@ -96,6 +97,7 @@ export function CommandPalette({
   const toggleSlaOverlay = useUiStore((s) => s.toggleSlaOverlay);
   const toggleCostOverlay = useUiStore((s) => s.toggleCostOverlay);
   const { toggleTheme } = useTheme();
+  const iacImportEnabled = usePrivacyStore((state) => state.health?.iacImportEnabled === true);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -170,10 +172,14 @@ export function CommandPalette({
               New diagram
             </Item>
             <Item onSelect={() => run(() => void pickAndImport(importJson))}>Import JSON…</Item>
-            <Item onSelect={() => run(() => void pickAndImportArm(load))}>
-              Import ARM/Bicep template (JSON)…
-            </Item>
-            <Item onSelect={() => run(onOpenRepositoryImport)}>Import Git repository…</Item>
+            {iacImportEnabled && (
+              <Item onSelect={() => run(() => void pickAndImportArm(load))}>
+                Import ARM/Bicep template (JSON)…
+              </Item>
+            )}
+            {iacImportEnabled && (
+              <Item onSelect={() => run(onOpenRepositoryImport)}>Import Git repository…</Item>
+            )}
             <Item onSelect={() => run(() => void importAzureResourceGroup(load))}>
               Import from Azure (resource group)…
             </Item>

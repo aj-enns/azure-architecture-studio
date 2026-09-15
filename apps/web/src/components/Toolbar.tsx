@@ -27,6 +27,7 @@ import { useTheme } from '@/lib/theme.js';
 import { downloadJson, exportPng, exportSvg } from '@/lib/export.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
 import { useUiStore, type PanelId } from '@/store/uiStore.js';
+import { usePrivacyStore } from '@/lib/privacy.js';
 
 /** Analysis lenses that share the right rail — rendered as a segmented tab strip. */
 const insightLenses: { id: PanelId; label: string; icon: LucideIcon; title: string }[] = [
@@ -45,6 +46,7 @@ export function Toolbar({
   onOpenRepositoryImport: () => void;
 }): JSX.Element {
   const { theme, toggleTheme } = useTheme();
+  const iacImportEnabled = usePrivacyStore((state) => state.health?.iacImportEnabled === true);
   const name = useDiagramStore((s) => s.diagram.metadata.name);
   const setName = useDiagramStore((s) => s.setName);
   const reset = useDiagramStore((s) => s.reset);
@@ -85,7 +87,7 @@ export function Toolbar({
   };
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-card px-3">
+    <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-border bg-card px-3 py-1">
       <span className="text-sm font-semibold text-primary">Azure Architecture Review</span>
       <input
         aria-label="Diagram name"
@@ -116,12 +118,17 @@ export function Toolbar({
         <DropdownItem onSelect={() => fileRef.current?.click()}>
           <Upload size={16} /> Import JSON…
         </DropdownItem>
-        <DropdownItem onSelect={() => armFileRef.current?.click()}>
-          <FileCode2 size={16} /> Import ARM/Bicep template (JSON)…
-        </DropdownItem>
-        <DropdownItem onSelect={onOpenRepositoryImport}>
-          <Folder size={16} /> Import Git repository…
-        </DropdownItem>
+        {iacImportEnabled && (
+          <DropdownItem onSelect={() => armFileRef.current?.click()}>
+            <FileCode2 size={16} /> Import ARM/Bicep template (JSON)…
+          </DropdownItem>
+        )}
+        {iacImportEnabled && (
+          <DropdownItem onSelect={onOpenRepositoryImport}>
+            <Folder size={16} /> Import Git repository…
+          </DropdownItem>
+        )}
+        {!iacImportEnabled && <MenuLabel>IaC import requires self-hosted mode</MenuLabel>}
         <DropdownItem onSelect={() => void handleImportAzure()}>
           <Cloud size={16} /> Import from Azure (resource group)…
         </DropdownItem>
@@ -141,7 +148,7 @@ export function Toolbar({
         </DropdownItem>
       </DropdownMenu>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex flex-wrap items-center gap-2">
         {/* Hero action: AI-assisted create / edit. */}
         <Button
           variant={activePanel === 'ai' ? 'default' : 'secondary'}

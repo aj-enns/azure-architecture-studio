@@ -3,6 +3,54 @@ import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
 
 describe('api', () => {
+  it('blocks both IaC import routes in hosted mode before parsing or fetching', async () => {
+    const app = await buildApp(loadConfig({ IAC_IMPORT_ENABLED: 'false' }), {
+      importRepo: async () => {
+        throw new Error('Must not fetch');
+      },
+    });
+    try {
+      const health = await app.inject({ method: 'GET', url: '/healthz' });
+      expect(health.json()).toMatchObject({
+        iacImportEnabled: false,
+        privacy: { mode: 'hosted', aiHost: null, learnHost: 'learn.microsoft.com' },
+      });
+      for (const url of ['/api/import/repo', '/api/import/arm']) {
+        const result = await app.inject({
+          method: 'POST',
+          url,
+          headers: { 'content-type': 'application/json' },
+          payload: '{',
+        });
+        expect(result.statusCode).toBe(403);
+        expect(result.json().error).toBe('import_disabled');
+      }
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('exposes destination hosts without endpoint credentials or paths', async () => {
+    const app = await buildApp(
+      loadConfig({
+        AZURE_OPENAI_ENDPOINT: 'https://user:password@example.com/private?secret=value',
+        AZURE_OPENAI_DEPLOYMENT: 'model',
+        LEARN_GROUNDING_ENABLED: 'false',
+      }),
+    );
+    try {
+      const health = await app.inject({ method: 'GET', url: '/healthz' });
+      expect(health.json()).toMatchObject({
+        iacImportEnabled: true,
+        privacy: { mode: 'self-hosted', aiHost: 'example.com', learnHost: null },
+      });
+      expect(health.body).not.toContain('password');
+      expect(health.body).not.toContain('secret');
+    } finally {
+      await app.close();
+    }
+  });
+
   it('reports healthy on /healthz with AI unconfigured', async () => {
     const config = loadConfig({ PORT: '8080' } as NodeJS.ProcessEnv);
     const app = await buildApp(config);

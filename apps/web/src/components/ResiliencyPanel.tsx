@@ -12,6 +12,7 @@ import {
   type SlaProfile,
 } from '@aar/shared';
 import { Button } from '@/components/ui/Button.js';
+import { PrivacyNotice } from './PrivacyNotice.js';
 import { analyzeDiagramResiliency, type ResiliencyResult } from '@/lib/api.js';
 import { downloadCsv } from '@/lib/export.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
@@ -138,6 +139,8 @@ export function ResiliencyPanel({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+        <PrivacyNotice action="local" />
+        <PrivacyNotice action="resiliency" />
         <div className="rounded-md border border-border bg-background p-3">
           <div className="flex items-center justify-between">
             <div>

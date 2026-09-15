@@ -153,7 +153,26 @@ export async function buildApp(
   app.get('/healthz', { config: { rateLimit: false } }, async () => ({
     status: 'ok',
     aiConfigured: config.azureOpenAI !== null,
+    iacImportEnabled: config.iacImportEnabled,
+    privacy: {
+      mode: config.iacImportEnabled ? 'self-hosted' : 'hosted',
+      aiHost: config.azureOpenAI ? new URL(config.azureOpenAI.endpoint).host : null,
+      learnHost: config.learn.enabled ? new URL(config.learn.endpoint).host : null,
+    },
   }));
+
+  app.addHook('onRequest', async (request, reply) => {
+    const pathname = request.url.split('?')[0];
+    if (
+      !config.iacImportEnabled &&
+      (pathname === '/api/import/repo' || pathname === '/api/import/arm')
+    ) {
+      return reply.code(403).send({
+        error: 'import_disabled',
+        message: 'IaC import is only available in self-hosted mode.',
+      });
+    }
+  });
 
   // The Azure service catalog, served to the web app as a single source of truth.
   app.get('/api/catalog', async () => ({ services: azureServiceCatalog }));

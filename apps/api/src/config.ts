@@ -17,6 +17,10 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  IAC_IMPORT_ENABLED: z
+    .enum(['true', 'false', '1', '0'])
+    .default('true')
+    .transform((value) => value === 'true' || value === '1'),
 
   // Bring-your-own Microsoft Foundry model inference (optional).
   AZURE_FOUNDRY_ENDPOINT: z.string().url().optional().or(z.literal('')),
@@ -66,6 +70,7 @@ export interface AppConfig {
   port: number;
   host: string;
   corsOrigin: string;
+  iacImportEnabled: boolean;
   rateLimit: { max: number; timeWindowMs: number };
   /**
    * Present when Azure OpenAI endpoint + deployment are provided. Auth is by API
@@ -91,6 +96,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     port: env.PORT,
     host: env.HOST,
     corsOrigin: env.CORS_ORIGIN,
+    iacImportEnabled: env.IAC_IMPORT_ENABLED,
     rateLimit: {
       max: env.RATE_LIMIT_MAX,
       timeWindowMs: env.RATE_LIMIT_WINDOW_MS,

@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { FolderOpen, Github, Link, X } from 'lucide-react';
-import { isScannableIacPath } from '@aar/shared';
 import { Button } from '@/components/ui/Button.js';
-import { importRepoFiles, importRepoFromGitHub } from '@/lib/api.js';
+import { importRepoFromGitHub } from '@/lib/api.js';
 import { cn } from '@/lib/utils.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
+import {
+  localPath,
+  parseLocalFolder,
+  selectFolderFiles,
+  type FolderSelection,
+} from '@/lib/folderImport.js';
+import { usePrivacyStore } from '@/lib/privacy.js';
+import { PrivacyNotice } from './PrivacyNotice.js';
 
 type ImportSource = 'url' | 'folder';
 
@@ -21,6 +28,12 @@ export function RepositoryImportDialog({
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selection, setSelection] = useState<FolderSelection | null>(null);
+  const enabled = usePrivacyStore((state) => state.health?.iacImportEnabled === true);
+
+  useEffect(() => {
+    if (!open) setSelection(null);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -31,7 +44,7 @@ export function RepositoryImportDialog({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [loading, onClose, open]);
 
-  if (!open) return null;
+  if (!open || !enabled) return null;
 
   const importUrl = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -52,34 +65,15 @@ export function RepositoryImportDialog({
     }
   };
 
-  const importFolder = async (fileList: FileList): Promise<void> => {
-    const selected = Array.from(fileList);
-    const repositoryName = selected[0]
-      ? (
-          (selected[0] as File & { webkitRelativePath?: string }).webkitRelativePath ||
-          selected[0].name
-        ).split('/')[0]
-      : undefined;
-    const candidates = selected.filter((file) =>
-      isScannableIacPath(
-        (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name,
-      ),
-    );
-    if (candidates.length === 0) {
-      setError('No Bicep, Terraform, or ARM files were found in that folder.');
-      return;
-    }
-
+  const importFolder = async (): Promise<void> => {
+    if (!selection?.files.length) return;
     setLoading(true);
     setError(null);
     try {
-      const files = await Promise.all(
-        candidates.slice(0, 500).map(async (file) => ({
-          path: (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name,
-          content: await file.text(),
-        })),
-      );
-      load(await importRepoFiles(files, repositoryName));
+      load(await parseLocalFolder(selection));
+      usePrivacyStore.setState({
+        lastTransfer: `Folder import: parsed ${selection.files.length} files locally. 0 file-content bytes uploaded. Later AI actions can send the derived diagram.`,
+      });
       onClose();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Repository import failed.');
@@ -104,7 +98,7 @@ export function RepositoryImportDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="repository-import-title"
-        className="w-full max-w-md rounded-lg border border-border bg-popover text-popover-foreground shadow-2xl"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-popover text-popover-foreground shadow-2xl"
       >
         <header className="flex items-center gap-3 border-b border-border px-5 py-4">
           <Github size={20} className="text-primary" />
@@ -176,6 +170,7 @@ export function RepositoryImportDialog({
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
                 disabled={loading}
               />
+              <PrivacyNotice action="github" />
               <Button type="submit" className="mt-4 w-full" disabled={loading || !url.trim()}>
                 <Github size={16} /> {loading ? 'Importing…' : 'Import repository'}
               </Button>
@@ -185,6 +180,10 @@ export function RepositoryImportDialog({
             </form>
           ) : (
             <div>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Your browser may say "upload" when selecting a folder. Selection only grants local
+                read access; this action does not upload file contents.
+              </p>
               <Button
                 type="button"
                 variant="outline"
@@ -195,10 +194,46 @@ export function RepositoryImportDialog({
                 <FolderOpen size={24} />
                 {loading ? 'Importing…' : 'Choose repository folder'}
               </Button>
-              <p className="mt-3 text-center text-xs text-muted-foreground">
-                Bicep, Terraform, and ARM templates are imported as a best-effort starting point —
-                review and refine after import.
+              <p className="mt-3 text-xs text-muted-foreground">
+                Only .bicep, .tf and candidate ARM JSON files are read, after you confirm below.
+                Other file contents and dependency/build folders are ignored. Filename filtering is
+                not secret detection.
               </p>
+              <PrivacyNotice action="local" />
+              {selection && (
+                <div className="mt-3 text-xs">
+                  <p role="status">
+                    {selection.files.length} files selected ({selection.bytes.toLocaleString()}{' '}
+                    bytes). {selection.ignored} ignored; {selection.limited} skipped by limits.
+                  </p>
+                  <p className="mt-1 text-muted-foreground">
+                    Limits: 500 files, 2 MB per file, 20 MB total. Candidate JSON files without ARM
+                    resources produce no diagram nodes.
+                  </p>
+                  <ul
+                    aria-label="Selected IaC files"
+                    className="my-3 max-h-40 overflow-y-auto border-y border-border py-2"
+                  >
+                    {selection.files.map((file) => (
+                      <li key={localPath(file)} className="break-all py-0.5">
+                        {localPath(file)}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    className="w-full"
+                    disabled={loading || selection.files.length === 0}
+                    onClick={() => void importFolder()}
+                  >
+                    <FolderOpen size={16} />{' '}
+                    {loading ? 'Parsing locally...' : 'Parse selected files locally'}
+                  </Button>
+                  <p className="mt-2 text-muted-foreground">
+                    0 file-content bytes uploaded. The resulting diagram may contain sensitive names
+                    and properties; later AI actions can send it.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -218,7 +253,10 @@ export function RepositoryImportDialog({
           multiple
           className="hidden"
           onChange={(event) => {
-            if (event.target.files?.length) void importFolder(event.target.files);
+            if (event.target.files?.length) {
+              setSelection(selectFolderFiles(Array.from(event.target.files)));
+              setError(null);
+            }
             event.target.value = '';
           }}
         />

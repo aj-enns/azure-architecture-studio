@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, Loader2, MessageCircle, PencilLine, Sparkles, X } from 'lucide-react';
 import { AdvisorChat } from '@/components/AdvisorChat.js';
 import { Button } from '@/components/ui/Button.js';
+import { PrivacyNotice } from './PrivacyNotice.js';
 import {
   fetchHealth,
   fetchReviewModels,
@@ -146,7 +147,9 @@ export function AiPanel({
 
   return (
     <aside
-      className={open ? 'flex w-96 shrink-0 flex-col border-l border-border bg-card' : 'hidden'}
+      className={
+        open ? 'flex w-96 max-w-[100vw] shrink-0 flex-col border-l border-border bg-card' : 'hidden'
+      }
     >
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <Sparkles size={16} className="text-primary" />
@@ -231,6 +234,9 @@ export function AiPanel({
         </div>
       )}
 
+      <div className="px-3">
+        <PrivacyNotice action={assistantMode === 'ask' ? 'advise' : image ? 'image' : 'generate'} />
+      </div>
       <AdvisorChat
         active={open && assistantMode === 'ask'}
         healthState={healthState}

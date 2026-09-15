@@ -9,7 +9,8 @@ Architecture Review Board (ARB) process. Draw Azure architectures on an
 interactive canvas, generate them from natural language or a screenshot, or
 import them from Infrastructure as Code or a live subscription. Then validate the
 design against Well-Architected principles, model resiliency and cost, and export
-Bicep or Terraform — all inside your own environment.
+Bicep or Terraform. Run it in your own environment, or configure a hosted demo
+for diagram-based exploration without repository or IaC import.
 
 > Inspired by the Azure Architecture Diagram Builder, rebuilt open source with a
 > significantly upgraded UI and bring-your-own AI so teams can self-host it for
@@ -30,6 +31,78 @@ Bicep or Terraform — all inside your own environment.
 - **Import** — from ARM/Bicep templates, a public Git repository, or a live Azure resource group, as a best-effort starting point to review and refine.
 - **Bring-your-own AI** — Microsoft Foundry or Azure OpenAI with keyless Entra ID auth. AI is optional; every other feature works without it.
 - **Export** — save diagrams as PNG, SVG, or JSON.
+
+## Two ways to run
+
+This Microsoft Global Hackathon project supports two configurations from one
+codebase. A hosted instance can be offered free to visitors; its operator still
+pays for hosting and any configured AI usage. No public service availability or
+free AI quota is implied by this repository.
+
+| | Hosted demo | Self-hosted |
+| --- | --- | --- |
+| Intended use | Explore with non-confidential diagrams, images and chat | Review organizational architectures and IaC in an approved environment |
+| Canvas, local validation, costs, resiliency baseline | Available | Available |
+| AI chat, image transcription and review | Uses the operator's configured AI endpoint | Uses your configured AI endpoint |
+| Repository/folder and ARM template import | Disabled | Enabled |
+| API setting | `IAC_IMPORT_ENABLED=false` | `IAC_IMPORT_ENABLED=true` (default) |
+
+Set the flag on the API process, or in `.env` when using Docker Compose, and
+restart/recreate the API. Hosted mode hides IaC import controls and rejects
+`/api/import/repo` and `/api/import/arm` before parsing request bodies. This is
+a feature gate, not a content filter: users could still paste source into chat
+or include sensitive information in an image. **Do not submit confidential
+material to a shared demo.** Use an approved self-hosted deployment for IaC.
+
+Self-hosting gives the organization control of the app, identity and configured
+AI services. It does **not** automatically guarantee tenant isolation, private
+networking, data residency or zero external traffic. Verify endpoint ownership,
+model deployment/data-processing settings, access controls, logs and egress
+policy. Keep authentication and least-privilege identity permissions in place;
+the mode flag does not change them. In particular, live Azure import uses the
+server's Azure identity, not the visitor's, so a demo identity must not have
+access to confidential resource inventories.
+
+### What leaves your computer
+
+The app displays data-sharing notices, configured destination hosts, and a
+persistent privacy status. Actions involving onward transfers ask for consent
+before sending the action payload. ARM upload also asks before sending source
+to the app server. You can remember a choice per action and destination, or
+clear it with **Reset permissions**. A destination or disclosure change prompts
+again. These browser controls do not authorize or audit direct API clients.
+
+| Action | Data movement |
+| --- | --- |
+| Draw, import/export diagram JSON, export PNG/SVG, baseline validation/cost/resiliency | Local browser processing; no action payload uploaded |
+| Local folder import (self-hosted configuration) | Previews paths and sizes, then reads selected IaC locally; **0 file-content bytes uploaded** |
+| ARM template import | Full template and filename go to the app server for deterministic parsing |
+| GitHub URL import | URL goes to the app server; it fetches matching IaC contents from `api.github.com` and `raw.githubusercontent.com` |
+| AI prompt/modify, advisor and review | Prompt/message, relevant chat history and/or diagram go through the app server to its configured AI host |
+| Diagram image import | Selected image and accompanying prompt go through the app server to its configured AI host; no Learn grounding for this action |
+| Learn grounding | Derived search queries, potentially including prompt text or architecture names, go from the server to the configured Learn host (normally `learn.microsoft.com`) |
+| Grounded resiliency refresh | Diagram goes to the app server; grounding can call the configured AI and Learn services |
+| Generate IaC | Diagram and target format go to the app server; deterministic processing stays in that deployment |
+| Azure resource-group import | Subscription ID and resource-group name go to the app server, which uses its own Azure identity to query Azure Resource Graph; resource metadata returns to the browser |
+
+The transfer status reports browser request-body bytes, **not** measured total
+network traffic or verified downstream delivery. Health checks, service/model
+discovery, authentication and ordinary page/asset requests still make network
+requests. Server-side Azure authentication/model discovery can also contact
+Microsoft identity and management services. No credentials are exposed in the
+privacy status. Labels describe the configured routes, not an independent audit
+of the deployment. Diagrams, resource names, properties and chat are potentially
+sensitive even when raw source files are not included. AI calls pass through the
+app backend; they are not direct browser-to-model calls.
+
+Folder selection may trigger a browser-owned "upload" warning. The application
+does not upload the folder: it previews matching `.bicep`, `.tf` and candidate
+ARM JSON files before reading them locally. Other file contents and common
+dependency/build folders are ignored. Limits are 500 files, 2 MB per file and
+20 MB total, with skip counts shown before parsing. Filename filtering is not
+secret scanning. A later AI action can send the derived diagram. IaC imports
+are best-effort resource/dependency diagrams, not verified runtime traffic maps.
+The File System Access API picker remains deferred.
 
 ## Quick start
 
@@ -125,6 +198,9 @@ leave them blank to run without AI:
 
 | Variable                     | Description                                                               |
 | ---------------------------- | ------------------------------------------------------------------------- |
+| `IAC_IMPORT_ENABLED` | `false` or `0` for hosted demo; `true` or `1` for self-hosted imports (default `true`). Set on the API, not the browser. |
+| `LEARN_GROUNDING_ENABLED` | Set `false` to disable outbound Learn grounding/search (default enabled). |
+| `LEARN_MCP_ENDPOINT` | Learn MCP destination (default `https://learn.microsoft.com/api/mcp`). |
 | `AZURE_FOUNDRY_ENDPOINT`     | Microsoft Foundry resource endpoint, e.g. `https://<resource>.services.ai.azure.com` |
 | `AZURE_FOUNDRY_MODEL`        | Foundry model/deployment name, e.g. `gpt-5-mini`                          |
 | `AZURE_FOUNDRY_RESOURCE_ID`  | Optional ARM resource ID used to discover compatible review deployments   |
@@ -186,6 +262,10 @@ subscription. The application uses the host's managed identity and AI resources.
 
 Your local `.env` is not loaded by Azure deployment. Supply AI settings through
 the documented Bicep parameters or GitHub Actions variables.
+
+For a hosted demo, pass `iacImportEnabled=false` to the deployment of
+`infra/main.bicep` (default `true`). Keep that value in subsequent deployments
+to avoid re-enabling imports. This parameter does not disable Entra authentication.
 
 ### CI/CD (GitHub Actions)
 

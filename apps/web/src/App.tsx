@@ -14,6 +14,7 @@ import { StatusBar } from '@/components/StatusBar.js';
 import { ValidationPanel } from '@/components/ValidationPanel.js';
 import { Toolbar } from '@/components/Toolbar.js';
 import { useUiStore } from '@/store/uiStore.js';
+import { PrivacyCenter } from '@/components/PrivacyNotice.js';
 
 export function App(): JSX.Element {
   const [commandOpen, setCommandOpen] = useState(false);
@@ -43,6 +44,7 @@ export function App(): JSX.Element {
           <IacPanel open={activePanel === 'iac'} onClose={closePanel} />
           {showProperties && <PropertiesPanel />}
         </div>
+        <PrivacyCenter />
         <StatusBar />
       </ReactFlowProvider>
       <CommandPalette

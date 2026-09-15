@@ -7,6 +7,7 @@ import {
   type ServiceCategory,
 } from '@aar/shared';
 import { Button } from '@/components/ui/Button.js';
+import { PrivacyNotice } from './PrivacyNotice.js';
 import { downloadCsv } from '@/lib/export.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
 import { cn } from '@/lib/utils.js';
@@ -128,6 +129,7 @@ export function CostPanel({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+        <PrivacyNotice action="local" />
         <div className="rounded-md border border-border bg-background p-3">
           <div className="flex items-baseline justify-between">
             <span className="text-xs text-muted-foreground">Total ({cost.region})</span>

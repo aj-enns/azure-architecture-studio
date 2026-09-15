@@ -4,6 +4,7 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
 import { Button } from '@/components/ui/Button.js';
+import { PrivacyNotice } from './PrivacyNotice.js';
 import {
   fetchHealth,
   fetchReviewModels,
@@ -132,7 +133,7 @@ export function ReviewPanel({
   const empty = diagram.nodes.length === 0;
 
   return (
-    <aside className="flex w-96 shrink-0 flex-col border-l border-border bg-card">
+    <aside className="flex w-96 max-w-[100vw] shrink-0 flex-col border-l border-border bg-card">
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <ClipboardCheck size={16} className="text-primary" />
         <span className="text-sm font-semibold">Architecture review</span>
@@ -211,6 +212,7 @@ export function ReviewPanel({
           </div>
         )}
 
+        <PrivacyNotice action="review" grounded={grounded} />
         <Button
           onClick={() => void runReview()}
           disabled={loading || empty || healthState !== 'configured'}

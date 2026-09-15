@@ -2,6 +2,7 @@ import { useDeferredValue, useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Download, FileCode2, Info, RefreshCw, X } from 'lucide-react';
 import type { IacBundle, IacFile, IacTarget } from '@aar/shared';
 import { Button } from '@/components/ui/Button.js';
+import { PrivacyNotice } from './PrivacyNotice.js';
 import { generateIac } from '@/lib/api.js';
 import { downloadText } from '@/lib/export.js';
 import { cn } from '@/lib/utils.js';
@@ -54,7 +55,7 @@ export function IacPanel({
   const selectedFile = bundle?.files.find((file) => file.path === selectedPath) ?? null;
 
   return (
-    <aside className="flex w-[30rem] shrink-0 flex-col border-l border-border bg-card">
+    <aside className="flex w-[30rem] max-w-[100vw] shrink-0 flex-col border-l border-border bg-card">
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <FileCode2 size={16} className="text-primary" />
         <span className="text-sm font-semibold">Infrastructure as Code</span>
@@ -71,6 +72,7 @@ export function IacPanel({
 
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="space-y-3 border-b border-border p-3">
+          <PrivacyNotice action="iac" />
           <div
             className="flex h-9 w-full rounded-md border border-border bg-muted p-1"
             aria-label="IaC target"

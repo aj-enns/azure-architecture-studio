@@ -6,17 +6,13 @@ import {
   type ResiliencyReport,
   type SlaProfile,
 } from '@aar/shared';
+import { privacyFetch, refreshPrivacy, type PrivacyHealth } from './privacy.js';
 
-export interface HealthStatus {
-  status: string;
-  aiConfigured: boolean;
-}
+export type HealthStatus = PrivacyHealth;
 
 /** Returns API health, including whether AI generation is configured. */
 export async function fetchHealth(signal?: AbortSignal): Promise<HealthStatus> {
-  const res = await fetch('/healthz', { signal });
-  if (!res.ok) throw new Error(`Health check failed (${res.status})`);
-  return (await res.json()) as HealthStatus;
+  return refreshPrivacy(signal);
 }
 
 interface ApiError {
@@ -44,7 +40,7 @@ export async function generateDiagram(
 
   let res: Response;
   try {
-    res = await fetch('/api/generate', {
+    res = await privacyFetch('generate', '/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -90,7 +86,7 @@ export async function generateDiagram(
  * (no model). Throws with a human-readable message on failure.
  */
 export async function importArmTemplate(template: unknown, name?: string): Promise<Diagram> {
-  const res = await fetch('/api/import/arm', {
+  const res = await privacyFetch('arm', '/api/import/arm', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ template, ...(name ? { name } : {}) }),
@@ -115,7 +111,7 @@ export async function importFromAzure(
   subscriptionId: string,
   resourceGroup: string,
 ): Promise<Diagram> {
-  const res = await fetch('/api/import/azure', {
+  const res = await privacyFetch('azure', '/api/import/azure', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ subscriptionId, resourceGroup }),
@@ -132,31 +128,9 @@ export async function importFromAzure(
   return parsed.data;
 }
 
-/** Imports a repository's IaC files (Bicep/Terraform/ARM) into a diagram. */
-export async function importRepoFiles(
-  files: { path: string; content: string }[],
-  name?: string,
-): Promise<Diagram> {
-  const res = await fetch('/api/import/repo', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ files, ...(name ? { name } : {}) }),
-  });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as ApiError | null;
-    throw new Error(body?.message ?? `Repository import failed (${res.status})`);
-  }
-  const body = (await res.json()) as { diagram?: unknown };
-  const parsed = safeParseDiagram(body.diagram);
-  if (!parsed.success) {
-    throw new Error('The API returned an invalid diagram.');
-  }
-  return parsed.data;
-}
-
 /** Imports a public GitHub repository's IaC into a diagram (server fetches it). */
 export async function importRepoFromGitHub(githubUrl: string): Promise<Diagram> {
-  const res = await fetch('/api/import/repo', {
+  const res = await privacyFetch('github', '/api/import/repo', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ githubUrl }),
@@ -191,7 +165,7 @@ export async function generateDiagramFromImage(
 
   let res: Response;
   try {
-    res = await fetch('/api/generate/image', {
+    res = await privacyFetch('image', '/api/generate/image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -245,7 +219,7 @@ export async function analyzeDiagramResiliency(
   diagram: Diagram,
   options?: { grounded?: boolean; signal?: AbortSignal },
 ): Promise<ResiliencyResult> {
-  const res = await fetch('/api/resiliency', {
+  const res = await privacyFetch('resiliency', '/api/resiliency', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ diagram, grounded: options?.grounded ?? false }),
@@ -295,7 +269,7 @@ export async function askArchitecture(
 
   let res: Response;
   try {
-    res = await fetch('/api/advise', {
+    res = await privacyFetch('advise', '/api/advise', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -378,7 +352,7 @@ export async function reviewDiagram(
 
   let res: Response;
   try {
-    res = await fetch('/api/review', {
+    res = await privacyFetch('review', '/api/review', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -411,7 +385,7 @@ export async function reviewDiagram(
 
 /** Generate a deterministic IaC bundle for the current diagram. */
 export async function generateIac(diagram: Diagram, target: IacTarget): Promise<IacBundle> {
-  const res = await fetch('/api/iac', {
+  const res = await privacyFetch('iac', '/api/iac', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ diagram, target }),
