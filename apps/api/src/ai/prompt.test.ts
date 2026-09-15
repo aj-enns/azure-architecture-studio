@@ -9,13 +9,14 @@ describe('image prompt builders', () => {
     expect(prompt).toContain(azureServiceCatalog[0]!.id);
   });
 
-  it('keeps unmapped items as "external" in faithful mode, maps them in best-practice', () => {
-    const faithful = buildImageSystemPrompt('faithful');
-    expect(faithful).toContain('"external"');
-    expect(faithful).toContain('Never drop a');
-
-    const bestPractice = buildImageSystemPrompt('bestPractice');
-    expect(bestPractice).toContain('nearest Azure equivalent');
+  it('keeps named non-Azure products as "external" in both modes', () => {
+    for (const mode of ['faithful', 'bestPractice'] as const) {
+      const prompt = buildImageSystemPrompt(mode);
+      expect(prompt).toContain('"external"');
+      expect(prompt).toContain('Never drop a');
+      // A named product must not be mapped to an Azure equivalent.
+      expect(prompt).toContain('Salesforce');
+    }
   });
 
   it('includes user guidance when provided', () => {

@@ -10,6 +10,23 @@ import type { Diagram } from '@aar/shared';
  */
 export type DesignMode = 'faithful' | 'bestPractice';
 
+/**
+ * Mapping rule shared by text and image generation: look up the best-aligned
+ * Azure service for a generic capability, but keep a NAMED non-Azure product or
+ * a known on-prem / other-cloud system as an explicit `external` node rather
+ * than guessing an Azure equivalent.
+ */
+const NON_AZURE_RULE = `- Use ONLY these catalog service ids for "serviceId", or the literal "external"
+  for a non-Azure component. Never invent other ids.
+- Map a component to the best-aligned catalog Azure service when it is a generic,
+  unbranded capability (e.g. "a SQL database" -> sql, "a message queue" ->
+  service-bus, "an API gateway" -> api-management). But when the user names a
+  specific non-Azure PRODUCT or BRAND (e.g. Salesforce, MongoDB Atlas, Okta,
+  Snowflake, Kafka, GitHub, SAP, Oracle) or a system that is clearly
+  on-premises or in another cloud, do NOT guess an Azure equivalent: keep it as a
+  node with "serviceId" set to exactly "external" and use its name as the
+  "label".`;
+
 export function buildSystemPrompt(grounding?: string, mode: DesignMode = 'bestPractice'): string {
   const catalog = azureServiceCatalog
     .map((s) => `- ${s.id} (${s.name}, ${s.category}): ${s.description}`)
@@ -38,7 +55,7 @@ export function buildSystemPrompt(grounding?: string, mode: DesignMode = 'bestPr
 architecture diagram as a JSON object matching the provided schema.
 
 Rules:
-- Use ONLY these catalog service ids for "serviceId". Never invent ids.
+${NON_AZURE_RULE}
 ${scopeRules}
 - Give each node a short, human "label" (e.g. "orders-api", "primary-db").
 - Use groups to reflect real containment when it helps: resourceGroup for a
@@ -84,8 +101,9 @@ export function summarizeDiagram(diagram: Diagram): string {
 /**
  * System prompt for image-to-diagram. The model transcribes an existing
  * architecture diagram image into the schema, mapping drawn boxes to catalog
- * service ids (nearest Azure equivalent for non-Azure elements; the server
- * drops anything unmappable — ADR-0010).
+ * service ids (best-aligned Azure service for generic elements; a named
+ * non-Azure product or on-prem/other-cloud system stays an explicit `external`
+ * node — ADR-0010).
  */
 export function buildImageSystemPrompt(mode: DesignMode = 'faithful'): string {
   const catalog = azureServiceCatalog
@@ -100,18 +118,14 @@ export function buildImageSystemPrompt(mode: DesignMode = 'faithful'): string {
   competent Azure architect would include to make it a Well-Architected
   baseline (managed identity, Key Vault, Application Insights, Log Analytics).`;
 
-  const nonAzureRule =
-    mode === 'faithful'
-      ? `- Map a component to an Azure service ONLY when it clearly IS that Azure
-  service (identify by icon and label). For every other component that has no
-  Azure equivalent (third-party SaaS, other clouds, on-premises systems, a
-  browser or client, external data sources), KEEP it as a node with "serviceId"
+  const nonAzureRule = `- Identify Azure services by their icon and label and map them to the matching
+  catalog id; map a generic, unbranded capability to the best-aligned catalog
+  service. But when a box is a NAMED non-Azure product or brand (e.g. Salesforce,
+  MongoDB Atlas, Okta, Snowflake, Kafka, GitHub, SAP, Oracle), or clearly an
+  on-premises / other-cloud system, a browser or client, or an external data
+  source, do NOT guess an Azure equivalent: KEEP it as a node with "serviceId"
   set to exactly "external" and use its drawn text as the "label". Never drop a
-  component.`
-      : `- Map each drawn component to the closest catalog service. Identify Azure
-  services by their icon and label. For non-Azure elements (e.g. third-party
-  SaaS, CDNs, on-premises, other clouds), map to the nearest Azure equivalent
-  when one clearly fits; otherwise omit it rather than guessing.`;
+  component.`;
 
   return `You are an Azure solution architect. Transcribe the architecture diagram in
 the provided image into a JSON object matching the provided schema. Read the

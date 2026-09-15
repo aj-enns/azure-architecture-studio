@@ -1,5 +1,5 @@
 import type { ServiceCategory } from '@aar/shared';
-import { Cloud, UserRound } from 'lucide-react';
+import { Box, Cloud, UserRound } from 'lucide-react';
 import { azureIconUrl, categoryColor, iconForCategory } from '@/lib/icons.js';
 import { cn } from '@/lib/utils.js';
 
@@ -7,6 +7,8 @@ interface ServiceIconProps {
   category: ServiceCategory;
   /** Catalog `icon` slug; used to look up the official Azure SVG. */
   slug?: string;
+  /** True for a non-Azure component: render a neutral generic glyph. */
+  external?: boolean;
   size?: number;
   className?: string;
 }
@@ -18,9 +20,13 @@ interface ServiceIconProps {
 export function ServiceIcon({
   category,
   slug,
+  external,
   size = 18,
   className,
 }: ServiceIconProps): JSX.Element {
+  if (external) {
+    return <Box size={size} aria-hidden className={cn('text-muted-foreground', className)} />;
+  }
   if (slug === 'browser-user') {
     return (
       <span

@@ -4,6 +4,7 @@ import {
   analyzeResiliency,
   AZ_REGIONS_VERIFIED_ON,
   getServiceDefinition,
+  isExternalServiceId,
   SLA_BASELINE_VERIFIED_ON,
   slaToDowntimeMinutes,
   type ResilienceTier,
@@ -155,7 +156,7 @@ export function ResiliencyPanel({
                 slaColor(report.compositeSlaPercent),
               )}
             >
-              {report.compositeSlaPercent}%
+              {report.compositeSlaPercent}%{report.hasExternalNodes ? '*' : ''}
             </div>
           </div>
           <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border pt-2 text-xs">
@@ -172,6 +173,11 @@ export function ResiliencyPanel({
               </div>
             </div>
           </div>
+          {report.hasExternalNodes && (
+            <p className="mt-2 border-t border-border pt-2 text-[11px] text-muted-foreground">
+              * Excludes non-Azure components — their SLA is not estimated.
+            </p>
+          )}
         </div>
 
         <div className="rounded-md border border-border">
@@ -273,28 +279,42 @@ export function ResiliencyPanel({
                   >
                     <div className="flex items-center gap-2">
                       <span className="truncate text-xs font-medium">{n.label}</span>
-                      <span
-                        className={cn(
-                          'ml-auto text-xs font-semibold tabular-nums',
-                          slaColor(n.profile.slaPercent),
-                        )}
-                      >
-                        {n.profile.slaPercent}%
-                      </span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px]">
-                      <span className="rounded border border-border px-1.5 py-0.5 text-muted-foreground">
-                        {TIER_LABEL[n.profile.tier]}
-                      </span>
-                      {!n.onCriticalPath && (
-                        <span className="rounded border border-border px-1.5 py-0.5 text-muted-foreground">
-                          not on request path
+                      {isExternalServiceId(n.serviceId) ? (
+                        <span className="ml-auto text-xs font-semibold tabular-nums text-muted-foreground">
+                          not estimated
+                        </span>
+                      ) : (
+                        <span
+                          className={cn(
+                            'ml-auto text-xs font-semibold tabular-nums',
+                            slaColor(n.profile.slaPercent),
+                          )}
+                        >
+                          {n.profile.slaPercent}%
                         </span>
                       )}
-                      {n.profile.source.kind === 'learn' && (
-                        <span className="rounded border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.5 text-sky-600 dark:text-sky-400">
-                          from Learn
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px]">
+                      {isExternalServiceId(n.serviceId) ? (
+                        <span className="rounded border border-border px-1.5 py-0.5 text-muted-foreground">
+                          non-Azure
                         </span>
+                      ) : (
+                        <>
+                          <span className="rounded border border-border px-1.5 py-0.5 text-muted-foreground">
+                            {TIER_LABEL[n.profile.tier]}
+                          </span>
+                          {!n.onCriticalPath && (
+                            <span className="rounded border border-border px-1.5 py-0.5 text-muted-foreground">
+                              not on request path
+                            </span>
+                          )}
+                          {n.profile.source.kind === 'learn' && (
+                            <span className="rounded border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.5 text-sky-600 dark:text-sky-400">
+                              from Learn
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                     {n.blocked && (

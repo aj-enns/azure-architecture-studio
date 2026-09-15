@@ -57,6 +57,10 @@ Grounding rules:
   supports it, and the configuration enabling it. The resiliency report already flags
   gate failures - surface them.
 - Right-size recommendations to the workload's criticality; do not demand five-nines by default.
+- Nodes whose serviceId is "external" (or "external:*") are non-Azure components with no known
+  cost or SLA; the cost total and composite SLA already EXCLUDE them (marked with a "*"). Do not
+  assign them a cost or availability figure, but DO call out that an unmeasured external dependency
+  on the request path can limit real availability.
 
 Output rules:
 - Respond with GitHub-flavoured Markdown in the "markdown" field. No preamble outside it.

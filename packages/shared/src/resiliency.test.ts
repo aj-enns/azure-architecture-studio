@@ -148,6 +148,17 @@ describe('analyzeResiliency', () => {
     expect(report.compositeSlaPercent).toBe(99.95);
   });
 
+  it('excludes non-Azure components from the composite and flags them', () => {
+    const withExternal = analyzeResiliency(diagramWith(['app-service', 'external', 'external:okta']));
+    const azureOnly = analyzeResiliency(diagramWith(['app-service']));
+    expect(withExternal.hasExternalNodes).toBe(true);
+    // External nodes never contribute, so the composite matches the Azure-only design.
+    expect(withExternal.compositeSlaPercent).toBe(azureOnly.compositeSlaPercent);
+    expect(withExternal.excludedNodeIds).toContain('n1');
+    expect(withExternal.excludedNodeIds).toContain('n2');
+    expect(withExternal.weakestLink?.serviceId).toBe('app-service');
+  });
+
   it('honours an explicit per-node opt-out', () => {
     const report = analyzeResiliency(
       diagramWith([

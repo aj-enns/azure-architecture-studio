@@ -1,4 +1,4 @@
-import { getServiceDefinition, type ServiceCategory } from './catalog.js';
+import { getServiceDefinition, isExternalServiceId, type ServiceCategory } from './catalog.js';
 import type { Diagram } from './schema.js';
 
 /**
@@ -103,11 +103,15 @@ export interface DiagramCost {
     label: string;
     monthlyUsd: number;
     usageBased: boolean;
+    /** True for non-Azure components, whose cost is not estimated. */
+    external: boolean;
   }[];
   byCategory: { category: ServiceCategory; monthlyUsd: number }[];
   totalMonthlyUsd: number;
   /** True when any contributing service is usage-based (so the total is a floor). */
   hasUsageBased: boolean;
+  /** True when the diagram contains non-Azure components excluded from the estimate. */
+  hasExternalNodes: boolean;
   region: string;
 }
 
@@ -115,13 +119,15 @@ export interface DiagramCost {
 export function estimateDiagramCost(diagram: Diagram): DiagramCost {
   const region = diagram.metadata.region || 'eastus2';
   const nodes = diagram.nodes.map((n) => {
-    const est = estimateNodeCost(n.serviceId, region);
+    const external = isExternalServiceId(n.serviceId);
+    const est = external ? null : estimateNodeCost(n.serviceId, region);
     return {
       id: n.id,
       serviceId: n.serviceId,
       label: n.label || n.serviceId,
-      monthlyUsd: est.monthlyUsd,
-      usageBased: est.usageBased,
+      monthlyUsd: est?.monthlyUsd ?? 0,
+      usageBased: est?.usageBased ?? false,
+      external,
     };
   });
 
@@ -139,6 +145,7 @@ export function estimateDiagramCost(diagram: Diagram): DiagramCost {
       .sort((a, b) => b.monthlyUsd - a.monthlyUsd),
     totalMonthlyUsd: nodes.reduce((sum, n) => sum + n.monthlyUsd, 0),
     hasUsageBased: nodes.some((n) => n.usageBased && n.monthlyUsd > 0),
+    hasExternalNodes: nodes.some((n) => n.external),
     region,
   };
 }

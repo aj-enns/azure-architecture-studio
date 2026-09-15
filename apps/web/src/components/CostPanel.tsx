@@ -136,6 +136,7 @@ export function CostPanel({
             <span className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
               {cost.hasUsageBased ? '~' : ''}
               {usd(cost.totalMonthlyUsd)}
+              {cost.hasExternalNodes ? '*' : ''}
               <span className="ml-1 text-xs font-normal text-muted-foreground">/mo</span>
             </span>
           </div>
@@ -283,8 +284,14 @@ export function CostPanel({
                           {n.label}
                         </span>
                         <span className="shrink-0 tabular-nums text-muted-foreground">
-                          {n.usageBased && n.monthlyUsd > 0 ? '~' : ''}
-                          {usd(n.monthlyUsd)}/mo
+                          {n.external ? (
+                            'not estimated'
+                          ) : (
+                            <>
+                              {n.usageBased && n.monthlyUsd > 0 ? '~' : ''}
+                              {usd(n.monthlyUsd)}/mo
+                            </>
+                          )}
                         </span>
                       </button>
                       {under && tp && (
@@ -309,6 +316,11 @@ export function CostPanel({
               Representative estimates for common SKUs in {cost.region} — not a billing quote. “~”
               marks usage-based services whose real cost depends on traffic or data volume.
             </p>
+            {cost.hasExternalNodes && (
+              <p className="text-[11px] text-muted-foreground">
+                * Excludes non-Azure components — their cost is not estimated.
+              </p>
+            )}
           </>
         )}
       </div>

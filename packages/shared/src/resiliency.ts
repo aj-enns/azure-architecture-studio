@@ -1,4 +1,4 @@
-import { getServiceDefinition, type ServiceCategory } from './catalog.js';
+import { getServiceDefinition, isExternalServiceId, type ServiceCategory } from './catalog.js';
 import type { Diagram, NodeProperties, ResiliencyTarget } from './schema.js';
 
 /**
@@ -94,6 +94,8 @@ export interface ResiliencyReport {
   regionHasZones: boolean;
   /** Nodes left out of the composite (supporting services, or opted out). */
   excludedNodeIds: string[];
+  /** True when the diagram contains non-Azure components excluded from the composite. */
+  hasExternalNodes: boolean;
 }
 
 /** How a service's zone redundancy is actually switched on. */
@@ -874,7 +876,9 @@ export function analyzeResiliency(
 
   const nodes: NodeResiliency[] = diagram.nodes.map((n) => {
     const resolved = resolveNodeSla(n.serviceId, n.properties, region, options.overrides);
-    const onCriticalPath = isCriticalPath(n.serviceId, n.properties);
+    // Non-Azure components have no known SLA, so they never contribute to the composite.
+    const onCriticalPath =
+      !isExternalServiceId(n.serviceId) && isCriticalPath(n.serviceId, n.properties);
     return {
       nodeId: n.id,
       serviceId: n.serviceId,
@@ -933,6 +937,7 @@ export function analyzeResiliency(
     region,
     regionHasZones,
     excludedNodeIds: nodes.filter((n) => !n.onCriticalPath).map((n) => n.nodeId),
+    hasExternalNodes: diagram.nodes.some((n) => isExternalServiceId(n.serviceId)),
   };
 }
 

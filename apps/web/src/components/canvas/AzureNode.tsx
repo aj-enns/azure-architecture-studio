@@ -77,7 +77,7 @@ export function AzureNode({ id, data }: NodeProps): JSX.Element {
       role="group"
       aria-label={`${def?.name ?? (isExternal ? 'Non-Azure component' : nodeData.serviceId)}: ${nodeData.label}`}
     >
-      {resiliency && (
+      {resiliency && !isExternal && (
         <span
           className={cn(
             'absolute -left-2 -top-2 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold tabular-nums',
@@ -92,7 +92,7 @@ export function AzureNode({ id, data }: NodeProps): JSX.Element {
           {resiliency.slaPercent}%
         </span>
       )}
-      {costOverlay && cost.monthlyUsd > 0 && (
+      {costOverlay && !isExternal && cost.monthlyUsd > 0 && (
         <span
           className="absolute -right-2 -top-2 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-emerald-700 dark:text-emerald-400"
           title={`Estimated monthly cost (${cost.basis})`}
@@ -125,6 +125,7 @@ export function AzureNode({ id, data }: NodeProps): JSX.Element {
         <ServiceIcon
           category={category}
           slug={nodeData.serviceId === 'external:browser' ? 'browser-user' : def?.icon}
+          external={isExternal && nodeData.serviceId !== 'external:browser'}
           size={22}
         />
       </span>

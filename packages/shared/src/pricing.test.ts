@@ -53,5 +53,16 @@ describe('pricing', () => {
     const cost = estimateDiagramCost(emptyDiagram());
     expect(cost.totalMonthlyUsd).toBe(0);
     expect(cost.nodes).toEqual([]);
+    expect(cost.hasExternalNodes).toBe(false);
+  });
+
+  it('excludes non-Azure components from the estimate and flags them', () => {
+    const cost = estimateDiagramCost(diagramWith(['app-service-plan', 'external', 'external:okta']));
+    expect(cost.hasExternalNodes).toBe(true);
+    // External nodes contribute nothing and are marked as not estimated.
+    expect(cost.totalMonthlyUsd).toBe(estimateNodeCost('app-service-plan').monthlyUsd);
+    const external = cost.nodes.filter((n) => n.external);
+    expect(external).toHaveLength(2);
+    expect(external.every((n) => n.monthlyUsd === 0)).toBe(true);
   });
 });
