@@ -249,6 +249,60 @@ deployment, ACR builds, and the registry's role assignment. Pre-create the group
 and register providers using Part 1; group-scoped permissions cannot bootstrap
 a new resource group. Foundry grants remain a separate administrator step.
 
+**One-time administrator setup:** run this in PowerShell using an administrator's
+Azure session, not inside GitHub Actions. The deployment identity cannot grant
+itself its initial access. Use the application's subscription, not the Foundry
+subscription. This creates the two resource-group-scoped role assignments only;
+it does not create an app registration, group, or federated credential.
+
+```powershell
+& {
+    $subscriptionId = '<application-subscription-id>'
+    $resourceGroup = '<existing-application-resource-group>'
+    $deploymentClientId = '<github-deployment-application-client-id>'
+
+    $groupId = az group show --subscription $subscriptionId `
+      --name $resourceGroup --query id --output tsv
+    if ($LASTEXITCODE -ne 0) { throw 'Create the application resource group first, or check administrator access.' }
+
+    $subscriptionTenant = az account show --subscription $subscriptionId --query tenantId --output tsv
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot read the application subscription.' }
+    $loginTenant = az account show --query tenantId --output tsv
+    if ($LASTEXITCODE -ne 0 -or $loginTenant -ne $subscriptionTenant) {
+        throw 'Sign in to the application subscription tenant before looking up the deployment identity.'
+    }
+
+    $principalId = az ad sp show --id $deploymentClientId --query id --output tsv
+    if ($LASTEXITCODE -ne 0) { throw 'Deployment service principal not found. Check the client ID and tenant.' }
+    $principalId = [guid]::Parse($principalId).ToString()
+
+    foreach ($role in @('Contributor', 'User Access Administrator')) {
+        $existing = az role assignment list --subscription $subscriptionId `
+          --scope $groupId --assignee-object-id $principalId --role $role `
+          --query '[].id' --output tsv
+        if ($LASTEXITCODE -ne 0) { throw "Cannot check the $role assignment." }
+        if ([string]::IsNullOrWhiteSpace(($existing -join ''))) {
+            az role assignment create --subscription $subscriptionId `
+              --scope $groupId --assignee-object-id $principalId `
+              --assignee-principal-type ServicePrincipal --role $role --output none
+            if ($LASTEXITCODE -ne 0) { throw "Failed to grant $role. Administrator role-assignment authority is required." }
+        }
+    }
+}
+```
+
+The script skips existing direct assignments of these roles. Have an
+administrator review inherited roles and any role-assignment conditions first
+to avoid redundant grants or unintentionally changing delegated authority.
+Allow time for RBAC propagation before rerunning failed jobs. Do not add
+`allow-no-subscriptions: true`: the workflow needs real subscription access.
+
+The workflow checks required settings before login, explains login failures,
+checks access to the existing resource group, and runs ARM provider-level
+validation before provisioning the registry. Validation can still fail for
+Azure Policy, quotas, or other service constraints; inspect the underlying error.
+It does not prove all later image-build or application-deployment permissions.
+
 ### 2. Configure both OIDC federated credentials
 
 In the deployment registration, open **Certificates & secrets > Federated
@@ -286,7 +340,6 @@ so Azure login settings stored only there will not reach those jobs.
 | Secret | `ENTRA_AUTH_CLIENT_SECRET` | Web sign-in registration's current secret value |
 | Variable | `ENTRA_AUTH_CLIENT_ID` | Web sign-in registration's client ID |
 | Variable | `AZURE_RESOURCE_GROUP` | Existing application resource group |
-| Variable | `AZURE_LOCATION` | Resource group's region, for example `eastus2` |
 | Optional variable | `AZURE_FOUNDRY_ENDPOINT` | Foundry resource endpoint |
 | Optional variable | `AZURE_FOUNDRY_MODEL` | Existing deployment name |
 | Optional variable | `AZURE_FOUNDRY_RESOURCE_ID` | Full account resource ID for model discovery |
@@ -294,6 +347,10 @@ so Azure login settings stored only there will not reach those jobs.
 The deployment identity, web sign-in registration, and runtime managed identity
 are three different identities. Visitors need Entra access, not their own Azure
 subscription. Their AI requests use the host's configured model and billing.
+
+The workflow no longer reads `AZURE_LOCATION` or creates the resource group.
+Resources use the existing group's location; choose it during the administrator
+bootstrap in Part 1.
 
 ### 4. Run and verify
 
@@ -318,6 +375,8 @@ expiry and redeploy using its new value (update the GitHub secret for automation
 | --- | --- |
 | Resource-group creation or provider registration denied | Have a subscription administrator complete the bootstrap in Part 1 |
 | Role assignment denied | Caller needs role-assignment authority at the target scope, not just Contributor |
+| `AADSTS700016` / application not found | Check that AZURE_CLIENT_ID is the deployment Application (client) ID, not its Object ID or the web client ID, in AZURE_TENANT_ID |
+| No subscriptions found during OIDC login | Complete the administrator RBAC setup above for the deployment service principal, check the application subscription ID, and allow for propagation |
 | ACR build denied or unavailable | Check deployment permissions and regional/subscription availability of ACR Tasks |
 | Image pull failure | Both images must exist under the exact tag; check the identity's `AcrPull` role and allow for role propagation |
 | `AADSTS70021` / no matching federated credential | Check branch versus environment subject, owner/repo, tenant, and audience |

@@ -10,7 +10,7 @@ name: deploy
 # Auth is keyless via OIDC (no stored service-principal secret). Configure once:
 #   Repo secrets:  AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
 #                  ENTRA_AUTH_CLIENT_SECRET
-#   Repo variables: AZURE_RESOURCE_GROUP, AZURE_LOCATION
+#   Repo variables: AZURE_RESOURCE_GROUP
 #                   ENTRA_AUTH_CLIENT_ID
 #                   AZURE_FOUNDRY_ENDPOINT, AZURE_FOUNDRY_MODEL   (optional, enable AI)
 #                   AZURE_FOUNDRY_RESOURCE_ID                     (optional, model discovery)
@@ -47,33 +47,75 @@ jobs:
     outputs:
       acrName: ${{ steps.registry.outputs.acrName }}
       acrLoginServer: ${{ steps.registry.outputs.acrLoginServer }}
-      identityId: ${{ steps.registry.outputs.identityId }}
-      identityClientId: ${{ steps.registry.outputs.identityClientId }}
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate deployment settings
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          ENTRA_AUTH_CLIENT_ID: ${{ vars.ENTRA_AUTH_CLIENT_ID }}
+          ENTRA_AUTH_CLIENT_SECRET: ${{ secrets.ENTRA_AUTH_CLIENT_SECRET }}
+        run: |
+          for name in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID AZURE_RESOURCE_GROUP ENTRA_AUTH_CLIENT_ID ENTRA_AUTH_CLIENT_SECRET; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing repository setting: $name. See docs/deploy-application.md#automate-with-github-actions."
+              exit 1
+            fi
+          done
+          for name in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID ENTRA_AUTH_CLIENT_ID; do
+            if [[ ! "${!name}" =~ ^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}$ ]]; then
+              echo "::error::$name must be a GUID without quotes or surrounding whitespace."
+              exit 1
+            fi
+          done
+
       - name: Azure login (OIDC)
+        id: azure-login
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Ensure resource group
-        run: az group create --name "${{ vars.AZURE_RESOURCE_GROUP }}" --location "${{ vars.AZURE_LOCATION }}"
+      - name: Explain Azure login failure
+        if: ${{ failure() && steps.azure-login.outcome == 'failure' }}
+        run: |
+          echo "::error::Azure login failed. Check the deployment Application (client) ID, tenant, and federated subject. For 'No subscriptions found', have an administrator grant this deployment service principal Contributor and User Access Administrator on the existing application resource group, then allow RBAC propagation and rerun."
+          echo "See docs/deploy-application.md#1-create-a-separate-deployment-identity. Do not use the web sign-in client ID or allow-no-subscriptions to bypass this failure." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify existing resource group access
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+        run: |
+          if ! az group show --subscription "$AZURE_SUBSCRIPTION_ID" --name "$AZURE_RESOURCE_GROUP" --output none; then
+            echo "::error::The application resource group must already exist and be accessible to the deployment identity. An administrator must complete the infrastructure bootstrap before this workflow runs."
+            exit 1
+          fi
+
+      - name: Validate registry deployment permissions
+        env:
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+        run: |
+          if ! az deployment group validate --resource-group "$AZURE_RESOURCE_GROUP" --template-file infra/registry.bicep --parameters name="$NAME" --validation-level Provider --output none; then
+            echo "::error::Registry deployment validation failed. Review the Azure error above, including resource policy and permissions to deploy resources and create AcrPull role assignments. See the administrator setup in docs/deploy-application.md."
+            exit 1
+          fi
 
       - name: Deploy registry + identity
         id: registry
         run: |
           outputs=$(az deployment group create \
+            --name "$NAME-registry" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --template-file infra/registry.bicep \
             --parameters name="$NAME" \
             --query properties.outputs -o json)
           echo "acrName=$(echo "$outputs" | jq -r .acrName.value)" >> "$GITHUB_OUTPUT"
           echo "acrLoginServer=$(echo "$outputs" | jq -r .acrLoginServer.value)" >> "$GITHUB_OUTPUT"
-          echo "identityId=$(echo "$outputs" | jq -r .identityId.value)" >> "$GITHUB_OUTPUT"
-          echo "identityClientId=$(echo "$outputs" | jq -r .identityClientId.value)" >> "$GITHUB_OUTPUT"
 
   build:
     needs: provision
@@ -128,15 +170,27 @@ jobs:
 
       - name: Deploy app (Container Apps)
         id: app
+        env:
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
         run: |
+          registryOutputs=$(az deployment group show \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$NAME-registry" \
+            --query properties.outputs -o json)
+          managedIdentityId=$(echo "$registryOutputs" | jq -er '.identityId.value | select(type == "string" and length > 0)')
+          managedIdentityClientId=$(echo "$registryOutputs" | jq -er '.identityClientId.value | select(type == "string" and length > 0)')
+          if [[ ! "$managedIdentityId" =~ ^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft.ManagedIdentity/userAssignedIdentities/[^/]+$ || ! "$managedIdentityClientId" =~ ^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}$ ]]; then
+            echo "::error::Registry deployment returned an invalid managed identity ID or client ID. Stop before deploying Container Apps."
+            exit 1
+          fi
           outputs=$(az deployment group create \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --template-file infra/main.bicep \
             --parameters \
               name="$NAME" \
               acrLoginServer="${{ needs.provision.outputs.acrLoginServer }}" \
-              managedIdentityId="${{ needs.provision.outputs.identityId }}" \
-              managedIdentityClientId="${{ needs.provision.outputs.identityClientId }}" \
+              managedIdentityId="$managedIdentityId" \
+              managedIdentityClientId="$managedIdentityClientId" \
               imageTag="${{ github.sha }}" \
               azureFoundryEndpoint="${{ vars.AZURE_FOUNDRY_ENDPOINT }}" \
               azureFoundryModel="${{ vars.AZURE_FOUNDRY_MODEL }}" \
