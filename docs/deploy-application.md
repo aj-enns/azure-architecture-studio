@@ -11,6 +11,20 @@ Start with the manual deployment below. After it works, the optional
 > Foundry settings as Bicep parameters below or GitHub Actions variables. Azure
 > uses the application's managed identity, not your local `az login` session.
 
+## Fast path: one script (recommended)
+
+If you ran [infra/setup.ps1](../infra/setup.ps1) from Part 1, the application is
+already deployed and the redirect URI is registered — skip to
+[Verify the installation](#6-verify-the-installation). Re-running the script
+builds a fresh image tag and updates the same installation:
+
+```powershell
+./infra/setup.ps1 -SubscriptionId '<your-subscription-id>'
+```
+
+The manual steps below do the same work individually, for split-responsibility or
+least-privilege installs.
+
 ## 1. Load your infrastructure settings
 
 Run these commands in PowerShell 7 from the repository root. Use the same
@@ -248,6 +262,24 @@ On the **existing application resource group**, grant this service principal
 deployment, ACR builds, and the registry's role assignment. Pre-create the group
 and register providers using Part 1; group-scoped permissions cannot bootstrap
 a new resource group. Foundry grants remain a separate administrator step.
+
+**Fast path:** [infra/grant-github-deploy.ps1](../infra/grant-github-deploy.ps1)
+performs the role grants and, given `-GitHubOwner`/`-GitHubRepo`, also creates the
+branch and environment OIDC federated credentials. Run it once with an
+administrator's session:
+
+```powershell
+./infra/grant-github-deploy.ps1 `
+  -SubscriptionId '<application-subscription-id>' `
+  -ResourceGroup '<existing-application-resource-group>' `
+  -DeploymentClientId '<github-deployment-application-client-id>' `
+  -GitHubOwner '<owner>' -GitHubRepo '<repo>'
+```
+
+Add `-CreateServicePrincipal` if the enterprise application does not exist yet.
+The script skips assignments and credentials that already exist. It still leaves
+GitHub repository secrets/variables (Step 3) and the `production` environment for
+you to configure. The manual equivalents follow.
 
 **One-time administrator setup:** run this in PowerShell using an administrator's
 Azure session, not inside GitHub Actions. The deployment identity cannot grant

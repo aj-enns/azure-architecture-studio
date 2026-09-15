@@ -7,6 +7,44 @@ Container Apps hosting resources.
 
 For a local-only installation, use [Getting started](getting-started.md).
 
+## Fast path: one script (recommended)
+
+[infra/setup.ps1](../infra/setup.ps1) consolidates **both Part 1 and Part 2**
+into a single idempotent run: it registers providers, creates the resource group,
+deploys the registry and app, creates and configures the Entra "Easy Auth"
+sign-in registration (client secret, ID tokens, assignment-required, your user
+assignment), builds both images, and — after deployment — registers the redirect
+URI automatically. No portal clicks.
+
+```powershell
+git clone https://github.com/aj-enns/azure-architecture-review.git
+Set-Location azure-architecture-review
+./infra/setup.ps1 -SubscriptionId '<your-subscription-id>'
+```
+
+Add AI in the same run by passing the Foundry parameters:
+
+```powershell
+./infra/setup.ps1 -SubscriptionId '<your-subscription-id>' `
+  -FoundryEndpoint 'https://<account>.services.ai.azure.com/' `
+  -FoundryModel '<deployment-name>' `
+  -FoundryResourceId '/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>' `
+  -FoundrySubscriptionId '<sub>' -FoundryResourceGroup '<rg>' -FoundryAccountName '<account>'
+```
+
+You need permission to create a resource group, role assignments, and an Entra
+app registration (Application Developer or equivalent). To reuse an existing
+sign-in registration instead of creating one, pass `-EntraClientId` and
+`-EntraClientSecret`. When the script finishes, run the checks in
+[Deploy the application → Verify](deploy-application.md#6-verify-the-installation).
+
+To automate later releases with GitHub Actions, run
+[infra/grant-github-deploy.ps1](../infra/grant-github-deploy.ps1) once and see
+[Automate with GitHub Actions](deploy-application.md#automate-with-github-actions).
+
+The rest of this guide documents the same steps manually, for when you need to
+run them individually or with least-privilege, split responsibilities.
+
 ## What you will deploy
 
 | Stage | Resources | Template |

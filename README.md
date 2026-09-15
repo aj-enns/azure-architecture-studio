@@ -159,7 +159,17 @@ configured `AZURE_FOUNDRY_MODEL` and the panel shows a warning. See
 
 ## Deploy to Azure
 
-Follow these guides in order. Commands use PowerShell 7 and the existing Bicep
+The fastest path is one idempotent script that handles infrastructure, images,
+Container Apps, and Microsoft Entra "Easy Auth" — including registering the
+sign-in redirect URI automatically (no portal clicks):
+
+```powershell
+./infra/setup.ps1 -SubscriptionId '<your-subscription-id>'
+```
+
+See [Install Azure infrastructure → Fast path](docs/install-infrastructure.md#fast-path-one-script-recommended)
+for AI and reuse-existing-registration options. Prefer to run each step yourself?
+Follow the two guides in order. Commands use PowerShell 7 and the existing Bicep
 templates; no local Docker installation is needed for Azure deployment.
 
 1. **[Install Azure infrastructure](docs/install-infrastructure.md)**: prepare
@@ -181,6 +191,9 @@ the documented Bicep parameters or GitHub Actions variables.
 
 After the manual installation works, follow
 **[Automate with GitHub Actions](docs/deploy-application.md#automate-with-github-actions)**.
+One-time bootstrap of the deployment identity (resource-group RBAC and OIDC
+federated credentials) is scripted in
+[infra/grant-github-deploy.ps1](infra/grant-github-deploy.ps1).
 It covers both required OIDC credentials (`main` branch and `production`
 environment), deployment permissions, repository secrets and variables, and
 release verification. The deployment identity is separate from the web sign-in

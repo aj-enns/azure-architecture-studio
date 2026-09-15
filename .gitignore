@@ -11,6 +11,8 @@ build/
 .env
 .env.*
 !.env.example
+# Temporary deployment parameter files written by infra/setup.ps1
+infra/.aar-deploy-*.bicepparam
 
 # Editor / OS
 .DS_Store
