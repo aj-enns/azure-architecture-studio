@@ -16,6 +16,9 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    env:
+      # Presence gates the App-token step below; secrets can't be read in `if`.
+      CATALOG_SYNC_APP_ID: ${{ secrets.CATALOG_SYNC_APP_ID }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,9 +48,21 @@ jobs:
           pnpm --filter @aar/shared test
           pnpm --filter @aar/web typecheck
 
+      - name: Generate GitHub App token
+        id: app-token
+        if: ${{ env.CATALOG_SYNC_APP_ID != '' }}
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.CATALOG_SYNC_APP_ID }}
+          private-key: ${{ secrets.CATALOG_SYNC_APP_PRIVATE_KEY }}
+
       - name: Open pull request
         uses: peter-evans/create-pull-request@v7
         with:
+          # Prefers a GitHub App token, then CATALOG_SYNC_TOKEN (PAT), then the
+          # default GITHUB_TOKEN. Set the App or PAT secrets when org policy
+          # blocks Actions from opening PRs, or to have the PR trigger CI.
+          token: ${{ steps.app-token.outputs.token || secrets.CATALOG_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
           branch: catalog-sync/candidates
           title: 'chore(catalog): sync Azure resource-type candidates'
           commit-message: 'chore(catalog): sync Azure resource-type candidates'
