@@ -12,9 +12,10 @@ design against Well-Architected principles, model resiliency and cost, and expor
 Bicep or Terraform. Run it in your own environment, or configure a hosted demo
 for diagram-based exploration without repository or IaC import.
 
-> Inspired by the Azure Architecture Diagram Builder, rebuilt open source with a
-> significantly upgraded UI and bring-your-own AI so teams can self-host it for
-> ARB reviews. **Status:** active early development — see the [roadmap](docs/PROGRESS.md).
+> Inspired by Arturo Quiroga's Azure Architecture Diagram Builder, rebuilt open
+> source with a upgraded UI and bring-your-own AI so teams can
+> self-host it for ARB reviews. **Status:** active early development — see the
+> [roadmap](docs/PROGRESS.md).
 
 ![Azure Architecture Review deployment topology rendered on the canvas](azure-architecture-review-deployment-topology.png)
 
