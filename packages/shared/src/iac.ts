@@ -1478,7 +1478,7 @@ function generateReadme(
 
   return `# ${diagram.metadata.name} — ${target === 'bicep' ? 'Bicep' : 'Terraform'}
 
-Generated deterministically by Azure Architecture Review. Review and test this scaffold before deployment; a diagram does not contain every workload, networking, identity, or data-migration input required for production.
+Generated deterministically by Azure Architecture Studio. Review and test this scaffold before deployment; a diagram does not contain every workload, networking, identity, or data-migration input required for production.
 
 ## Generated resources
 
@@ -1499,7 +1499,7 @@ Catalog AVM references are included as provenance comments. Pin and adopt a test
 }
 
 function generatedHeader(prefix: string, diagram: Diagram): string {
-  return `${prefix} Generated from "${diagram.metadata.name}" by Azure Architecture Review.\n${prefix} Deterministic scaffold: review diagnostics and validate before deployment.`;
+  return `${prefix} Generated from "${diagram.metadata.name}" by Azure Architecture Studio.\n${prefix} Deterministic scaffold: review diagnostics and validate before deployment.`;
 }
 
 function uniqueIdentifier(value: string, used: Set<string>): string {

@@ -1,6 +1,6 @@
 # Progress Tracker
 
-Live status for the Azure Architecture Review build. Mirrors the working plan.
+Live status for the Azure Architecture Studio build. Mirrors the working plan.
 
 **Legend:** ⬜ not started · 🟡 in progress · ✅ done · ⏸️ blocked/paused
 

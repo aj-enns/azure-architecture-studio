@@ -5,7 +5,7 @@ import {
   getServiceCategories,
   type ServiceCategory,
   type ServiceDefinition,
-} from '@aar/shared';
+} from '@aas/shared';
 import { categoryColor } from '@/lib/icons.js';
 import { ServiceIcon } from '@/components/ServiceIcon.js';
 import { cn } from '@/lib/utils.js';
@@ -80,7 +80,7 @@ export function Palette(): JSX.Element {
                       tabIndex={0}
                       draggable
                       onDragStart={(e) => {
-                        e.dataTransfer.setData('application/x-aar-service', s.id);
+                        e.dataTransfer.setData('application/x-aas-service', s.id);
                         e.dataTransfer.effectAllowed = 'move';
                       }}
                       title={s.description}

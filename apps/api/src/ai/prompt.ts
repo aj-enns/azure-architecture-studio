@@ -1,5 +1,5 @@
-import { azureServiceCatalog } from '@aar/shared';
-import type { Diagram } from '@aar/shared';
+import { azureServiceCatalog } from '@aas/shared';
+import type { Diagram } from '@aas/shared';
 
 /**
  * Builds the system prompt for diagram generation. It enumerates the exact

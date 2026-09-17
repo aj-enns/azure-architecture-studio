@@ -13,9 +13,9 @@ import {
   type NodeProperties,
   type ResiliencyTarget,
   type ThroughputTarget,
-} from '@aar/shared';
+} from '@aas/shared';
 
-const STORAGE_KEY = 'aar.diagram';
+const STORAGE_KEY = 'aas.diagram';
 
 export type Selection =
   | { type: 'node'; id: string }

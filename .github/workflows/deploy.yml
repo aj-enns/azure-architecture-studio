@@ -20,7 +20,7 @@ name: deploy
 #   - User Access Administrator  (create the AcrPull role assignment in registry.bicep)
 # Owner covers both if you prefer a single assignment.
 #
-# Keyless Foundry: grant the app's user-assigned identity (aar-id-*) the
+# Keyless Foundry: grant the app's user-assigned identity (aas-id-*) the
 # "Cognitive Services User" (Foundry inference) and "Reader" (discovery) roles on
 # your Foundry resource. See README (Deploy to Azure).
 
@@ -39,7 +39,7 @@ permissions:
   contents: read
 
 env:
-  NAME: aar
+  NAME: aas
 
 jobs:
   provision:
@@ -134,14 +134,14 @@ jobs:
         run: |
           az acr build \
             --registry "${{ needs.provision.outputs.acrName }}" \
-            --image "aar-api:${{ github.sha }}" \
+            --image "aas-api:${{ github.sha }}" \
             --file apps/api/Dockerfile .
 
       - name: Build & push web image
         run: |
           az acr build \
             --registry "${{ needs.provision.outputs.acrName }}" \
-            --image "aar-web:${{ github.sha }}" \
+            --image "aas-web:${{ github.sha }}" \
             --file apps/web/Dockerfile .
 
   deploy:

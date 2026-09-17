@@ -1,4 +1,4 @@
-# Using the Azure Architecture Review Workspace
+# Using the Azure Architecture Studio Workspace
 
 When this skill runs inside the `azure-architecture-review` app repo, prefer its
 structured data and deterministic analysis over eyeballing a diagram. It already
@@ -9,7 +9,7 @@ implements much of this review method.
 The design is a `Diagram` (see `packages/shared/src/schema.ts`): `nodes`
 (`serviceId`, `properties`), `edges`, `groups`, and `metadata.region` +
 `metadata.resiliency` (the SLA/RTO/RPO target). Ask the user to export it (Toolbar
-→ Export → JSON) or read it from `localStorage['aar.diagram']`, and use it as the
+→ Export → JSON) or read it from `localStorage['aas.diagram']`, and use it as the
 canonical topology instead of inferring one.
 
 ## Deterministic analysis already in the repo

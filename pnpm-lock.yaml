@@ -36,7 +36,7 @@ importers:
 
   apps/api:
     dependencies:
-      '@aar/shared':
+      '@aas/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@azure/identity':
@@ -67,7 +67,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@aar/shared':
+      '@aas/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@xyflow/react':
@@ -153,7 +153,7 @@ importers:
 
   tools/catalog-sync:
     dependencies:
-      '@aar/shared':
+      '@aas/shared':
         specifier: workspace:*
         version: link:../../packages/shared
     devDependencies:
@@ -1787,7 +1787,7 @@ packages:
     resolution: {integrity: sha1-VuPhkAmVda92N7skJGaCc3NINtI=, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/fast-uri/-/fast-uri-4.1.3.tgz}
 
   fastify-plugin@5.1.0:
-    resolution: {integrity: sha1-cIPgOdZBhBX5pmn4wl5y/Fvy0+c=, tarball: https://ms-feed-12.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/fastify-plugin/-/fastify-plugin-5.1.0.tgz}
+    resolution: {integrity: sha1-cIPgOdZBhBX5pmn4wl5y/Fvy0+c=, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/fastify-plugin/-/fastify-plugin-5.1.0.tgz}
 
   fastify-plugin@6.0.0:
     resolution: {integrity: sha1-fNZZxqrV878HtMWSBUEjUaR9Ocg=, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/fastify-plugin/-/fastify-plugin-6.0.0.tgz}
@@ -1796,7 +1796,7 @@ packages:
     resolution: {integrity: sha1-F6nbRbW5AW2EqqhcFzmQqLXtF3I=, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/fastify/-/fastify-5.12.3.tgz}
 
   fastq@1.20.1:
-    resolution: {integrity: sha1-ynUKENySW8ixiDn9ID4+9LPO1nU=, tarball: https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/fastq/-/fastq-1.20.1.tgz}
+    resolution: {integrity: sha1-ynUKENySW8ixiDn9ID4+9LPO1nU=, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/fastq/-/fastq-1.20.1.tgz}
 
   fdir@6.5.0:
     resolution: {integrity: sha1-7Sq5Z6MxreYvGNB32uGSaE1Q01A=, tarball: https://ms-feed-17.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/fdir/-/fdir-6.5.0.tgz}

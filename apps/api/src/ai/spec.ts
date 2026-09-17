@@ -10,7 +10,7 @@ import {
   type DiagramEdge,
   type DiagramGroup,
   type DiagramNode,
-} from '@aar/shared';
+} from '@aas/shared';
 
 /**
  * The **AI spec** — the compact, position-free shape the model returns

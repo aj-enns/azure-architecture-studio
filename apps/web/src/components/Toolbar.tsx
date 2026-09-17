@@ -88,7 +88,7 @@ export function Toolbar({
 
   return (
     <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-border bg-card px-3 py-1">
-      <span className="text-sm font-semibold text-primary">Azure Architecture Review</span>
+      <span className="text-sm font-semibold text-primary">Azure Architecture Studio</span>
       <input
         aria-label="Diagram name"
         className="ml-1 h-8 w-56 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"

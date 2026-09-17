@@ -1,5 +1,5 @@
 {
-  "name": "@aar/web",
+  "name": "@aas/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@aar/shared": "workspace:*",
+    "@aas/shared": "workspace:*",
     "@xyflow/react": "^12.4.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

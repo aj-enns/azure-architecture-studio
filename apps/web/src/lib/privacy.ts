@@ -91,7 +91,7 @@ export function describeAction(
 }
 
 export function consentKey(disclosure: Disclosure): string {
-  return `aar-consent-v1:${JSON.stringify(disclosure)}`;
+  return `aas-consent-v1:${JSON.stringify(disclosure)}`;
 }
 
 interface PendingConsent {
@@ -115,7 +115,7 @@ export const usePrivacyStore = create<PrivacyState>(() => ({
 export function resetConsent(): void {
   try {
     for (const key of Object.keys(localStorage)) {
-      if (key.startsWith('aar-consent-v1:')) localStorage.removeItem(key);
+      if (key.startsWith('aas-consent-v1:')) localStorage.removeItem(key);
     }
   } catch {
     usePrivacyStore.setState({

@@ -5,7 +5,7 @@ import {
   getServiceDefinition,
   isExternalServiceId,
   type ResilienceTier,
-} from '@aar/shared';
+} from '@aas/shared';
 import { ServiceIcon } from '@/components/ServiceIcon.js';
 import { categoryBorderColor, categoryColor } from '@/lib/icons.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
@@ -63,10 +63,10 @@ export function AzureNode({ id, data }: NodeProps): JSX.Element {
   return (
     <div
       className={cn(
-        'aar-azure-node relative flex min-w-[160px] items-center gap-2.5 rounded-lg border border-l-4 bg-card px-3 py-2 shadow-sm transition-colors',
+        'aas-azure-node relative flex min-w-[160px] items-center gap-2.5 rounded-lg border border-l-4 bg-card px-3 py-2 shadow-sm transition-colors',
         categoryBorderColor[category],
         selected
-          ? 'aar-azure-node-selected border-primary ring-2 ring-primary/40'
+          ? 'aas-azure-node-selected border-primary ring-2 ring-primary/40'
           : 'border-border hover:border-primary/50',
         resiliency && slaTint(resiliency.slaPercent),
         resiliency?.isWeakest && 'ring-2 ring-rose-500/60',

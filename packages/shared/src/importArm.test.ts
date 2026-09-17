@@ -29,10 +29,10 @@ describe('armTemplateToDiagram', () => {
   it('builds nodes and dependsOn edges from a symbolic template', () => {
     const template = {
       resources: {
-        env: { type: 'Microsoft.App/managedEnvironments', name: 'aar-env' },
+        env: { type: 'Microsoft.App/managedEnvironments', name: 'aas-env' },
         api: {
           type: 'Microsoft.App/containerApps',
-          name: 'aar-api',
+          name: 'aas-api',
           dependsOn: ['env'],
         },
         role: {
@@ -88,14 +88,14 @@ describe('armResourcesToDiagram', () => {
 
   it('derives edges from property id references (Resource Graph shape)', () => {
     const envId =
-      '/subscriptions/s/resourceGroups/rg/providers/Microsoft.App/managedEnvironments/aar-env';
+      '/subscriptions/s/resourceGroups/rg/providers/Microsoft.App/managedEnvironments/aas-env';
     const diagram = armResourcesToDiagram([
-      { key: 'env', type: 'Microsoft.App/managedEnvironments', name: 'aar-env', id: envId },
+      { key: 'env', type: 'Microsoft.App/managedEnvironments', name: 'aas-env', id: envId },
       {
         key: 'api',
         type: 'Microsoft.App/containerApps',
-        name: 'aar-api',
-        id: '/subscriptions/s/resourceGroups/rg/providers/Microsoft.App/containerApps/aar-api',
+        name: 'aas-api',
+        id: '/subscriptions/s/resourceGroups/rg/providers/Microsoft.App/containerApps/aas-api',
         properties: { managedEnvironmentId: envId },
       },
     ]);

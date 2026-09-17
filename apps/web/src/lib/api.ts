@@ -5,7 +5,7 @@ import {
   type IacTarget,
   type ResiliencyReport,
   type SlaProfile,
-} from '@aar/shared';
+} from '@aas/shared';
 import { privacyFetch, refreshPrivacy, type PrivacyHealth } from './privacy.js';
 
 export type HealthStatus = PrivacyHealth;

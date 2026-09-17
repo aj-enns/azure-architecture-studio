@@ -9,18 +9,18 @@ import {
 describe('parseBicepResources', () => {
   const bicep = `
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
-  name: 'aar-logs'
+  name: 'aas-logs'
 }
 
 resource env 'Microsoft.App/managedEnvironments@2024-03-01' = {
-  name: 'aar-env'
+  name: 'aas-env'
   properties: {
     appLogsConfiguration: { logAnalyticsConfiguration: { customerId: logAnalytics.properties.customerId } }
   }
 }
 
 resource api 'Microsoft.App/containerApps@2024-03-01' = {
-  name: 'aar-api'
+  name: 'aas-api'
   properties: { managedEnvironmentId: env.id }
 }
 `;
@@ -32,7 +32,7 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = {
       'Microsoft.App/managedEnvironments',
       'Microsoft.App/containerApps',
     ]);
-    expect(resources.map((r) => r.name)).toEqual(['aar-logs', 'aar-env', 'aar-api']);
+    expect(resources.map((r) => r.name)).toEqual(['aas-logs', 'aas-env', 'aas-api']);
   });
 
   it('infers dependency edges from symbolic references', () => {
@@ -84,16 +84,16 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
 describe('parseTerraformResources', () => {
   const tf = `
 resource "azurerm_log_analytics_workspace" "logs" {
-  name = "aar-logs"
+  name = "aas-logs"
 }
 
 resource "azurerm_container_app_environment" "env" {
-  name                       = "aar-env"
+  name                       = "aas-env"
   log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
 }
 
 resource "azurerm_linux_function_app" "fn" {
-  name = "aar-fn"
+  name = "aas-fn"
 }
 
 resource "random_string" "suffix" {
@@ -111,12 +111,12 @@ resource "random_string" "suffix" {
   });
 
   it('marks function apps with kind so they resolve to Azure Functions', () => {
-    const fn = parseTerraformResources(tf).find((r) => r.name === 'aar-fn')!;
+    const fn = parseTerraformResources(tf).find((r) => r.name === 'aas-fn')!;
     expect(fn.kind).toBe('functionapp');
   });
 
   it('infers edges from interpolated references', () => {
-    const env = parseTerraformResources(tf).find((r) => r.name === 'aar-env')!;
+    const env = parseTerraformResources(tf).find((r) => r.name === 'aas-env')!;
     expect(env.dependsOn).toContain('azurerm_log_analytics_workspace.logs');
   });
 });

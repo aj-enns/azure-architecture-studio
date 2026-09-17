@@ -9,7 +9,7 @@
     {
       "id": "web-ui",
       "serviceId": "static-web-app",
-      "label": "Azure Architecture Review UI",
+      "label": "Azure Architecture Studio UI",
       "position": { "x": 0, "y": 330 },
       "properties": { "role": "Browser client" }
     },

@@ -11,7 +11,7 @@ server {
 
   # Proxy API + health calls to the API. API_UPSTREAM is substituted at container
   # start (nginx envsubst): http://api:8080 for docker-compose, or the internal
-  # Container Apps name (http://aar-api) in Azure. Only ${API_UPSTREAM} is
+  # Container Apps name (http://aas-api) in Azure. Only ${API_UPSTREAM} is
   # replaced; nginx runtime vars like $host are left untouched.
   location /api/ {
     proxy_pass ${API_UPSTREAM};

@@ -4,7 +4,7 @@ import { PATHS } from './config.js';
 const GH = process.env.GITHUB_TOKEN;
 const ghHeaders: Record<string, string> = {
   Accept: 'application/vnd.github+json',
-  'User-Agent': 'aar-catalog-sync',
+  'User-Agent': 'aas-catalog-sync',
   ...(GH ? { Authorization: `Bearer ${GH}` } : {}),
 };
 

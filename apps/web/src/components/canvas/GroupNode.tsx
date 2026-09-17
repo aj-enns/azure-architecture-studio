@@ -1,5 +1,5 @@
 import { NodeResizer, type NodeProps } from '@xyflow/react';
-import type { GroupKind } from '@aar/shared';
+import type { GroupKind } from '@aas/shared';
 import { cn } from '@/lib/utils.js';
 
 export interface GroupNodeData extends Record<string, unknown> {

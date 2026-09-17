@@ -1,7 +1,7 @@
 {
   "version": 1,
   "metadata": {
-    "name": "Azure Architecture Review - Deployment Topology",
+    "name": "Azure Architecture Studio - Deployment Topology",
     "description": "Faithful repository-derived topology: external web and internal API Container Apps, ACR image delivery, a shared pull/inference identity, Log Analytics, BYO Microsoft Foundry, and Microsoft Learn grounding.",
     "region": "eastus2"
   },
@@ -21,7 +21,7 @@
     {
       "id": "acr",
       "serviceId": "container-registry",
-      "label": "aar images (ACR)",
+      "label": "aas images (ACR)",
       "position": {
         "x": 466,
         "y": 320.5
@@ -35,7 +35,7 @@
     {
       "id": "identity",
       "serviceId": "managed-identity",
-      "label": "aar pull and inference identity",
+      "label": "aas pull and inference identity",
       "position": {
         "x": 28,
         "y": 226
@@ -72,7 +72,7 @@
         "targetPort": 80,
         "minReplicas": 1,
         "maxReplicas": 3,
-        "image": "aar-web:<git-sha>"
+        "image": "aas-web:<git-sha>"
       }
     },
     {
@@ -89,7 +89,7 @@
         "targetPort": 8080,
         "minReplicas": 0,
         "maxReplicas": 3,
-        "image": "aar-api:<git-sha>"
+        "image": "aas-api:<git-sha>"
       }
     },
     {
@@ -207,13 +207,13 @@
       "id": "acr-web",
       "source": "acr",
       "target": "web",
-      "label": "aar-web image pull"
+      "label": "aas-web image pull"
     },
     {
       "id": "acr-api",
       "source": "acr",
       "target": "api",
-      "label": "aar-api image pull"
+      "label": "aas-api image pull"
     },
     {
       "id": "identity-acr",

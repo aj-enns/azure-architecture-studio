@@ -2,17 +2,17 @@ using './main.bicep'
 
 // For manual deploys. The GitHub Actions pipeline (.github/workflows/deploy.yml)
 // passes these on the command line instead. Manual flow:
-//   1. az deployment group create -g <rg> -f infra/registry.bicep -p name=aar
+//   1. az deployment group create -g <rg> -f infra/registry.bicep -p name=aas
 //      (note the acrLoginServer + identityId outputs)
-//   2. az acr build -r <acrName> -t aar-api:<tag> -f apps/api/Dockerfile .
-//      az acr build -r <acrName> -t aar-web:<tag> -f apps/web/Dockerfile .
+//   2. az acr build -r <acrName> -t aas-api:<tag> -f apps/api/Dockerfile .
+//      az acr build -r <acrName> -t aas-web:<tag> -f apps/web/Dockerfile .
 //   3. az deployment group create -g <rg> -f infra/main.bicep -p infra/main.bicepparam
 
-param name = 'aar'
+param name = 'aas'
 
 // From registry.bicep outputs.
 param acrLoginServer = '<acrName>.azurecr.io'
-param managedIdentityId = '/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aar-id-<suffix>'
+param managedIdentityId = '/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aas-id-<suffix>'
 param managedIdentityClientId = '<identity-client-id>'
 
 // Image tag pushed in step 2 (e.g. a git SHA).

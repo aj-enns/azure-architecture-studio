@@ -1,5 +1,5 @@
 {
-  "name": "@aar/api",
+  "name": "@aas/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@aar/shared": "workspace:*",
+    "@aas/shared": "workspace:*",
     "@azure/identity": "^4.5.0",
     "@fastify/cors": "^10.0.1",
     "@fastify/rate-limit": "^11.2.0",

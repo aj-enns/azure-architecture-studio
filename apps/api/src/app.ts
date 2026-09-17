@@ -12,7 +12,7 @@ import {
   resiliencyTargetSchema,
   scanRepoFiles,
   validateArchitecture,
-} from '@aar/shared';
+} from '@aas/shared';
 import { AiGenerationError, generateSpec, generateSpecFromImage } from './ai/openai.js';
 import {
   buildImageSystemPrompt,

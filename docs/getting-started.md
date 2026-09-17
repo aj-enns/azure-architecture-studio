@@ -1,6 +1,6 @@
 # Getting started
 
-This guide walks you from a fresh clone to a running Azure Architecture Review
+This guide walks you from a fresh clone to a running Azure Architecture Studio
 instance — first locally for development, then containerized. For a high-level
 tour of what the app does, see the [README](../README.md); for contributor
 workflow and ground rules, see [CONTRIBUTING.md](../CONTRIBUTING.md).

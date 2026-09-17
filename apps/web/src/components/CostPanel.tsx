@@ -5,7 +5,7 @@ import {
   estimateDiagramCost,
   getServiceDefinition,
   type ServiceCategory,
-} from '@aar/shared';
+} from '@aas/shared';
 import { Button } from '@/components/ui/Button.js';
 import { PrivacyNotice } from './PrivacyNotice.js';
 import { downloadCsv } from '@/lib/export.js';

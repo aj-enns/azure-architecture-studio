@@ -31,7 +31,7 @@ cannot depend on a model call to produce any output at all.
 
 ## Decision
 
-**We will model resiliency as a deterministic baseline in `@aar/shared`, optionally
+**We will model resiliency as a deterministic baseline in `@aas/shared`, optionally
 refreshed from Microsoft Learn.**
 
 - `packages/shared/src/resiliency.ts` holds a curated `SERVICE_RESILIENCE` table

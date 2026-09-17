@@ -11,7 +11,7 @@ import {
   type ResiliencyFinding,
   type ResiliencySeverity,
   type SlaProfile,
-} from '@aar/shared';
+} from '@aas/shared';
 import { Button } from '@/components/ui/Button.js';
 import { PrivacyNotice } from './PrivacyNotice.js';
 import { analyzeDiagramResiliency, type ResiliencyResult } from '@/lib/api.js';

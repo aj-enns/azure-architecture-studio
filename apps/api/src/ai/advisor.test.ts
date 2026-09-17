@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyDiagram } from '@aar/shared';
+import { emptyDiagram } from '@aas/shared';
 import { ADVISOR_SYSTEM_PROMPT, buildAdvisorUserPrompt } from './advisor.js';
 
 describe('architecture advisor prompt', () => {

@@ -1,5 +1,5 @@
 import { DefaultAzureCredential, getBearerTokenProvider } from '@azure/identity';
-import { armResourcesToDiagram, type Diagram, type ImportResource } from '@aar/shared';
+import { armResourcesToDiagram, type Diagram, type ImportResource } from '@aas/shared';
 
 /**
  * Live Azure -> diagram import via Azure Resource Graph. Reads the resources in a

@@ -1,7 +1,7 @@
 #requires -Version 7.0
 <#
 .SYNOPSIS
-    One-command Azure install for Azure Architecture Review: infrastructure,
+    One-command Azure install for Azure Architecture Studio: infrastructure,
     container images, Container Apps, and Microsoft Entra "Easy Auth" sign-in.
 
 .DESCRIPTION
@@ -62,10 +62,10 @@ param(
 
     [string]$ResourceGroup = 'rg-azure-architecture-review',
     [string]$Location = 'eastus2',
-    [string]$AppName = 'aar',
+    [string]$AppName = 'aas',
 
     # --- Entra (Easy Auth) web sign-in registration -------------------------
-    [string]$EntraAppDisplayName = 'Azure Architecture Review - Web',
+    [string]$EntraAppDisplayName = 'Azure Architecture Studio - Web',
     # Reuse an existing registration by client id instead of creating one.
     [string]$EntraClientId,
     # Reuse an existing client secret instead of generating one.
@@ -392,10 +392,10 @@ if (-not $SkipImageBuild) {
     Push-Location $repoRoot
     try {
         az acr build --registry $acrName `
-            --image "aar-api:$ImageTag" --file apps/api/Dockerfile .
+            --image "aas-api:$ImageTag" --file apps/api/Dockerfile .
         Assert-LastExit 'API image build'
         az acr build --registry $acrName `
-            --image "aar-web:$ImageTag" --file apps/web/Dockerfile .
+            --image "aas-web:$ImageTag" --file apps/web/Dockerfile .
         Assert-LastExit 'Web image build'
     } finally {
         Pop-Location
@@ -404,9 +404,9 @@ if (-not $SkipImageBuild) {
 
 # ---- 6. Deploy the application (main.bicep) ---------------------------------
 Write-Step "Deploying the application (main.bicep, tag $ImageTag)"
-$parameterPath = Join-Path $infraDir ".aar-deploy-$([guid]::NewGuid()).bicepparam"
+$parameterPath = Join-Path $infraDir ".aas-deploy-$([guid]::NewGuid()).bicepparam"
 try {
-    $env:AAR_ENTRA_CLIENT_SECRET = $secretPlain
+    $env:AAS_ENTRA_CLIENT_SECRET = $secretPlain
 
     @"
 using './main.bicep'
@@ -418,7 +418,7 @@ param imageTag = '$ImageTag'
 param enableEntraAuth = true
 param entraTenantId = '$tenantId'
 param entraClientId = '$EntraClientId'
-param entraClientSecret = readEnvironmentVariable('AAR_ENTRA_CLIENT_SECRET')
+param entraClientSecret = readEnvironmentVariable('AAS_ENTRA_CLIENT_SECRET')
 param azureFoundryEndpoint = '$FoundryEndpoint'
 param azureFoundryModel = '$FoundryModel'
 param azureFoundryResourceId = '$FoundryResourceId'
@@ -431,7 +431,7 @@ param azureFoundryResourceId = '$FoundryResourceId'
         --query properties.outputs --output json | ConvertFrom-Json
     Assert-LastExit 'Application deployment'
 } finally {
-    Remove-Item Env:AAR_ENTRA_CLIENT_SECRET -ErrorAction SilentlyContinue
+    Remove-Item Env:AAS_ENTRA_CLIENT_SECRET -ErrorAction SilentlyContinue
     Remove-Item $parameterPath -ErrorAction SilentlyContinue
     $secretPlain = $null
 }

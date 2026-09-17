@@ -5,7 +5,7 @@ import {
   getServiceDefinition,
   validateArchitecture,
   type Diagram,
-} from '@aar/shared';
+} from '@aas/shared';
 import { formatLearnGrounding, searchLearnDocsCached, type LearnDoc } from './learnGrounding.js';
 import { AiGenerationError, generateJson } from './openai.js';
 import { summarizeDiagram } from './prompt.js';

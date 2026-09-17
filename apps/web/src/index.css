@@ -87,7 +87,7 @@
     stroke-width: 3.5 !important;
     stroke-dasharray: 10 6;
     filter: drop-shadow(0 0 5px hsl(var(--primary))) drop-shadow(0 0 9px hsl(var(--primary) / 0.55));
-    animation: aar-edge-flow 0.55s linear infinite;
+    animation: aas-edge-flow 0.55s linear infinite;
   }
 }
 
@@ -106,35 +106,35 @@
 }
 
 /* Selected resource: a broad pulse that remains visible in dense diagrams. */
-.react-flow__node:has(.aar-azure-node-selected) {
+.react-flow__node:has(.aas-azure-node-selected) {
   z-index: 2000 !important;
 }
 
-.aar-azure-node-selected {
+.aas-azure-node-selected {
   box-shadow:
     0 0 0 2px hsl(var(--primary) / 0.75),
     0 0 10px 3px hsl(var(--primary) / 0.7),
     0 0 24px 8px hsl(var(--primary) / 0.38);
-  animation: aar-node-glow 0.9s ease-in-out infinite alternate;
+  animation: aas-node-glow 0.9s ease-in-out infinite alternate;
 }
 
-.aar-modifier-pan,
-.aar-modifier-pan * {
+.aas-modifier-pan,
+.aas-modifier-pan * {
   cursor: grab !important;
 }
 
-.aar-modifier-panning,
-.aar-modifier-panning * {
+.aas-modifier-panning,
+.aas-modifier-panning * {
   cursor: grabbing !important;
 }
 
-@keyframes aar-edge-flow {
+@keyframes aas-edge-flow {
   to {
     stroke-dashoffset: -16;
   }
 }
 
-@keyframes aar-node-glow {
+@keyframes aas-node-glow {
   to {
     box-shadow:
       0 0 0 3px hsl(var(--primary) / 0.9),
@@ -144,7 +144,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .aar-azure-node-selected {
+  .aas-azure-node-selected {
     animation: none;
   }
 }

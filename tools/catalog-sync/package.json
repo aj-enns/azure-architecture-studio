@@ -1,5 +1,5 @@
 {
-  "name": "@aar/catalog-sync",
+  "name": "@aas/catalog-sync",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@aar/shared": "workspace:*"
+    "@aas/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
