@@ -57,7 +57,9 @@ describe('pricing', () => {
   });
 
   it('excludes non-Azure components from the estimate and flags them', () => {
-    const cost = estimateDiagramCost(diagramWith(['app-service-plan', 'external', 'external:okta']));
+    const cost = estimateDiagramCost(
+      diagramWith(['app-service-plan', 'external', 'external:okta']),
+    );
     expect(cost.hasExternalNodes).toBe(true);
     // External nodes contribute nothing and are marked as not estimated.
     expect(cost.totalMonthlyUsd).toBe(estimateNodeCost('app-service-plan').monthlyUsd);

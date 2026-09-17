@@ -149,7 +149,9 @@ describe('analyzeResiliency', () => {
   });
 
   it('excludes non-Azure components from the composite and flags them', () => {
-    const withExternal = analyzeResiliency(diagramWith(['app-service', 'external', 'external:okta']));
+    const withExternal = analyzeResiliency(
+      diagramWith(['app-service', 'external', 'external:okta']),
+    );
     const azureOnly = analyzeResiliency(diagramWith(['app-service']));
     expect(withExternal.hasExternalNodes).toBe(true);
     // External nodes never contribute, so the composite matches the Azure-only design.
