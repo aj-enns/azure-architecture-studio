@@ -7,12 +7,12 @@ targetScope = 'resourceGroup'
 // injected as API_UPSTREAM so nginx can reach the API by its environment name.
 
 @description('Base name used to derive resource names.')
-param name string = 'aar'
+param name string = 'aas'
 
 @description('Location for all resources.')
 param location string = resourceGroup().location
 
-@description('ACR login server, e.g. aaracrxxxx.azurecr.io (registry.bicep output).')
+@description('ACR login server, e.g. aasacrxxxx.azurecr.io (registry.bicep output).')
 param acrLoginServer string
 
 @description('Resource id of the user-assigned identity used to pull images and for keyless AI auth (registry.bicep output).')
@@ -61,8 +61,8 @@ var uniqueSuffix = uniqueString(resourceGroup().id)
 
 var apiAppName = '${name}-api'
 var webAppName = '${name}-web'
-var apiImage = '${acrLoginServer}/aar-api:${imageTag}'
-var webImage = '${acrLoginServer}/aar-web:${imageTag}'
+var apiImage = '${acrLoginServer}/aas-api:${imageTag}'
+var webImage = '${acrLoginServer}/aas-web:${imageTag}'
 var entraClientSecretName = 'entra-client-secret'
 
 // Registry reference shared by both apps; images are pulled with the identity.

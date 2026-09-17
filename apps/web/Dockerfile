@@ -21,8 +21,8 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS build
 COPY packages/shared packages/shared
 COPY apps/web apps/web
-RUN pnpm --filter @aar/shared build \
-  && pnpm --filter @aar/web build
+RUN pnpm --filter @aas/shared build \
+  && pnpm --filter @aas/web build
 
 # ---- Runtime: nginx serving static assets -------------------------------------
 FROM nginx:1.27-alpine AS runtime

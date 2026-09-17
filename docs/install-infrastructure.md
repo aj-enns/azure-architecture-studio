@@ -98,14 +98,14 @@ Bicep is already installed and needs updating.
 
 ## 2. Select your subscription and create the resource group
 
-Replace the subscription ID and choose a resource group and region. Keep `aar`
+Replace the subscription ID and choose a resource group and region. Keep `aas`
 as the application name if you plan to use the supplied GitHub Actions workflow.
 
 ```powershell
 $subscriptionId = '<your-subscription-id>'
 $resourceGroup = 'rg-azure-architecture-review'
 $location = 'eastus2'
-$appName = 'aar'
+$appName = 'aas'
 
 az login
 az account set --subscription $subscriptionId
@@ -129,7 +129,7 @@ az group create --name $resourceGroup --location $location
 
 ```powershell
 az deployment group create `
-  --name aar-registry `
+  --name aas-registry `
   --resource-group $resourceGroup `
   --template-file infra/registry.bicep `
   --parameters name=$appName
@@ -139,7 +139,7 @@ Read the outputs after the deployment succeeds:
 
 ```powershell
 $registry = az deployment group show `
-  --resource-group $resourceGroup --name aar-registry `
+  --resource-group $resourceGroup --name aas-registry `
   --query properties.outputs --output json | ConvertFrom-Json
 
 $registry | ConvertTo-Json -Depth 5
@@ -156,7 +156,7 @@ identity and not the optional GitHub deployment identity.
 
 1. In the [Azure portal](https://portal.azure.com), open **Microsoft Entra ID >
    App registrations > New registration** in the subscription's tenant.
-2. Name it `Azure Architecture Review - Web`. Choose **Accounts in this
+2. Name it `Azure Architecture Studio - Web`. Choose **Accounts in this
    organizational directory only**. Leave the redirect URI empty for now: the
    application URL is not known until Part 2. Register the application.
 3. Record the **Application (client) ID** and **Directory (tenant) ID**. The client
@@ -214,7 +214,7 @@ $identityPrincipalId = [guid]::Parse($registry.identityPrincipalId.value).ToStri
 az deployment group create `
   --subscription $foundrySubscriptionId `
   --resource-group $foundryResourceGroup `
-  --name aar-foundry-access `
+  --name aas-foundry-access `
   --template-file infra/foundry-roles.bicep `
   --parameters "foundryAccountName=$foundryAccountName" `
     "principalId=$identityPrincipalId"
@@ -235,7 +235,7 @@ that inference works.
 
 Before continuing, confirm:
 
-- The `aar-registry` deployment succeeded and has all five outputs.
+- The `aas-registry` deployment succeeded and has all five outputs.
 - The sign-in app registration exists and you have its client ID and secret value.
 - Assignment is required and at least your test user is assigned.
 - Tenant-wide admin consent is granted for the expected sign-in scopes.

@@ -17,7 +17,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { analyzeResiliency, getServiceDefinition } from '@aar/shared';
+import { analyzeResiliency, getServiceDefinition } from '@aas/shared';
 import { AzureNode } from './AzureNode.js';
 import { AzureEdge } from './AzureEdge.js';
 import { GroupNode } from './GroupNode.js';
@@ -346,7 +346,7 @@ function CanvasInner(): JSX.Element {
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
-      const serviceId = event.dataTransfer.getData('application/x-aar-service');
+      const serviceId = event.dataTransfer.getData('application/x-aas-service');
       if (!serviceId || !getServiceDefinition(serviceId)) return;
       const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
       addNode(serviceId, position);
@@ -402,7 +402,7 @@ function CanvasInner(): JSX.Element {
   return (
     <div
       ref={wrapperRef}
-      className={`h-full w-full${controlPressed ? ' aar-modifier-pan' : ''}${modifierPanning ? ' aar-modifier-panning' : ''}`}
+      className={`h-full w-full${controlPressed ? ' aas-modifier-pan' : ''}${modifierPanning ? ' aas-modifier-panning' : ''}`}
       data-testid="canvas"
       onPointerDownCapture={onPointerDownCapture}
       onPointerMoveCapture={onPointerMoveCapture}

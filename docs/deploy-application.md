@@ -33,7 +33,7 @@ subscription and resource group as Part 1. Stop after any failed command.
 ```powershell
 $subscriptionId = '<your-subscription-id>'
 $resourceGroup = 'rg-azure-architecture-review'
-$appName = 'aar'
+$appName = 'aas'
 $entraClientId = '<web-sign-in-application-client-id>'
 
 az login
@@ -42,7 +42,7 @@ az account show --query '{subscription:name,id:id,tenantId:tenantId}' --output t
 $tenantId = az account show --query tenantId --output tsv
 
 $registry = az deployment group show `
-  --resource-group $resourceGroup --name aar-registry `
+  --resource-group $resourceGroup --name aas-registry `
   --query properties.outputs --output json | ConvertFrom-Json
 ```
 
@@ -69,11 +69,11 @@ both images must use the same tag.
 $imageTag = 'manual-' + (Get-Date -Format 'yyyyMMddHHmmss')
 
 az acr build --registry $registry.acrName.value `
-  --image "aar-api:$imageTag" --file apps/api/Dockerfile .
+  --image "aas-api:$imageTag" --file apps/api/Dockerfile .
 if ($LASTEXITCODE -ne 0) { throw 'API image build failed.' }
 
 az acr build --registry $registry.acrName.value `
-  --image "aar-web:$imageTag" --file apps/web/Dockerfile .
+  --image "aas-web:$imageTag" --file apps/web/Dockerfile .
 if ($LASTEXITCODE -ne 0) { throw 'Web image build failed.' }
 ```
 
@@ -121,7 +121,7 @@ to an environment variable, so it contains no literal secret. The `finally`
 block removes the file and environment variable after deployment, including on
 failure. Do not run Bicep parameter-output commands or enable CLI debug logging
 while the secret is loaded. If you forcibly close the terminal, remove any
-leftover `.aar-deploy-*.bicepparam` file from the infrastructure folder.
+leftover `.aas-deploy-*.bicepparam` file from the infrastructure folder.
 
 ```powershell
 $requiredSettings = @{
@@ -141,7 +141,7 @@ foreach ($setting in $requiredSettings.GetEnumerator()) {
     throw "Missing or placeholder setting: $($setting.Key). Restore Steps 1 through 3 in this terminal."
   }
 }
-foreach ($imageRepository in @('aar-api', 'aar-web')) {
+foreach ($imageRepository in @('aas-api', 'aas-web')) {
   az acr repository show --subscription $subscriptionId `
     --name $registry.acrName.value --image "${imageRepository}:$imageTag" `
     --query name --output tsv
@@ -150,10 +150,10 @@ foreach ($imageRepository in @('aar-api', 'aar-web')) {
   }
 }
 
-$parameterPath = Join-Path (Resolve-Path infra) ".aar-deploy-$([guid]::NewGuid()).bicepparam"
+$parameterPath = Join-Path (Resolve-Path infra) ".aas-deploy-$([guid]::NewGuid()).bicepparam"
 try {
-    $env:AAR_ENTRA_CLIENT_SECRET = Read-Host 'Web sign-in client secret value' -MaskInput
-    if ([string]::IsNullOrWhiteSpace($env:AAR_ENTRA_CLIENT_SECRET)) {
+    $env:AAS_ENTRA_CLIENT_SECRET = Read-Host 'Web sign-in client secret value' -MaskInput
+    if ([string]::IsNullOrWhiteSpace($env:AAS_ENTRA_CLIENT_SECRET)) {
         throw 'A web sign-in client secret is required.'
     }
 
@@ -167,7 +167,7 @@ param imageTag = '$imageTag'
 param enableEntraAuth = true
 param entraTenantId = '$tenantId'
 param entraClientId = '$entraClientId'
-param entraClientSecret = readEnvironmentVariable('AAR_ENTRA_CLIENT_SECRET')
+param entraClientSecret = readEnvironmentVariable('AAS_ENTRA_CLIENT_SECRET')
 param azureFoundryEndpoint = '$foundryEndpoint'
 param azureFoundryModel = '$foundryModel'
 param azureFoundryResourceId = '$foundryResourceId'
@@ -175,13 +175,13 @@ param azureFoundryResourceId = '$foundryResourceId'
 
     az deployment group create `
       --subscription $subscriptionId `
-      --name aar-app --resource-group $resourceGroup `
+      --name aas-app --resource-group $resourceGroup `
       --parameters $parameterPath `
       --query properties.outputs --output json
     if ($LASTEXITCODE -ne 0) { throw 'Application deployment failed.' }
 }
 finally {
-    Remove-Item Env:AAR_ENTRA_CLIENT_SECRET -ErrorAction SilentlyContinue
+    Remove-Item Env:AAS_ENTRA_CLIENT_SECRET -ErrorAction SilentlyContinue
     Remove-Item $parameterPath -ErrorAction SilentlyContinue
 }
 ```
@@ -196,7 +196,7 @@ Retrieve the application URL and callback:
 
 ```powershell
 $app = az deployment group show `
-  --resource-group $resourceGroup --name aar-app `
+  --resource-group $resourceGroup --name aas-app `
   --query properties.outputs --output json | ConvertFrom-Json
 
 "Application: https://$($app.webFqdn.value)"
@@ -244,11 +244,11 @@ current templates; it is not evidence that they have passed a live deployment.
 Use this after a successful manual installation. The
 [deploy workflow](../.github/workflows/deploy.yml) provisions the registry and
 identity again, builds images tagged with the commit SHA, then deploys the app.
-It uses `name=aar`; keep the same resource group and name to update this installation.
+It uses `name=aas`; keep the same resource group and name to update this installation.
 
 ### 1. Create a separate deployment identity
 
-Create a single-tenant app registration such as `Azure Architecture Review - Deploy`
+Create a single-tenant app registration such as `Azure Architecture Studio - Deploy`
 and ensure it has a service principal (enterprise application) in the tenant.
 It needs no web callback or client secret. If the service principal is absent,
 an authorized administrator can create it:
@@ -420,5 +420,5 @@ expiry and redeploy using its new value (update the GitHub secret for automation
 | AI is unavailable or returns 401/403 | Check deployed Foundry parameters, runtime identity roles, model availability, and account network restrictions; local `.env` is irrelevant |
 
 Use **Container Apps > Log stream** and **Revisions** in the portal to inspect
-both `aar-web` and `aar-api`. The API can scale to zero, so allow for a cold start.
+both `aas-web` and `aas-api`. The API can scale to zero, so allow for a cold start.
 Never resolve an access failure by disabling Entra or making the API public.

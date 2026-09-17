@@ -1,10 +1,10 @@
-# Azure Architecture Review
+# Azure Architecture Studio
 
 > Design, review, and cost Azure architectures on an interactive canvas — self-hosted, open source, and AI-optional.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Azure Architecture Review is a self-hostable diagram builder for your
+Azure Architecture Studio is a self-hostable diagram builder for your
 Architecture Review Board (ARB) process. Draw Azure architectures on an
 interactive canvas, generate them from natural language or a screenshot, or
 import them from Infrastructure as Code or a live subscription. Then validate the
@@ -17,7 +17,7 @@ for diagram-based exploration without repository or IaC import.
 > self-host it for ARB reviews. **Status:** active early development — see the
 > [roadmap](docs/PROGRESS.md).
 
-![Azure Architecture Review deployment topology rendered on the canvas](azure-architecture-review-deployment-topology.png)
+![Azure Architecture Studio deployment topology rendered on the canvas](azure-architecture-studio-deployment-topology.png)
 
 ## Features
 

@@ -1,4 +1,4 @@
-import { scanRepoFiles, type Diagram, type RepoFile } from '@aar/shared';
+import { scanRepoFiles, type Diagram, type RepoFile } from '@aas/shared';
 
 /**
  * Fetches Bicep/Terraform/ARM files from a public GitHub repository and maps them

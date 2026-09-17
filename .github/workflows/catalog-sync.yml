@@ -33,7 +33,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm --filter @aar/shared build
+      - run: pnpm --filter @aas/shared build
 
       - name: Sync catalog candidates
         env:
@@ -44,9 +44,9 @@ jobs:
 
       - name: Validate generated catalog
         run: |
-          pnpm --filter @aar/shared build
-          pnpm --filter @aar/shared test
-          pnpm --filter @aar/web typecheck
+          pnpm --filter @aas/shared build
+          pnpm --filter @aas/shared test
+          pnpm --filter @aas/web typecheck
 
       - name: Generate GitHub App token
         id: app-token

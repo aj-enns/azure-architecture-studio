@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs';
-import { coreServiceCatalog, type ServiceDefinition } from '@aar/shared';
+import { coreServiceCatalog, type ServiceDefinition } from '@aas/shared';
 import { PATHS, PINS, categoryForResourceType, type Pin } from './config.js';
 import { buildIconIndex, resolveIcon } from './icons.js';
 import { fetchAvmModules, fetchPopularity, resolveResourceType } from './sources.js';

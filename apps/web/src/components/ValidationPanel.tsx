@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { ShieldCheck, X } from 'lucide-react';
-import { validateArchitecture, WAF_PILLARS, type WafPillar, type WafSeverity } from '@aar/shared';
+import { validateArchitecture, WAF_PILLARS, type WafPillar, type WafSeverity } from '@aas/shared';
 import { Button } from '@/components/ui/Button.js';
 import { PrivacyNotice } from './PrivacyNotice.js';
 import { useDiagramStore } from '@/store/diagramStore.js';

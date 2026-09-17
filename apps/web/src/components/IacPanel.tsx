@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Download, FileCode2, Info, RefreshCw, X } from 'lucide-react';
-import type { IacBundle, IacFile, IacTarget } from '@aar/shared';
+import type { IacBundle, IacFile, IacTarget } from '@aas/shared';
 import { Button } from '@/components/ui/Button.js';
 import { PrivacyNotice } from './PrivacyNotice.js';
 import { generateIac } from '@/lib/api.js';

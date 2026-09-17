@@ -22,8 +22,8 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS build
 COPY packages/shared packages/shared
 COPY apps/api apps/api
-RUN pnpm --filter @aar/shared build \
-  && pnpm --filter @aar/api build
+RUN pnpm --filter @aas/shared build \
+  && pnpm --filter @aas/api build
 
 # ---- Production deps only ------------------------------------------------------
 FROM base AS prod-deps

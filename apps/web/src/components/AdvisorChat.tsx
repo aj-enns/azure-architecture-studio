@@ -3,7 +3,7 @@ import { ArrowRight, Loader2, RotateCcw, Send, Trash2 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
-import type { Diagram } from '@aar/shared';
+import type { Diagram } from '@aas/shared';
 import { Button } from '@/components/ui/Button.js';
 import { askArchitecture, type AdvisorMessage } from '@/lib/api.js';
 

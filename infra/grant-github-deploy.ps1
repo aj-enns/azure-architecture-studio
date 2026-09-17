@@ -133,7 +133,7 @@ if ($GitHubOwner -and $GitHubRepo) {
             issuer      = 'https://token.actions.githubusercontent.com'
             subject     = $cred.subject
             audiences   = @('api://AzureADTokenExchange')
-            description = 'Azure Architecture Review deploy'
+            description = 'Azure Architecture Studio deploy'
         } | ConvertTo-Json -Compress
         az ad app federated-credential create --id $DeploymentClientId --parameters $parameters --output none
         Assert-LastExit "Create federated credential $($cred.name)"

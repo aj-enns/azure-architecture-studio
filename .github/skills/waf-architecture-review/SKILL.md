@@ -50,7 +50,7 @@ Capture, and state back, before assessing:
 - **Constraints** — budget ceiling, data-residency/sovereignty, compliance, team
   operational maturity.
 
-If the workspace is the Azure Architecture Review app, prefer its structured data
+If the workspace is the Azure Architecture Studio app, prefer its structured data
 and tooling — see [using this workspace](./references/using-this-workspace.md).
 
 ### 2. Score the five WAF pillars

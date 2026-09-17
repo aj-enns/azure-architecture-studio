@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { safeParseDiagram } from '@aar/shared';
+import { safeParseDiagram } from '@aas/shared';
 import { aiDiagramSpecSchema, specToDiagram } from './spec.js';
 
 describe('specToDiagram', () => {

@@ -4,7 +4,7 @@ import {
   type Diagram,
   type ResilienceTier,
   type SlaProfile,
-} from '@aar/shared';
+} from '@aas/shared';
 import { formatLearnGrounding, searchLearnDocsCached, type LearnDoc } from './learnGrounding.js';
 import { AiGenerationError, generateJson } from './openai.js';
 import type { AzureOpenAIConfig } from '../config.js';

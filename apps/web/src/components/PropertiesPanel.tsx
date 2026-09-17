@@ -5,7 +5,7 @@ import {
   getServiceDefinition,
   regionSupportsZones,
   type NodeResiliencyExplanation,
-} from '@aar/shared';
+} from '@aas/shared';
 import { Button } from '@/components/ui/Button.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
 import { useUiStore } from '@/store/uiStore.js';

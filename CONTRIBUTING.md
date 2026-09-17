@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in improving Azure Architecture Review!
+Thanks for your interest in improving Azure Architecture Studio!
 
 ## Development setup
 

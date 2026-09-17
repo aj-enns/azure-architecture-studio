@@ -17,8 +17,8 @@
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "diagram:solution": "pnpm --filter @aar/shared build && node tools/generate-solution-diagram.mjs",
-    "catalog:sync": "pnpm --filter @aar/catalog-sync sync"
+    "diagram:solution": "pnpm --filter @aas/shared build && node tools/generate-solution-diagram.mjs",
+    "catalog:sync": "pnpm --filter @aas/catalog-sync sync"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",

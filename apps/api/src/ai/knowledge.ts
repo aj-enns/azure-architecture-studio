@@ -1,4 +1,4 @@
-import { azureServiceCatalog } from '@aar/shared';
+import { azureServiceCatalog } from '@aas/shared';
 
 /**
  * A distilled Azure Architecture Center reference architecture used to ground

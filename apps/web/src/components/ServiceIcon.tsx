@@ -1,4 +1,4 @@
-import type { ServiceCategory } from '@aar/shared';
+import type { ServiceCategory } from '@aas/shared';
 import { Box, Cloud, UserRound } from 'lucide-react';
 import { azureIconUrl, categoryColor, iconForCategory } from '@/lib/icons.js';
 import { cn } from '@/lib/utils.js';

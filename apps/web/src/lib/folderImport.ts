@@ -1,4 +1,4 @@
-import { isScannableIacPath, scanRepoFiles, type Diagram } from '@aar/shared';
+import { isScannableIacPath, scanRepoFiles, type Diagram } from '@aas/shared';
 
 export interface LocalFile {
   name: string;

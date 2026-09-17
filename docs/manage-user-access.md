@@ -7,7 +7,7 @@ required?** set to **Yes**. Access depends on three separate controls:
 2. Grant tenant-wide admin consent for the expected sign-in scopes once for the
    Enterprise Application.
 3. Add that identity to a security group assigned to the
-   `Azure Architecture Review - Web` **Enterprise application**. A direct user
+   `Azure Architecture Studio - Web` **Enterprise application**. A direct user
    assignment is also supported when group assignment is unavailable.
 
 Adding someone to the tenant is necessary but is not enough by itself. If step 3
@@ -75,7 +75,7 @@ Perform this once for each dedicated access group:
 2. Open **Entra ID > Groups > All groups** and create or select the dedicated
    **Security** group.
 3. Open **Entra ID > Enterprise apps > All applications**.
-4. Select `Azure Architecture Review - Web`. Use the **Enterprise application**,
+4. Select `Azure Architecture Studio - Web`. Use the **Enterprise application**,
    not the similarly named App Registration. Confirm its Application ID matches
    the repository variable `ENTRA_AUTH_CLIENT_ID` or the client ID shown in a
    sign-in error.

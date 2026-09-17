@@ -27,7 +27,7 @@ Two constraints shaped the design:
 
 ## Decision
 
-**We will model throughput as a deterministic baseline in `@aar/shared`, sized against
+**We will model throughput as a deterministic baseline in `@aas/shared`, sized against
 a diagram-level target, and surface it inside the Cost tab.**
 
 - `packages/shared/src/throughput.ts` holds a curated `SERVICE_THROUGHPUT` table for

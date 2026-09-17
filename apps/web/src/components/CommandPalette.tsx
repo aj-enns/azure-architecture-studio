@@ -1,6 +1,6 @@
 import { Command } from 'cmdk';
 import { useEffect } from 'react';
-import { azureServiceCatalog, type Diagram, type GroupKind } from '@aar/shared';
+import { azureServiceCatalog, type Diagram, type GroupKind } from '@aas/shared';
 import { importArmTemplate, importFromAzure } from '@/lib/api.js';
 import { downloadJson, exportPng, exportSvg } from '@/lib/export.js';
 import { useTheme } from '@/lib/theme.js';

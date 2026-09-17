@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-const STORAGE_KEY = 'aar.ui';
+const STORAGE_KEY = 'aas.ui';
 
 /** Analysis panels share the right-hand rail, so only one is open at a time. */
 export type PanelId = 'ai' | 'validation' | 'cost' | 'resiliency' | 'review' | 'iac';

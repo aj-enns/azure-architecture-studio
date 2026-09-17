@@ -16,7 +16,7 @@ import {
   Workflow,
   type LucideIcon,
 } from 'lucide-react';
-import type { ServiceCategory } from '@aar/shared';
+import type { ServiceCategory } from '@aas/shared';
 
 /**
  * Fallback icon per catalog category, used until the official Microsoft Azure

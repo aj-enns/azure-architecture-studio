@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { azureServiceCatalog } from '@aar/shared';
+import { azureServiceCatalog } from '@aas/shared';
 import { buildImageSystemPrompt, buildImageUserPrompt } from './prompt.js';
 
 describe('image prompt builders', () => {

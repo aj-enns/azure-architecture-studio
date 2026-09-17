@@ -6,7 +6,7 @@ targetScope = 'resourceGroup'
 // image chicken-and-egg: provision registry -> build/push -> deploy apps.
 
 @description('Base name used to derive resource names.')
-param name string = 'aar'
+param name string = 'aas'
 
 @description('Location for all resources.')
 param location string = resourceGroup().location
