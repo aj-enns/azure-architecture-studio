@@ -134,9 +134,16 @@ if ($GitHubOwner -and $GitHubRepo) {
             subject     = $cred.subject
             audiences   = @('api://AzureADTokenExchange')
             description = 'Azure Architecture Studio deploy'
-        } | ConvertTo-Json -Compress
-        az ad app federated-credential create --id $DeploymentClientId --parameters $parameters --output none
-        Assert-LastExit "Create federated credential $($cred.name)"
+        } | ConvertTo-Json
+        # Pass JSON via @file: PowerShell strips quotes from inline az JSON strings.
+        $credFile = New-TemporaryFile
+        try {
+            Set-Content -Path $credFile -Value $parameters -Encoding utf8
+            az ad app federated-credential create --id $DeploymentClientId --parameters "@$($credFile.FullName)" --output none
+            Assert-LastExit "Create federated credential $($cred.name)"
+        } finally {
+            Remove-Item $credFile -ErrorAction SilentlyContinue
+        }
         Write-Host "Created: $($cred.subject)"
     }
 }
