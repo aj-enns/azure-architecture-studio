@@ -19,8 +19,8 @@
     "lint": "eslint \"src/**/*.ts\""
   },
   "dependencies": {
-    "@dagrejs/dagre": "^3.1.0",
-    "zod": "^3.24.1"
+    "@dagrejs/dagre": "^3.1.1",
+    "zod": "^4.6.1"
   },
   "devDependencies": {
     "vitest": "^2.1.8"
