@@ -173,7 +173,7 @@ export function CostPanel({
                         : 'border-rose-500/30 bg-rose-500/15 text-rose-600 dark:text-rose-400',
                     )}
                   >
-                    {throughput.meetsTarget ? 'Met' : 'Under'}
+                    {throughput.meetsTarget ? 'Met' : 'Missed'}
                   </span>
                 )}
               </div>
@@ -207,7 +207,7 @@ export function CostPanel({
               </div>
               <div className="grid grid-cols-2 gap-2 border-t border-border px-2.5 py-2 text-xs">
                 <div>
-                  <div className="text-muted-foreground">Capacity</div>
+                  <div className="text-muted-foreground">Current throughput</div>
                   <div className="font-medium tabular-nums">
                     {throughput.capacityPerMinute === null
                       ? '—'
@@ -215,7 +215,7 @@ export function CostPanel({
                   </div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">Target</div>
+                  <div className="text-muted-foreground">Target throughput</div>
                   <div className="font-medium tabular-nums">
                     {throughput.targetPerMinute === null
                       ? '—'

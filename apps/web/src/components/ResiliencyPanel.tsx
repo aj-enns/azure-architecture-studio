@@ -145,7 +145,7 @@ export function ResiliencyPanel({
         <div className="rounded-md border border-border bg-background p-3">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-xs text-muted-foreground">Composite SLA</div>
+              <div className="text-xs text-muted-foreground">Current SLA</div>
               <div className="text-xs text-muted-foreground">
                 {report.downtimePerMonthMinutes} min downtime/month
               </div>
@@ -229,6 +229,20 @@ export function ResiliencyPanel({
                 className="mt-0.5 w-full rounded border border-input bg-background px-1.5 py-1 text-xs tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </label>
+          </div>
+          <div className="grid grid-cols-2 gap-2 border-t border-border px-2.5 py-2 text-xs">
+            <div>
+              <div className="text-muted-foreground">Current SLA</div>
+              <div className={cn('font-medium tabular-nums', slaColor(report.compositeSlaPercent))}>
+                {report.compositeSlaPercent}%{report.hasExternalNodes ? '*' : ''}
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Target SLA</div>
+              <div className="font-medium tabular-nums">
+                {target?.slaPercent ?? DEFAULT_TARGET.slaPercent}%
+              </div>
+            </div>
           </div>
           {target && (
             <button
