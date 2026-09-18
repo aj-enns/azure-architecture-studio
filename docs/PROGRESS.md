@@ -128,6 +128,14 @@ associated workspace resources) are modeled.
 
 ---
 
+## Future enhancements
+
+| #   | Task                              | Status |
+| --- | --------------------------------- | ------ |
+| F.1 | Saving architectures per user      | ⬜     |
+
+---
+
 ## Change log
 
 - **2026-08-11** — The AI rail is now a unified assistant with explicit `Ask` and

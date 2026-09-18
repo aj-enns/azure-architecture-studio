@@ -3,6 +3,7 @@ import {
   consentKey,
   describeAction,
   privacyFetch,
+  resetConsent,
   resolveConsent,
   usePrivacyStore,
   type PrivacyHealth,
@@ -17,6 +18,7 @@ const health: PrivacyHealth = {
 
 afterEach(() => {
   resolveConsent(false);
+  resetConsent();
   usePrivacyStore.setState({ health: null, pending: null, lastTransfer: null });
   vi.unstubAllGlobals();
 });

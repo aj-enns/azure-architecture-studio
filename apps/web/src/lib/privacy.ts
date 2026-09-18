@@ -91,7 +91,13 @@ export function describeAction(
 }
 
 export function consentKey(disclosure: Disclosure): string {
-  return `aas-consent-v1:${JSON.stringify(disclosure)}`;
+  // Canonical identity: the action plus the exact set of destinations the data
+  // reaches. Destinations are sorted so ordering never changes the key, and the
+  // human-readable prose is excluded so wording edits can't silently invalidate
+  // a remembered choice. Changing destinations (e.g. toggling Learn grounding)
+  // still produces a new key, so consent is re-requested when it should be.
+  const destinations = [...disclosure.destinations].sort();
+  return `aas-consent-v1:${disclosure.action}:${destinations.join(',')}`;
 }
 
 interface PendingConsent {
@@ -112,7 +118,35 @@ export const usePrivacyStore = create<PrivacyState>(() => ({
   lastTransfer: null,
 }));
 
+// Session mirror of remembered choices. localStorage is the durable store, but
+// some browsers (private mode, blocked third-party storage) throw on write; the
+// in-memory set keeps "Remember" working for the session even then.
+const rememberedConsents = new Set<string>();
+
+try {
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('aas-consent-v1:') && localStorage.getItem(key) === 'yes')
+      rememberedConsents.add(key);
+  }
+} catch {
+  // Storage unavailable at load; rely on the in-memory set only.
+}
+
+function isRemembered(key: string): boolean {
+  if (rememberedConsents.has(key)) return true;
+  try {
+    if (localStorage.getItem(key) === 'yes') {
+      rememberedConsents.add(key);
+      return true;
+    }
+  } catch {
+    // Ignore; treat as not remembered.
+  }
+  return false;
+}
+
 export function resetConsent(): void {
+  rememberedConsents.clear();
   try {
     for (const key of Object.keys(localStorage)) {
       if (key.startsWith('aas-consent-v1:')) localStorage.removeItem(key);
@@ -128,11 +162,14 @@ export function resolveConsent(allowed: boolean, remember = false): void {
   const pending = usePrivacyStore.getState().pending;
   if (!pending) return;
   if (allowed && remember) {
+    const key = consentKey(pending.disclosure);
+    rememberedConsents.add(key);
     try {
-      localStorage.setItem(consentKey(pending.disclosure), 'yes');
+      localStorage.setItem(key, 'yes');
     } catch {
       usePrivacyStore.setState({
-        lastTransfer: 'Browser storage unavailable; permission applies only to this request.',
+        lastTransfer:
+          'Browser storage is unavailable, so this choice is remembered only until you reload.',
       });
     }
   }
@@ -169,12 +206,7 @@ export async function privacyFetch(
   const payload = JSON.parse(String(init.body ?? '{}')) as { grounded?: boolean };
   const disclosure = describeAction(action, health, window.location.host, payload.grounded ?? true);
   const bytes = new TextEncoder().encode(String(init.body ?? '')).byteLength;
-  let remembered = false;
-  try {
-    remembered = localStorage.getItem(consentKey(disclosure)) === 'yes';
-  } catch {
-    remembered = false;
-  }
+  const remembered = isRemembered(consentKey(disclosure));
   if ((disclosure.onward.length > 0 || action === 'arm') && !remembered) {
     if (usePrivacyStore.getState().pending)
       throw new Error('Finish the current data-sharing confirmation first.');

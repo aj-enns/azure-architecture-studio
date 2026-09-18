@@ -90,12 +90,7 @@ export function Toolbar({
   return (
     <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-border bg-card px-3 py-1">
       <div className="flex shrink-0 items-center gap-2">
-        <img
-          src={aasLogo}
-          alt=""
-          aria-hidden="true"
-          className="h-9 w-[57px] object-contain"
-        />
+        <img src={aasLogo} alt="" aria-hidden="true" className="h-9 w-[57px] object-contain" />
         <span className="text-sm font-semibold text-primary">Azure Architecture Studio</span>
       </div>
       <input

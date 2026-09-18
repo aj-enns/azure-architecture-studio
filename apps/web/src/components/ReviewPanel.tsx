@@ -149,6 +149,13 @@ export function ReviewPanel({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+        {healthState === 'checking' && (
+          <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
+            <Loader2 size={14} className="animate-spin" />
+            Checking the AI model…
+          </div>
+        )}
+
         {healthState === 'api-unavailable' && (
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-600 dark:text-amber-400">
             The API is not reachable at <code>/healthz</code>. Start or restart the API server, then

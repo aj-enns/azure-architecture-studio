@@ -182,6 +182,15 @@ export function AiPanel({
         </Button>
       </div>
 
+      {healthState === 'checking' && (
+        <div className="px-3 pt-3">
+          <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
+            <Loader2 size={14} className="animate-spin" />
+            Checking the AI model…
+          </div>
+        </div>
+      )}
+
       {(healthState === 'api-unavailable' || healthState === 'unconfigured') && (
         <div className="px-3 pt-3">
           {healthState === 'api-unavailable' && (
@@ -342,30 +351,19 @@ export function AiPanel({
         </fieldset>
 
         <fieldset className="space-y-1 text-xs" disabled={loading}>
-          <span className="font-medium text-muted-foreground">Design</span>
-          <div className="flex gap-3">
-            <label className="flex items-center gap-1.5">
-              <input
-                type="radio"
-                name="ai-design"
-                checked={design === 'bestPractice'}
-                onChange={() => setDesign('bestPractice')}
-              />
-              Best practice
-            </label>
-            <label className="flex items-center gap-1.5">
-              <input
-                type="radio"
-                name="ai-design"
-                checked={design === 'faithful'}
-                onChange={() => setDesign('faithful')}
-              />
-              Faithful
-            </label>
-          </div>
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              name="ai-design"
+              checked={design === 'bestPractice'}
+              onChange={(e) => setDesign(e.target.checked ? 'bestPractice' : 'faithful')}
+            />
+            <span className="font-medium">Apply best practices</span>
+          </label>
           <p className="text-[11px] text-muted-foreground">
-            Best practice adds a Well-Architected baseline (identity, Key Vault, monitoring, WAF).
-            Faithful draws only what you describe.
+            {design === 'bestPractice'
+              ? 'Adds a Well-Architected baseline (identity, Key Vault, monitoring, WAF) on top of what you describe.'
+              : 'Draws only what you describe — nothing added.'}
           </p>
         </fieldset>
 
