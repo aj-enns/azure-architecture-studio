@@ -42,10 +42,11 @@
     ./infra/setup.ps1 -SubscriptionId <sub-id> `
         -FoundryEndpoint 'https://acct.services.ai.azure.com/' `
         -FoundryModel 'gpt-4o' `
-        -FoundryResourceId '/subscriptions/.../accounts/acct' `
-        -FoundrySubscriptionId <sub> -FoundryResourceGroup <rg> -FoundryAccountName acct
+        -FoundryResourceId '/subscriptions/<foundry-sub>/resourceGroups/<foundry-rg>/providers/Microsoft.CognitiveServices/accounts/acct'
 
-    Deploys with AI enabled and grants the runtime identity Foundry access.
+    Deploys with AI enabled and grants the runtime identity Foundry access. The
+    Foundry subscription, resource group, and account are derived from the ARM
+    resource ID, so the account can be in another subscription in the same tenant.
 
 .NOTES
     Requires: PowerShell 7, Azure CLI, and permission to create resource groups,
@@ -60,8 +61,8 @@ param(
     [Parameter(Mandatory)]
     [string]$SubscriptionId,
 
-    [string]$ResourceGroup = 'rg-azure-architecture-review',
-    [string]$Location = 'eastus2',
+    [string]$ResourceGroup = 'rg-azure-architecture-studio',
+    [string]$Location = 'canadacentral',
     [string]$AppName = 'aas',
 
     # --- Entra (Easy Auth) web sign-in registration -------------------------
@@ -79,7 +80,8 @@ param(
     [string]$FoundryEndpoint,
     [string]$FoundryModel,
     [string]$FoundryResourceId,
-    # Provide all three to grant the runtime identity Foundry roles.
+    # Optional compatibility overrides. When FoundryResourceId is provided,
+    # these values are derived from it and any supplied values must match.
     [string]$FoundrySubscriptionId,
     [string]$FoundryResourceGroup,
     [string]$FoundryAccountName,
@@ -141,8 +143,108 @@ function Invoke-AzRestJson {
     }
 }
 
+function Resolve-FoundryTarget {
+    param(
+        [Parameter(Mandatory)]
+        [string]$ResourceId
+    )
+
+    $pattern = '^/subscriptions/(?<subscriptionId>[^/]+)/resourceGroups/(?<resourceGroup>[^/]+)/providers/Microsoft\.CognitiveServices/accounts/(?<accountName>[^/]+)/?$'
+    $resourceMatch = [regex]::Match($ResourceId.Trim(), $pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    if (-not $resourceMatch.Success) {
+        throw 'FoundryResourceId must be a Microsoft.CognitiveServices/accounts ARM resource ID.'
+    }
+
+    return [pscustomobject]@{
+        SubscriptionId = $resourceMatch.Groups['subscriptionId'].Value
+        ResourceGroup  = $resourceMatch.Groups['resourceGroup'].Value
+        AccountName    = $resourceMatch.Groups['accountName'].Value
+        ResourceId     = $ResourceId.Trim().TrimEnd('/')
+    }
+}
+
+function Resolve-FoundrySetting {
+    param(
+        [AllowEmptyString()]
+        [string]$ParameterValue,
+
+        [Parameter(Mandatory)]
+        [string]$EnvironmentName,
+
+        [Parameter(Mandatory)]
+        [hashtable]$DotEnv
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($ParameterValue)) {
+        return $ParameterValue
+    }
+
+    $environmentValue = [Environment]::GetEnvironmentVariable($EnvironmentName, 'Process')
+    if (-not [string]::IsNullOrWhiteSpace($environmentValue)) {
+        return $environmentValue
+    }
+
+    if ($DotEnv.ContainsKey($EnvironmentName)) {
+        return $DotEnv[$EnvironmentName]
+    }
+
+    return ''
+}
+
+$dotEnv = @{}
+$dotEnvPath = Join-Path $repoRoot '.env'
+if (Test-Path $dotEnvPath) {
+    foreach ($line in Get-Content $dotEnvPath) {
+        if ($line -match '^\s*(AZURE_FOUNDRY_(?:ENDPOINT|MODEL|RESOURCE_ID))\s*=\s*(.*)$') {
+            $dotEnv[$matches[1]] = $matches[2].Trim().Trim('"').Trim("'")
+        }
+    }
+}
+
+$FoundryEndpoint = Resolve-FoundrySetting `
+    -ParameterValue $FoundryEndpoint `
+    -EnvironmentName 'AZURE_FOUNDRY_ENDPOINT' `
+    -DotEnv $dotEnv
+$FoundryModel = Resolve-FoundrySetting `
+    -ParameterValue $FoundryModel `
+    -EnvironmentName 'AZURE_FOUNDRY_MODEL' `
+    -DotEnv $dotEnv
+$FoundryResourceId = Resolve-FoundrySetting `
+    -ParameterValue $FoundryResourceId `
+    -EnvironmentName 'AZURE_FOUNDRY_RESOURCE_ID' `
+    -DotEnv $dotEnv
+
 if ($SkipImageBuild -and [string]::IsNullOrWhiteSpace($ImageTag)) {
     throw 'Provide -ImageTag when using -SkipImageBuild so existing images can be resolved.'
+}
+
+if (-not [string]::IsNullOrWhiteSpace($FoundryResourceId)) {
+    $foundryTarget = Resolve-FoundryTarget -ResourceId $FoundryResourceId
+    $foundryOverrides = @(
+        @{ Name = 'FoundrySubscriptionId'; Value = $FoundrySubscriptionId; Expected = $foundryTarget.SubscriptionId },
+        @{ Name = 'FoundryResourceGroup'; Value = $FoundryResourceGroup; Expected = $foundryTarget.ResourceGroup },
+        @{ Name = 'FoundryAccountName'; Value = $FoundryAccountName; Expected = $foundryTarget.AccountName }
+    )
+    foreach ($foundryOverride in $foundryOverrides) {
+        if (-not [string]::IsNullOrWhiteSpace($foundryOverride.Value) -and
+            $foundryOverride.Value -ine $foundryOverride.Expected) {
+            throw "$($foundryOverride.Name) does not match FoundryResourceId."
+        }
+    }
+
+    $FoundrySubscriptionId = $foundryTarget.SubscriptionId
+    $FoundryResourceGroup = $foundryTarget.ResourceGroup
+    $FoundryAccountName = $foundryTarget.AccountName
+    $FoundryResourceId = $foundryTarget.ResourceId
+}
+
+$foundryLocationCount = @(
+    $FoundrySubscriptionId,
+    $FoundryResourceGroup,
+    $FoundryAccountName
+).Where({ -not [string]::IsNullOrWhiteSpace($_) }).Count
+if ($foundryLocationCount -notin 0, 3) {
+    throw 'Provide FoundryResourceId, or provide all three Foundry location overrides.'
 }
 
 # ---- 0. Tooling + sign-in ---------------------------------------------------
@@ -373,6 +475,12 @@ if ($EntraClientSecret) {
 # ---- 4. Optional Foundry role grant ----------------------------------------
 if ($FoundrySubscriptionId -and $FoundryResourceGroup -and $FoundryAccountName) {
     Write-Step 'Granting the runtime identity access to the Foundry account'
+    $foundryTenantId = az account show `
+        --subscription $FoundrySubscriptionId --query tenantId --output tsv
+    Assert-LastExit 'Read Foundry subscription tenant'
+    if ($foundryTenantId -ne $tenantId) {
+        throw 'The application identity and Foundry account must be in subscriptions in the same Microsoft Entra tenant.'
+    }
     az deployment group create `
         --subscription $FoundrySubscriptionId `
         --resource-group $FoundryResourceGroup `
@@ -393,10 +501,33 @@ if (-not $SkipImageBuild) {
     try {
         az acr build --registry $acrName `
             --image "aas-api:$ImageTag" --file apps/api/Dockerfile .
-        Assert-LastExit 'API image build'
-        az acr build --registry $acrName `
-            --image "aas-web:$ImageTag" --file apps/web/Dockerfile .
-        Assert-LastExit 'Web image build'
+        $useLocalBuild = $LASTEXITCODE -ne 0
+
+        if (-not $useLocalBuild) {
+            az acr build --registry $acrName `
+                --image "aas-web:$ImageTag" --file apps/web/Dockerfile .
+            $useLocalBuild = $LASTEXITCODE -ne 0
+        }
+
+        if ($useLocalBuild) {
+            Write-Warning 'ACR Quick Build failed. Falling back to the local Docker engine.'
+            docker version --format '{{.Server.Os}}/{{.Server.Arch}}' | Out-Null
+            Assert-LastExit 'Local Docker check'
+            az acr login --name $acrName --subscription $SubscriptionId --output none
+            Assert-LastExit 'Registry sign-in'
+
+            docker build --tag "$acrLoginServer/aas-api:$ImageTag" `
+                --file apps/api/Dockerfile .
+            Assert-LastExit 'Local API image build'
+            docker push "$acrLoginServer/aas-api:$ImageTag"
+            Assert-LastExit 'API image push'
+
+            docker build --tag "$acrLoginServer/aas-web:$ImageTag" `
+                --file apps/web/Dockerfile .
+            Assert-LastExit 'Local web image build'
+            docker push "$acrLoginServer/aas-web:$ImageTag"
+            Assert-LastExit 'Web image push'
+        }
     } finally {
         Pop-Location
     }
@@ -446,7 +577,7 @@ Assert-LastExit 'Read redirect URIs'
 $mergedUris = @($currentUris) + $redirectUri |
     Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
     Select-Object -Unique
-az ad app update --id $EntraClientId --web-redirect-uris @mergedUris
+az ad app update --id $EntraClientId --web-redirect-uris $mergedUris
 Assert-LastExit 'Update redirect URI'
 
 # ---- Done -------------------------------------------------------------------

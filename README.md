@@ -229,6 +229,8 @@ Set `AZURE_FOUNDRY_RESOURCE_ID` to the full resource ID of its
 `az login` for local development, or configure a managed/workload identity in
 Azure, and grant it `Microsoft.CognitiveServices/accounts/deployments/read`
 (the built-in **Reader** role on the Foundry resource includes this action).
+For Azure setup, this resource ID may point to another subscription in the same
+Microsoft Entra tenant; `infra/setup.ps1` derives the RBAC target from the ID.
 Only succeeded chat-completion deployments advertising JSON response support are
 offered. If discovery or authorization fails, reviews remain available with the
 configured `AZURE_FOUNDRY_MODEL` and the panel shows a warning. See
@@ -247,7 +249,8 @@ sign-in redirect URI automatically (no portal clicks):
 See [Install Azure infrastructure → Fast path](docs/install-infrastructure.md#fast-path-one-script-recommended)
 for AI and reuse-existing-registration options. Prefer to run each step yourself?
 Follow the two guides in order. Commands use PowerShell 7 and the existing Bicep
-templates; no local Docker installation is needed for Azure deployment.
+templates. The setup script uses ACR Quick Build when available and falls back
+to a local Docker engine if the managed build agent cannot download its context.
 
 1. **[Install Azure infrastructure](docs/install-infrastructure.md)**: prepare
    the subscription and resource group, provision ACR and the managed identity,
@@ -264,8 +267,11 @@ Adding a user or guest to the tenant does not assign application access. Follow
 [Manage user access](docs/manage-user-access.md) to onboard or remove users. The
 application uses the host's managed identity and AI resources.
 
-Your local `.env` is not loaded by Azure deployment. Supply AI settings through
-the documented Bicep parameters or GitHub Actions variables.
+The setup script reads the three non-secret `AZURE_FOUNDRY_ENDPOINT`,
+`AZURE_FOUNDRY_MODEL`, and `AZURE_FOUNDRY_RESOURCE_ID` values from `.env` when
+explicit parameters and process environment variables are absent. It never
+loads API keys. Manual Bicep and GitHub Actions deployments still require their
+documented parameters or repository variables.
 
 For a hosted demo, pass `iacImportEnabled=false` to the deployment of
 `infra/main.bicep` (default `true`). Keep that value in subsequent deployments

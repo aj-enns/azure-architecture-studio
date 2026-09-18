@@ -17,8 +17,8 @@ assignment, and tenant-wide sign-in consent), builds both images, and — after
 deployment — registers the redirect URI automatically. No portal clicks.
 
 ```powershell
-git clone https://github.com/aj-enns/azure-architecture-review.git
-Set-Location azure-architecture-review
+git clone https://github.com/aj-enns/azure-architecture-studio.git
+Set-Location azure-architecture-studio
 ./infra/setup.ps1 -SubscriptionId '<your-subscription-id>'
 ```
 
@@ -30,15 +30,28 @@ boundary during setup:
   -AssignGroups '<security-group-object-id>'
 ```
 
-Add AI in the same run by passing the Foundry parameters:
+Add AI in the same run by setting the three non-secret values in `.env`:
+
+```dotenv
+AZURE_FOUNDRY_ENDPOINT=https://<account>.services.ai.azure.com/
+AZURE_FOUNDRY_MODEL=<deployment-name>
+AZURE_FOUNDRY_RESOURCE_ID=/subscriptions/<foundry-sub>/resourceGroups/<foundry-rg>/providers/Microsoft.CognitiveServices/accounts/<account>
+```
+
+Then run the standard setup command. You can instead pass explicit parameters,
+which take precedence over process environment variables and `.env`:
 
 ```powershell
 ./infra/setup.ps1 -SubscriptionId '<your-subscription-id>' `
   -FoundryEndpoint 'https://<account>.services.ai.azure.com/' `
   -FoundryModel '<deployment-name>' `
-  -FoundryResourceId '/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>' `
-  -FoundrySubscriptionId '<sub>' -FoundryResourceGroup '<rg>' -FoundryAccountName '<account>'
+  -FoundryResourceId '/subscriptions/<foundry-sub>/resourceGroups/<foundry-rg>/providers/Microsoft.CognitiveServices/accounts/<account>'
 ```
+
+The Foundry account can be in a different subscription in the same Microsoft
+Entra tenant. The script derives its subscription, resource group, and account
+name from `AZURE_FOUNDRY_RESOURCE_ID`, then grants the runtime identity access
+there. Setup never loads API keys from `.env`; Azure uses managed identity.
 
 You need permission to create a resource group, role assignments, and an Entra
 app registration (Application Developer or equivalent). To reuse an existing
@@ -80,14 +93,16 @@ Azure resources incur charges, including when nobody is using the app.
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli),
   [PowerShell 7](https://learn.microsoft.com/powershell/scripting/install/installing-powershell),
   and Git.
+- For the fast-path setup script, a running local Docker engine is the fallback
+  when ACR Quick Build is unavailable or its agent cannot download the context.
 
 All commands in these two guides use **PowerShell 7**, run from the repository
-root. Local Docker, Node.js, and pnpm are not needed for this Azure path: ACR
-builds the images in Azure. Stop after any failed command before continuing.
+root. Node.js and pnpm are not needed for this Azure path. Stop after any failed
+command before continuing.
 
 ```powershell
-git clone https://github.com/aj-enns/azure-architecture-review.git
-Set-Location azure-architecture-review
+git clone https://github.com/aj-enns/azure-architecture-studio.git
+Set-Location azure-architecture-studio
 az version
 az bicep install
 az extension add --name containerapp --upgrade
