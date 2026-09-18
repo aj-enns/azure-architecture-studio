@@ -28,6 +28,7 @@ import { downloadJson, exportPng, exportSvg } from '@/lib/export.js';
 import { useDiagramStore } from '@/store/diagramStore.js';
 import { useUiStore, type PanelId } from '@/store/uiStore.js';
 import { usePrivacyStore } from '@/lib/privacy.js';
+import aasLogo from '@/assets/aas-logo.png';
 
 /** Analysis lenses that share the right rail — rendered as a segmented tab strip. */
 const insightLenses: { id: PanelId; label: string; icon: LucideIcon; title: string }[] = [
@@ -88,7 +89,15 @@ export function Toolbar({
 
   return (
     <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b border-border bg-card px-3 py-1">
-      <span className="text-sm font-semibold text-primary">Azure Architecture Studio</span>
+      <div className="flex shrink-0 items-center gap-2">
+        <img
+          src={aasLogo}
+          alt=""
+          aria-hidden="true"
+          className="h-9 w-[57px] object-contain"
+        />
+        <span className="text-sm font-semibold text-primary">Azure Architecture Studio</span>
+      </div>
       <input
         aria-label="Diagram name"
         className="ml-1 h-8 w-56 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
