@@ -1,4 +1,4 @@
-# Azure Architecture Studio
+<h1><img src="apps/web/src/assets/aas-logo.png" alt="" width="80" align="absmiddle"> Azure Architecture Studio</h1>
 
 > Design, review, and cost Azure architectures on an interactive canvas — self-hosted, open source, and AI-optional.
 
