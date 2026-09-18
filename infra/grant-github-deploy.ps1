@@ -94,6 +94,24 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($principalId)) {
 }
 $principalId = [guid]::Parse($principalId).ToString()
 
+$principalTags = @(az ad sp show --id $DeploymentClientId --query tags --output json | ConvertFrom-Json)
+Assert-LastExit 'Read service principal tags'
+$integratedAppTag = 'WindowsAzureActiveDirectoryIntegratedApp'
+if ($integratedAppTag -notin $principalTags) {
+    $tagsFile = New-TemporaryFile
+    try {
+        @{ tags = @($principalTags + $integratedAppTag | Select-Object -Unique) } |
+            ConvertTo-Json | Set-Content -Path $tagsFile -Encoding utf8
+        az rest --method PATCH `
+            --uri "https://graph.microsoft.com/v1.0/servicePrincipals/$principalId" `
+            --headers 'Content-Type=application/json' `
+            --body "@$($tagsFile.FullName)" --output none
+        Assert-LastExit 'Classify enterprise application'
+    } finally {
+        Remove-Item $tagsFile -ErrorAction SilentlyContinue
+    }
+}
+
 # ---- Role assignments (idempotent) -----------------------------------------
 Write-Step 'Granting Contributor, User Access Administrator, and AcrPush on the resource group'
 foreach ($role in @('Contributor', 'User Access Administrator', 'AcrPush')) {

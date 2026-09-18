@@ -258,10 +258,11 @@ az ad sp create --id '<deployment-application-client-id>'
 ```
 
 On the **existing application resource group**, grant this service principal
-**Contributor** plus **User Access Administrator**. These permit resource
-deployment, ACR builds, and the registry's role assignment. Pre-create the group
-and register providers using Part 1; group-scoped permissions cannot bootstrap
-a new resource group. Foundry grants remain a separate administrator step.
+**Contributor**, **User Access Administrator**, and **AcrPush**. These permit
+resource deployment, ACR builds, the registry's role assignment, and the local
+Docker fallback when ACR Quick Build is unavailable. Pre-create the group and
+register providers using Part 1; group-scoped permissions cannot bootstrap a
+new resource group. Foundry grants remain a separate administrator step.
 
 **Fast path:** [infra/grant-github-deploy.ps1](../infra/grant-github-deploy.ps1)
 performs the role grants and, given `-GitHubOwner`/`-GitHubRepo`, also creates the
@@ -284,7 +285,7 @@ you to configure. The manual equivalents follow.
 **One-time administrator setup:** run this in PowerShell using an administrator's
 Azure session, not inside GitHub Actions. The deployment identity cannot grant
 itself its initial access. Use the application's subscription, not the Foundry
-subscription. This creates the two resource-group-scoped role assignments only;
+subscription. This creates the three resource-group-scoped role assignments only;
 it does not create an app registration, group, or federated credential.
 
 ```powershell
@@ -308,7 +309,7 @@ it does not create an app registration, group, or federated credential.
     if ($LASTEXITCODE -ne 0) { throw 'Deployment service principal not found. Check the client ID and tenant.' }
     $principalId = [guid]::Parse($principalId).ToString()
 
-    foreach ($role in @('Contributor', 'User Access Administrator')) {
+    foreach ($role in @('Contributor', 'User Access Administrator', 'AcrPush')) {
         $existing = az role assignment list --subscription $subscriptionId `
           --scope $groupId --assignee-object-id $principalId --role $role `
           --query '[].id' --output tsv
@@ -409,7 +410,7 @@ expiry and redeploy using its new value (update the GitHub secret for automation
 | Role assignment denied | Caller needs role-assignment authority at the target scope, not just Contributor |
 | `AADSTS700016` / application not found | Check that AZURE_CLIENT_ID is the deployment Application (client) ID, not its Object ID or the web client ID, in AZURE_TENANT_ID |
 | No subscriptions found during OIDC login | Complete the administrator RBAC setup above for the deployment service principal, check the application subscription ID, and allow for propagation |
-| ACR build denied or unavailable | Check deployment permissions and regional/subscription availability of ACR Tasks |
+| ACR build denied or unavailable | Check ACR Tasks availability and verify the deployment identity has `AcrPush` for the local Docker fallback |
 | Image pull failure | Both images must exist under the exact tag; check the identity's `AcrPull` role and allow for role propagation |
 | `AADSTS70021` / no matching federated credential | Check branch versus environment subject, owner/repo, tenant, and audience |
 | `AADSTS50011` / redirect mismatch | Register the exact HTTPS callback on the correct web registration |
@@ -417,7 +418,7 @@ expiry and redeploy using its new value (update the GitHub secret for automation
 | `AADSTS50105` or an approved user cannot sign in | Follow [Manage user access](manage-user-access.md); tenant membership and Enterprise Application assignment are separate requirements |
 | **Need admin approval** after assignment | Grant tenant-wide consent for the expected sign-in scopes on the Enterprise Application; assignment and consent are separate gates |
 | Web loads but API returns redirects, 502, or 504 | Inspect nginx upstream and forwarded Host routing to internal Container Apps ingress; verify HTTP/HTTPS behavior before widening access |
-| AI is unavailable or returns 401/403 | Check deployed Foundry parameters, runtime identity roles, model availability, and account network restrictions; local `.env` is irrelevant |
+| AI is unavailable or returns 401/403 | Check deployed Foundry parameters, runtime identity roles, model availability, and account network restrictions; GitHub Actions uses repository variables rather than local `.env` |
 
 Use **Container Apps > Log stream** and **Revisions** in the portal to inspect
 both `aas-web` and `aas-api`. The API can scale to zero, so allow for a cold start.

@@ -336,6 +336,16 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($spObjectId)) {
     Assert-LastExit 'Create service principal'
 }
 
+$spTags = @(az ad sp show --id $EntraClientId --query tags --output json | ConvertFrom-Json)
+Assert-LastExit 'Read service principal tags'
+$integratedAppTag = 'WindowsAzureActiveDirectoryIntegratedApp'
+if ($integratedAppTag -notin $spTags) {
+    Invoke-AzRestJson -Method PATCH `
+        -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$spObjectId" `
+        -Body @{ tags = @($spTags + $integratedAppTag | Select-Object -Unique) } `
+        -What 'Classify enterprise application'
+}
+
 # Idempotent hardening: ID tokens on, assignment required on.
 az ad app update --id $EntraClientId --enable-id-token-issuance true
 Assert-LastExit 'Enable ID token issuance'
