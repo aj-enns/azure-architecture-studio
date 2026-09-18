@@ -12,7 +12,7 @@
 
     Idempotent. It:
       1. Ensures the deployment service principal exists (optional creation).
-      2. Grants Contributor + User Access Administrator on the resource group.
+    2. Grants Contributor, User Access Administrator, and AcrPush on the resource group.
       3. Optionally creates the branch + environment OIDC federated credentials.
       4. Prints the GitHub repository secrets and variables to configure.
 
@@ -21,9 +21,9 @@
 
 .EXAMPLE
     ./infra/grant-github-deploy.ps1 -SubscriptionId <sub> `
-        -ResourceGroup rg-azure-architecture-review `
+        -ResourceGroup rg-azure-architecture-studio `
         -DeploymentClientId <deploy-app-client-id> `
-        -GitHubOwner aj-enns -GitHubRepo azure-architecture-review
+        -GitHubOwner aj-enns -GitHubRepo azure-architecture-studio
 
 .NOTES
     Requires: PowerShell 7, Azure CLI, and role-assignment authority (Owner or
@@ -95,8 +95,8 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($principalId)) {
 $principalId = [guid]::Parse($principalId).ToString()
 
 # ---- Role assignments (idempotent) -----------------------------------------
-Write-Step 'Granting Contributor + User Access Administrator on the resource group'
-foreach ($role in @('Contributor', 'User Access Administrator')) {
+Write-Step 'Granting Contributor, User Access Administrator, and AcrPush on the resource group'
+foreach ($role in @('Contributor', 'User Access Administrator', 'AcrPush')) {
     $existing = az role assignment list `
         --subscription $SubscriptionId --scope $groupId `
         --assignee-object-id $principalId --role $role --query '[].id' --output tsv

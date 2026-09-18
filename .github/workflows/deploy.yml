@@ -16,8 +16,9 @@ name: deploy
 #                   AZURE_FOUNDRY_RESOURCE_ID                     (optional, model discovery)
 #
 # The federated app registration needs, on the resource group:
-#   - Contributor          (deploy resources + push images via az acr build)
+#   - Contributor          (deploy resources + run az acr build)
 #   - User Access Administrator  (create the AcrPull role assignment in registry.bicep)
+#   - AcrPush              (local Docker fallback when ACR Tasks is unavailable)
 # Owner covers both if you prefer a single assignment.
 #
 # Keyless Foundry: grant the app's user-assigned identity (aas-id-*) the
@@ -43,12 +44,12 @@ env:
 
 jobs:
   provision:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       acrName: ${{ steps.registry.outputs.acrName }}
       acrLoginServer: ${{ steps.registry.outputs.acrLoginServer }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Validate deployment settings
         env:
@@ -74,7 +75,7 @@ jobs:
 
       - name: Azure login (OIDC)
         id: azure-login
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -119,12 +120,12 @@ jobs:
 
   build:
     needs: provision
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Azure login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -132,27 +133,41 @@ jobs:
 
       - name: Build & push API image
         run: |
-          az acr build \
-            --registry "${{ needs.provision.outputs.acrName }}" \
-            --image "aas-api:${{ github.sha }}" \
-            --file apps/api/Dockerfile .
+          if ! az acr build \
+              --registry "${{ needs.provision.outputs.acrName }}" \
+              --image "aas-api:${{ github.sha }}" \
+              --file apps/api/Dockerfile .; then
+            echo "::warning::ACR Quick Build failed; using the runner's Docker engine."
+            az acr login --name "${{ needs.provision.outputs.acrName }}"
+            docker build \
+              --tag "${{ needs.provision.outputs.acrLoginServer }}/aas-api:${{ github.sha }}" \
+              --file apps/api/Dockerfile .
+            docker push "${{ needs.provision.outputs.acrLoginServer }}/aas-api:${{ github.sha }}"
+          fi
 
       - name: Build & push web image
         run: |
-          az acr build \
-            --registry "${{ needs.provision.outputs.acrName }}" \
-            --image "aas-web:${{ github.sha }}" \
-            --file apps/web/Dockerfile .
+          if ! az acr build \
+              --registry "${{ needs.provision.outputs.acrName }}" \
+              --image "aas-web:${{ github.sha }}" \
+              --file apps/web/Dockerfile .; then
+            echo "::warning::ACR Quick Build failed; using the runner's Docker engine."
+            az acr login --name "${{ needs.provision.outputs.acrName }}"
+            docker build \
+              --tag "${{ needs.provision.outputs.acrLoginServer }}/aas-web:${{ github.sha }}" \
+              --file apps/web/Dockerfile .
+            docker push "${{ needs.provision.outputs.acrLoginServer }}/aas-web:${{ github.sha }}"
+          fi
 
   deploy:
     needs: [provision, build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Azure login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
