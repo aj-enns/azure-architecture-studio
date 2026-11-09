@@ -7,53 +7,55 @@ import type { ServiceDefinition } from './catalog.js';
 
 export const generatedServiceCatalog: ServiceDefinition[] = [
   {
-    id: 'fabric',
-    name: 'Microsoft Fabric',
-    category: 'analytics',
-    description: 'Unified analytics platform (capacity).',
-    icon: 'fabric',
-    defaults: {},
-    iac: {
-      resourceType: 'Microsoft.Fabric/capacities',
-      avmModule: 'br/public:avm/res/fabric/capacity',
+    "id": "fabric",
+    "name": "Microsoft Fabric",
+    "category": "analytics",
+    "description": "Unified analytics platform (capacity).",
+    "icon": "fabric",
+    "defaults": {},
+    "iac": {
+      "resourceType": "Microsoft.Fabric/capacities",
+      "avmModule": "br/public:avm/res/fabric/capacity"
     },
-    draft: true,
-    pricing: {
-      consumptionBased: true,
-      serviceName: 'Microsoft Fabric',
+    "draft": true,
+    "pricing": {
+      "consumptionBased": true,
+      "serviceName": "Microsoft Fabric"
     },
-    docsUrl: 'https://learn.microsoft.com/fabric/',
+    "docsUrl": "https://learn.microsoft.com/fabric/",
+    "popularityScore": 2904
   },
   {
-    id: 'power-bi-embedded',
-    name: 'Power BI Embedded',
-    category: 'analytics',
-    description: 'Dedicated capacity for embedded analytics.',
-    icon: 'power-bi',
-    defaults: {},
-    iac: {
-      resourceType: 'Microsoft.PowerBIDedicated/capacities',
-      avmModule: 'br/public:avm/res/power-bi-dedicated/capacity',
+    "id": "service-fabric",
+    "name": "Service Fabric Cluster",
+    "category": "compute",
+    "description": "Distributed microservices platform.",
+    "icon": "service-fabric",
+    "defaults": {},
+    "iac": {
+      "resourceType": "Microsoft.ServiceFabric/clusters",
+      "avmModule": "br/public:avm/res/service-fabric/cluster"
     },
-    draft: true,
-    pricing: {
-      consumptionBased: false,
-      serviceName: 'Power BI Embedded',
-    },
-    docsUrl: 'https://learn.microsoft.com/power-bi/developer/embedded/',
+    "draft": true,
+    "docsUrl": "https://learn.microsoft.com/azure/service-fabric/",
+    "popularityScore": 2828
   },
   {
-    id: 'service-fabric',
-    name: 'Service Fabric Cluster',
-    category: 'compute',
-    description: 'Distributed microservices platform.',
-    icon: 'service-fabric',
-    defaults: {},
-    iac: {
-      resourceType: 'Microsoft.ServiceFabric/clusters',
-      avmModule: 'br/public:avm/res/service-fabric/cluster',
+    "id": "power-bi-embedded",
+    "name": "Power BI Embedded",
+    "category": "analytics",
+    "description": "Dedicated capacity for embedded analytics.",
+    "icon": "power-bi",
+    "defaults": {},
+    "iac": {
+      "resourceType": "Microsoft.PowerBIDedicated/capacities",
+      "avmModule": "br/public:avm/res/power-bi-dedicated/capacity"
     },
-    draft: true,
-    docsUrl: 'https://learn.microsoft.com/azure/service-fabric/',
-  },
+    "draft": true,
+    "pricing": {
+      "consumptionBased": false,
+      "serviceName": "Power BI Embedded"
+    },
+    "docsUrl": "https://learn.microsoft.com/power-bi/developer/embedded/"
+  }
 ];
